@@ -368,6 +368,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   <a class="t on" href="valorador.html">Valorador</a>
   <button type="button" class="t" id="tourNav" style="cursor:pointer;background:transparent;color:var(--amber-strong);font-family:var(--font-m);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--amber-line);padding:.42rem .8rem;border-radius:6px">&#9654; C&oacute;mo funciona &middot; 3 min</button>
   <button type="button" class="t" id="demoNav" style="cursor:pointer;background:var(--amber);color:#0a0a0a;font-family:var(--font-h);font-weight:800;font-size:.72rem;letter-spacing:.02em;text-transform:none;border:none;padding:.45rem .9rem;border-radius:6px">&#9654; Ejemplo META</button>
+  <button type="button" class="t" id="demoMsftNav" style="cursor:pointer;background:transparent;color:var(--amber-strong);font-family:var(--font-h);font-weight:700;font-size:.7rem;text-transform:none;border:1px solid var(--amber-line);padding:.42rem .8rem;border-radius:6px">&#9654; MSFT</button>
   <button type="button" class="t" id="btnSonido" style="cursor:pointer;background:transparent;font-family:var(--font-m);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;border:1px solid transparent;padding:.42rem .8rem;border-radius:6px" aria-pressed="false">&#9834; sin sonido</button>
 </div></nav><header><div class="wrap">
   <div class="kicker">Valoración Peaky Minders · Aprender a valorar una empresa</div>
@@ -392,9 +393,11 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
     <div class="k">¿Primera vez aquí?</div>
     <div style="display:flex;gap:1.2rem;align-items:center;flex-wrap:wrap;margin-top:.7rem">
       <button type="button" class="b1" id="demoTop" style="font-size:1rem;padding:.9rem 1.6rem">
-        ▶ Ver el ejemplo de META con 10 años reales</button>
+        ▶ Ejemplo META</button>
+      <button type="button" class="b2" id="demoMsft" style="font-size:1rem;padding:.9rem 1.6rem">
+        ▶ Ejemplo MSFT</button>
       <div style="flex:1;min-width:220px;font-size:.87rem;color:var(--soft)">
-        Rellena las 250 casillas con las cuentas reales de Meta Platforms (2016-2025) y genera el
+        Rellenan las 250 casillas con las cuentas reales de <b>Meta</b> o de <b>Microsoft</b> y generan el
         informe entero. Es la forma más rápida de ver qué hace esto antes de meter tu empresa.</div>
     </div>
   </div>
@@ -453,10 +456,35 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   </div>
   <div id="negocioPrompt" class="hide"><textarea id="promptNegocio" readonly style="min-height:210px"></textarea></div>
 
-  <div class="f" style="margin-top:.8rem">
+  <details style="margin-top:.4rem">
+    <summary>📄 Opcional · informe completo de la empresa (noticias, insiders, Congreso)</summary>
+    <div class="dbody">
+      <p>Si quieres ir más allá del modelo de negocio, este otro texto le pide a la IA un
+      <b>informe visual completo</b> de la empresa: últimos resultados, tres noticias con impacto,
+      compras y ventas de directivos ante la SEC, operaciones del Congreso de EE.UU., análisis
+      técnico frente a máximos y una alternativa del mismo sector.</p>
+      <p style="margin-top:.6rem">Te devuelve una página HTML que puedes guardar. <b>Úsalo antes
+      de valorar</b>: es el contexto que los números no te dan.</p>
+      <div class="bar-actions" style="margin-top:.9rem">
+        <button type="button" class="b1" id="copiarAnalisis">Copiar el texto del informe</button>
+        <button type="button" class="b2" id="irClaudeAnalisis">Abrir en Claude →</button>
+        <button type="button" class="b2" id="verAnalisis">Ver el texto</button>
+      </div>
+      <div id="analisisBox" class="hide" style="margin-top:.7rem">
+        <textarea id="promptAnalisisVista" readonly style="min-height:240px"></textarea>
+      </div>
+    </div>
+  </details>
+
+  <div class="f" style="margin-top:1rem">
     <label>Pega aquí lo que te conteste — saldrá encabezando el informe</label>
-    <textarea id="negocio" placeholder="Ejemplo: Meta gana dinero vendiendo espacio publicitario. Las empresas pagan por enseñar sus anuncios a los 3.400 millones de personas que usan Facebook, Instagram y WhatsApp cada día. Casi todas sus ventas (más del 95%) vienen de ahí…"></textarea>
-    <div class="hint">Puedes editarlo cuando quieras. Si lo dejas vacío, el informe simplemente no lo muestra.</div>
+    <textarea id="negocio" placeholder="Pega la respuesta de la IA y pulsa Ctrl+Enter (o el botón de abajo) para verla ya formateada."></textarea>
+    <div class="bar-actions" style="margin-top:.6rem">
+      <button type="button" class="b1" id="fijarNegocio">✓ Fijar el modelo de negocio</button>
+      <button type="button" class="b2" id="editarNegocio">Editar</button>
+      <span style="font-size:.78rem;color:var(--muted-txt);align-self:center">o pulsa <kbd>Ctrl</kbd>+<kbd>Enter</kbd></span>
+    </div>
+    <div id="negocioVista" class="hide"></div>
   </div>
 </section>
 
@@ -530,6 +558,52 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   </div>
 </section>
 
+<textarea id="promptAnalisisFuente" class="hide" readonly aria-hidden="true">Actúa como analista bursátil. Yo te iré escribiendo tickers de empresas cotizadas en EE.UU. una a una. Por cada ticker devuelves un HTML autocontenido con el nombre {TICKER}_analisis.html. Sin preguntas previas.
+
+FLUJO POR TICKER
+1. Confirma brevemente el ticker.
+2. Haz 3 queries web máximo (adaptativo, puedes 1-2 más si detectas hueco):
+   - Query 1: últimos resultados + guía próximo T + precio + market cap + ATH + fecha próximo earnings
+   - Query 2: 3 noticias recientes + insider trading Form 4 SEC últimos 90 días
+   - Query 3: trading del Congreso EE.UU. (Capitol Trades / CongressStock)
+3. Rellena la PLANTILLA HTML de abajo sustituyendo todos los {{PLACEHOLDERS}} con los datos reales.
+4. Devuelve el HTML con un mini resumen de 3-4 viñetas y sección "Sources:" con enlaces markdown.
+
+REGLAS DE CONTENIDO
+5. Noticia 1 SIEMPRE = últimos resultados con etiqueta "· RESULTADOS" en la fecha, incluyendo ventas, EPS, beat vs consenso, guía próximo T y fecha del próximo reporte.
+6. Noticias 2 y 3 = las más recientes con impacto real para el inversor (M&amp;A, contratos, cambios directivos, guías). Descarta cotilleos.
+7. Fechas concretas siempre en insider y Congreso (día-mes-año en negrita), nunca solo el mes.
+8. Insider trading: RSU / retención de impuestos = etiqueta tag-neutral (gris). Solo compras/ventas en mercado abierto son señales alcistas/bajistas reales (tag-buy verde / tag-sell rojo).
+9. Congreso: si no hay operaciones registradas, usa el div flow-empty diciéndolo explícitamente. No rellenes con inventos.
+10. Cada informe es autoconclusivo. NO menciones otros tickers analizados en conversaciones previas.
+11. Descripción del negocio en lenguaje claro y cercano, sin jerga innecesaria.
+12. La sección "Alternativa de inversión en el sector" debe ser una empresa cotizada en EE.UU. del mismo sector amplio, que sea ganadora ya validada por el mercado (buen momentum, catalizador claro). NO un competidor directo también en caída.
+
+LOGO SVG INLINE
+Dibuja un SVG dentro del .logo-box que represente razonablemente el logo de la empresa con sus colores corporativos reales. Si no conoces el logo bien, versión tipográfica: caja con las iniciales grandes en Georgia sobre fondo con el color navy de la marca, y una línea o detalle en color acento. Nunca uses URLs externas de logos (Clearbit, logo.dev, favicons): se bloquean en file://.
+
+PALETA POR EMPRESA
+Cambia --navy y --accent según la marca. Ejemplos: Amazon #232F3E+#FF9900, Apple #1D1D1F+#0071E3, Microsoft #243A5E+#0078D4, ServiceNow #032B40+#62D84E, SoFi #002F5F+#00B9C7, Palantir #101820+#0668BE. Ajusta a los colores reales. --accent-soft es una versión clara del acento (baja luminosidad, alta saturación).
+
+ESTRUCTURA DEL HTML (secciones, en este orden)
+- Cabecera: logo, nombre, badge EXCHANGE·TICKER, y 5 tarjetas: Cotización, Market Cap, Ventas último trimestre YoY, EPS último trimestre, distancia vs ATH de cierre.
+- Gráfico de cotización (iframe de TradingView con el símbolo EXCHANGE:TICKER, intervalo semanal, rango 24 meses).
+- ¿A qué se dedica? Descripción de 5 líneas en lenguaje claro.
+- Posición competitiva: 4 fichas con posición, cuota y nota.
+- Potencial futuro del sector (3-5 años): 3 catalizadores + fila de 5 riesgos a vigilar.
+- Datos fundamentales: market cap + métricas clave, y dos tablas enfrentadas: último trimestre reportado (ventas, EPS y 4 KPI con su variación interanual) y previsión del próximo (guidance de ventas, consenso de ventas, consenso de EPS y 3 KPI).
+- Análisis técnico: distancia al máximo histórico de cierre en grande, con cotización actual, ATH y fecha, máximo y mínimo de 52 semanas; y al lado la lectura técnica con soporte, resistencia y próximo catalizador.
+- Últimas noticias: 3 tarjetas con fecha, titular, resumen con cifras en negrita y enlace.
+- Insider trading y Congreso EE.UU.: dos columnas. Insider con nombre, rol, fecha de la operación, etiqueta de color y detalle, más una lectura final. Congreso igual, o el bloque flow-empty si no hay nada.
+- Alternativa de inversión en el sector: nombre, ticker, tagline, por qué, a qué se dedica, salida a bolsa, ventaja sobre el ticker analizado, datos clave y consideraciones.
+- Pie con la fecha del análisis, la nota de que es documento informativo y no constituye recomendación de inversión, y las fuentes consultadas.
+
+FORMATO
+- Números en español: coma decimal, separador de miles con punto.
+- Fechas cortas: 28-ene-2025, 22-abr-2026. Meses en minúsculas y abreviados a 3 letras.
+- Estilo sobrio: fondo claro, titulares en Georgia, color navy de la marca, acento de la marca en cifras y bordes.
+
+Confirma que has entendido y dime "listo para el primer ticker".</textarea>
 <!-- recorrido guiado -->
 <div id="tourFoco"></div>
 <div id="tourCaja" role="dialog" aria-live="polite">
@@ -1798,6 +1872,36 @@ function resumen(R){
     <div class="tw"><table class="rs"><tbody>${filas}</tbody></table></div>
     <h3>Explicado para alguien de diez años</h3>
     <div class="kid">${veredicto(R)}</div>
+
+    <h3>Qué significa cada número, con una pizzería al lado</h3>
+    <p class="sub" style="margin-bottom:1rem">Los mismos resultados que acabas de ver, traducidos a
+    una pizzería del barrio. Cada fila compara <b>lo que dice el ratio</b> con <b>lo que sería en un
+    negocio que puedes tocar</b>.</p>
+    ${tablaPizzeria(R)}
+
+    <h3>Conclusiones: cómo se leen estos datos juntos</h3>
+    ${conclusiones(R)}
+    <h3>El paso que falta: qué dicen los analistas</h3>
+    <div class="note" style="margin-top:.6rem">
+      <b>Este informe proyecta el futuro extrapolando el pasado.</b> Coge lo que la empresa ha hecho
+      en diez años y lo frena con una escalera decreciente. Es prudente y es reproducible, pero
+      <b>nadie que trabaje en el sector valora así del todo</b>: los analistas que siguen la empresa
+      publican estimaciones de ventas y beneficios para los próximos años, y esas estimaciones
+      incorporan cosas que el histórico no puede saber — contratos firmados, capacidad en
+      construcción, productos que aún no se venden.
+      <br><br>
+      <b>Cómo se usarían:</b> en la pestaña <em>Forecast</em> de InvestingPro tienes el consenso de
+      analistas. Esas cifras sustituirían la escalera de crecimiento de los primeros años, y el
+      desvanecimiento se aplicaría solo a partir de ahí. El resultado sería una valoración más
+      pegada a lo que el mercado espera de verdad.
+      <br><br>
+      <b>Y aquí está el valor real de tener esto:</b> InvestingPro te da su propio <em>Fair Value</em>,
+      un número que sale de un modelo cuyos supuestos no controlas. Con este informe tienes
+      <b>tu propia valoración, con tus supuestos, y puedes ponerla al lado de la suya</b>. Cuando
+      difieran mucho, la pregunta interesante no es quién acierta: es <em>qué está suponiendo el otro
+      que yo no</em>. Ahí es donde se aprende.
+    </div>
+
     <div class="note" style="margin-top:1.2rem">⛔ Recuerda: este método <b>no sirve para bancos,
       aseguradoras ni REITs</b>. Si la empresa analizada es financiera o inmobiliaria patrimonialista,
       este resultado no es válido.</div>
@@ -1806,6 +1910,134 @@ function resumen(R){
       falta la plantilla completa, que proyecta cada partida por separado.</div>
     ${R.aviso.map(a=>`<div class="note">${a}</div>`).join("")}
   </div>`;
+}
+
+/* ── la pizzería: cada ratio traducido a un negocio que se puede tocar ── */
+function tablaPizzeria(R){
+  const d=R.der, L=R.L, c=R.c;
+  const pz = 1000;   /* la pizzería vende 1.000 € al día, para que las cuentas salgan de cabeza */
+  const eur = x => x===null||!isFinite(x) ? "—" : nf(x*pz,0)+" €";
+  const filas = [
+    ["Margen EBITDA", pc(c.mEbitda.v), c.mEbitda.v===null?"—":
+      `De cada 1.000 € de pizzas vendidas al día, quedan <b>${eur(c.mEbitda.v)}</b> después de pagar
+       harina, mozzarella, luz y sueldos. Todavía sin contar el desgaste del horno.`, sem("mEbitda",c.mEbitda.v)],
+    ["Margen EBIT", pc(c.mEbit.v), c.mEbit.v===null?"—":
+      `De esos, quedan <b>${eur(c.mEbit.v)}</b> una vez apartas lo que cuesta que el horno y la moto
+       de reparto no se caigan a trozos. Este es el margen que de verdad manda.`, sem("mEbit",c.mEbit.v)],
+    ["Margen neto", pc(c.mNeto.v), c.mNeto.v===null?"—":
+      `Y al final del día, tras el banco y Hacienda, se quedan <b>${eur(c.mNeto.v)}</b> limpios.`, sem("mNeto",c.mNeto.v)],
+    ["Conversión en caja", pc(c.conv.v), c.conv.v===null?"—":
+      `De cada 100 € que la pizzería dice ganar, <b>${c.conv.v===null?"—":Math.round(c.conv.v*100)} €</b>
+       acaban de verdad en el cajón. El resto se queda en el almacén, en facturas por cobrar o en el horno.`, sem("conv",c.conv.v)],
+    ["ROIC", pc(c.roic.v), c.roic.v===null?"—":
+      `Si el dueño mete <b>1.000 €</b> en un horno nuevo, al año siguiente le devuelven
+       <b>${Math.round(c.roic.v*1000)} €</b>. Un depósito del banco le daría 20 o 30 €.`, sem("roic",c.roic.v)],
+    ["Deuda neta / EBITDA", mu(d.dnEbitda[L]), d.dnEbitda[L]===null?"—":
+      (d.dnEbitda[L]<0
+        ? `No debe nada: le <b>sobra</b> dinero en la caja registradora. Puede comprar el local de al
+           lado justo cuando el vecino no puede.`
+        : `Tardaría <b>${nf(d.dnEbitda[L],1)} años</b> vendiendo pizzas —y sin gastar un euro en nada
+           más— en pagar todo lo que debe al banco.`), sem("deuda",d.dnEbitda[L])],
+    ["Crecimiento de ventas", pc(R.cagrV), R.cagrV===null?"—":
+      `Cada año entran por la puerta un <b>${pc(R.cagrV)}</b> más de clientes que el anterior
+       ${R.cagrV>=.10?"— la cola llega hasta la esquina":R.cagrV>=.04?"— crece despacio pero crece":"— el barrio se está yendo a otro sitio"}.`,
+      sem("cagrV",R.cagrV)],
+    ["Dilución", pc(c.dil.v), c.dil.v===null?"—":
+      (c.dil.v<0
+        ? `El dueño va <b>recomprando participaciones</b> a los socios que se van: tu trozo de la
+           pizzería crece un ${pc(Math.abs(c.dil.v))} al año sin que pongas un euro.`
+        : `Cada año se reparten <b>${pc(c.dil.v)}</b> más participaciones. La pizzería es la misma,
+           pero se corta en más trozos y el tuyo encoge.`), sem("dil",c.dil.v)]
+  ];
+  return `<div class="tw"><table class="rs">
+    <thead><tr><th>Ratio</th><th style="text-align:right">Valor</th><th>En la pizzería del barrio</th><th></th></tr></thead>
+    <tbody>${filas.filter(f=>f[1]!=="—").map(f=>`<tr>
+      <td class="l"><b>${esc(f[0])}</b></td>
+      <td class="n" style="color:var(--amber-strong)">${f[1]}</td>
+      <td class="l" style="line-height:1.6">${f[2]}</td>
+      <td class="n">${semTag(f[3])}</td></tr>`).join("")}</tbody>
+  </table></div>`;
+}
+
+/* ── conclusiones: qué dicen los datos LEÍDOS EN CONJUNTO ── */
+function conclusiones(R){
+  const c=R.c, d=R.der, L=R.L, v=R.v, out=[];
+  const nom = esc($("nombre").value||"la empresa");
+
+  /* 1 · calidad del negocio: ROIC + márgenes + conversión */
+  if(c.roic.v!==null && c.mEbit.v!==null){
+    const bueno = c.roic.v>=.20 && c.mEbit.v>=.20;
+    const medio = c.roic.v>=.10 && c.mEbit.v>=.10;
+    out.push(["🏭","Qué tipo de negocio es",
+      bueno ? `<b>${nom} es un negocio de calidad.</b> Un ROIC del ${pc(c.roic.v)} sostenido junto a un
+        margen operativo del ${pc(c.mEbit.v)} solo se consigue teniendo algo que los competidores no
+        pueden copiar. Si fuera fácil, alguien habría entrado a bajar precios y el margen habría caído.`
+      : medio ? `<b>${nom} es un negocio correcto, no excepcional.</b> Gana más de lo que le cuesta el
+        dinero (ROIC ${pc(c.roic.v)}), pero con un margen del ${pc(c.mEbit.v)} tiene competencia real.
+        Aquí el precio de entrada importa mucho más que en un negocio con foso.`
+      : `<b>Cuidado: ${nom} no supera el listón de calidad del método.</b> Con un ROIC del
+        ${pc(c.roic.v)} está ganando poco o nada por encima de lo que le cuesta financiarse.
+        Ningún precio barato arregla eso a largo plazo.`]);
+  }
+
+  /* 2 · el beneficio, ¿es real? */
+  if(c.conv.v!==null){
+    out.push(["💧","Si el beneficio es de verdad",
+      c.conv.v>=.70 ? `De cada 100 € que declara ganar, ${Math.round(c.conv.v*100)} llegan a caja.
+        <b>El beneficio es creíble</b>: no se queda por el camino en almacén, intereses ni máquinas.`
+      : c.conv.v>=.45 ? `Convierte ${Math.round(c.conv.v*100)} de cada 100 € en dinero real.
+        <b>Es normal, pero conviene saber a dónde va el resto</b>: mira si es capex, circulante o impuestos.`
+      : `Solo ${Math.round(c.conv.v*100)} de cada 100 € declarados acaban en caja.
+        <b>Es la señal más importante de este informe</b>: el beneficio contable no se está
+        convirtiendo en dinero, y eso siempre tiene una causa que hay que encontrar antes de seguir.`]);
+  }
+
+  /* 3 · supervivencia */
+  if(d.dnEbitda[L]!==null){
+    out.push(["🛡️","Si puede aguantar un año malo",
+      d.dnEbitda[L]<0 ? `Tiene <b>más caja que deuda</b>. En una crisis no depende de que el banco le
+        renueve nada, y puede comprar barato mientras otros venden por necesidad. Es una ventaja que
+        no aparece en ningún ratio de rentabilidad.`
+      : d.dnEbitda[L]<=2.5 ? `Debe ${nf(d.dnEbitda[L],1)} años de beneficio operativo. <b>Está dentro
+        de lo razonable</b>: un año malo le haría daño, pero no la pondría en manos del banco.`
+      : `Debe ${nf(d.dnEbitda[L],1)} años de beneficio operativo, por encima del límite del método.
+        <b>Aquí la que decide ya no es del todo la empresa</b>: es quien le presta.`]);
+  }
+
+  /* 4 · el precio */
+  if(v && v.idc){
+    const caro = R.precio > v.idc;
+    out.push(["🏷️","Qué dice el precio",
+      `El mercado pide <b>${mo(R.precio)}</b>. Con tus supuestos —crecer del ${nf(v.gF,1)}% al
+       ${nf(v.gF5,1)}% y pagar ${mu(v.multObj)} por su caja— el precio máximo para ganar un
+       ${nf(v.obj*100,0)}% anual es <b>${mo(v.idc)}</b>. ${caro
+        ? `Está <b>${pc(Math.abs(v.recorr))} por encima</b> de ese techo: comprar hoy significa
+           aceptar menos del ${nf(v.obj*100,0)}% anual, o confiar en que crecerá más de lo que has puesto.`
+        : `Está <b>${pc(v.recorr)} por debajo</b> de ese techo. Eso no es una señal de compra: es que
+           el precio deja de ser el obstáculo y el trabajo pasa a ser confirmar la tesis.`}`]);
+  }
+
+  /* 5 · de qué depende todo */
+  if(v && v.idc){
+    const mitad = (v.multObj*d.fcf[L]*Math.pow(1+v.gF/200,5) - v.dn5)/v.acc5;
+    out.push(["⚖️","De qué depende este número",
+      `Todo el cálculo se apoya en dos supuestos tuyos. Si el crecimiento fuera <b>la mitad</b> del
+       que has puesto, el precio a cinco años bajaría a ${mo(mitad)} y el IDC a
+       <b>${mo(mitad/v.factor)}</b>. Si además el mercado pagara un múltiplo menor, bajaría más.
+       <b>Cambia esos dos números y vuelve a mirar</b>: si la conclusión aguanta con supuestos
+       prudentes, es una conclusión sólida. Si solo funciona con los optimistas, no lo es.`]);
+  }
+
+  /* 6 · lo que este informe NO puede decirte */
+  out.push(["🚧","Lo que este informe no cubre",
+    `Estos números miran <b>hacia atrás</b>: son diez años de historia. No saben si va a haber una
+     recesión, si un competidor cambiará las reglas, si la directiva tomará una mala decisión ni si
+     una regulación nueva le cambiará el negocio. Para eso están la lectura del informe anual, la
+     llamada de resultados y el informe completo de la empresa que puedes generar arriba.
+     <b>Un número no es una tesis.</b>`]);
+
+  return out.map(([ic,t,txt])=>`<div class="expl" style="margin:.8rem 0">
+    <span class="t">${ic} ${esc(t)}</span>${txt}</div>`).join("");
 }
 
 function veredicto(R){
@@ -1867,34 +2099,40 @@ function enlazarValoracion(){
    avanza automáticamente: se pasa a mano.                              */
 const TOUR = [
  {sel:null, t:"Valoración Peaky Minders",
-  d:"Seis preguntas sobre el negocio y, solo al final, el precio. En tres minutos te enseño cómo funciona. Puedes pausar cuando quieras.", ms:9000},
+  d:"Seis preguntas sobre el negocio y, solo al final, el precio. Te enseño cómo funciona. Puedes pausar cuando quieras.", ms:7000},
  {sel:"#demoNav", t:"Empieza por el ejemplo",
   d:"Este botón rellena las 250 casillas con las cuentas reales de Meta de los últimos diez años. Lo pulso ahora para que veas el recorrido completo.",
-  ms:11000, hacer:()=>$("demo").click()},
+  ms:9000, hacer:()=>$("demo").click()},
  {sel:"#negocio", t:"Antes de los números: el negocio",
-  d:"Lo primero es saber de dónde sale cada euro de ventas. Los botones de arriba abren Claude o ChatGPT con una pregunta ya escrita de nivel analista, y la respuesta se pega aquí. Encabezará el informe.", ms:15000},
- {sel:"#srcbar", t:"Los datos vienen de InvestingPro",
-  d:"Estos enlaces abren la pestaña exacta de esta empresa. Cambian solos según el ticker que escribas arriba.", ms:12000},
- {sel:"#abrirBloque", t:"Copia la tabla entera",
-  d:"Seleccionas toda la tabla en Investing, la pegas aquí y el sistema reparte cada fila en su sitio. Tres copias —resultados, balance y flujo de caja— y ya está.", ms:14000},
- {sel:"#matriz", t:"Diez años, no uno",
-  d:"Cada fila lleva debajo el nombre literal que hay que buscar en la web. Las que tienen el botón ƒ se calculan solas si no las encuentras.", ms:13000},
+  d:"Lo primero es saber de dónde sale cada euro de ventas. Los botones de arriba abren Claude o ChatGPT con una pregunta ya escrita de nivel analista. Pegas la respuesta aquí, pulsas Ctrl+Enter y encabeza el informe.", ms:15000},
+ {sel:"#srcbar", t:"De aquí salen los datos",
+  d:"Estos enlaces abren la pestaña exacta de esta empresa en InvestingPro. Cambian solos según el ticker que escribas arriba. Este es el paso que más se atasca.", ms:10000},
+ {sel:"#abrirBloque", t:"Rellenar datos · el modo rápido",
+  d:"En InvestingPro pones el selector en Annual, seleccionas la tabla entera desde «Period Ending» hasta abajo, Ctrl+C. Aquí pulsas este botón, Ctrl+V y «Reconocer filas». El sistema reparte cada partida en su sitio.", ms:15000},
+ {sel:"#bloqueRes", t:"Y te enseña qué ha entendido",
+  d:"Nunca rellena a ciegas: te muestra qué partidas ha leído, cuántos años tiene cada una y su último valor, para que lo revises antes de calcular. Y te dice cuáles faltan y en qué pestaña están.", ms:11000},
+ {sel:"#matriz", t:"Rellenar datos · el modo manual",
+  d:"Si prefieres ir fila a fila: seleccionas los diez números de una partida en la web, Ctrl+C, y pegas en la PRIMERA casilla de esa fila. Los diez años entran de golpe. Debajo de cada nombre tienes la fila literal que hay que buscar.", ms:14000},
+ {sel:".fx", t:"Y si un dato no aparece",
+  d:"Las filas con el botón ƒ se calculan a partir de otras dos. Por ejemplo, si no encuentras los intereses netos, te pide los ingresos y los gastos financieros y los resta él. Nunca te quedas bloqueado por una fila.", ms:12000},
  {sel:".tab[data-g='MK']", t:"El precio de cada año, automático",
-  d:"Esta pestaña guarda la cotización al cierre de los últimos diez años. Hay un botón que la trae sola: es lo que permite saber qué múltiplo ha pagado el mercado históricamente.",
-  ms:13000, hacer:()=>document.querySelector(".tab[data-g='MK']")?.click()},
+  d:"Esta pestaña guarda la cotización al cierre de los últimos diez años. Hay un botón que la trae sola de Yahoo: es lo que permite saber qué múltiplo ha pagado el mercado históricamente.",
+  ms:11000, hacer:()=>document.querySelector(".tab[data-g='MK']")?.click()},
+ {sel:".prog", t:"Y sabes siempre cuánto te falta",
+  d:"La barra te dice el porcentaje relleno y qué partidas obligatorias siguen vacías. Aunque falten datos, el análisis se ejecuta igual: calcula lo que puede y te explica qué se pierde por cada hueco.", ms:10000},
  {sel:"#analizar", t:"Y ahora, el análisis",
   d:"Aquí se generan las seis preguntas con sus gráficas. Lo lanzo.",
-  ms:9000, hacer:()=>$("analizar").click()},
+  ms:7000, hacer:()=>$("analizar").click()},
  {sel:"#p1", t:"Pregunta 1 · ¿Crece?",
-  d:"Cada pregunta trae su número grande, sus gráficas y una explicación en cristiano. El orden importa: la calidad del negocio se juzga antes que el precio.", ms:14000},
+  d:"Cada pregunta trae su número grande, sus gráficas y una explicación en cristiano. El orden importa: la calidad del negocio se juzga antes que el precio.", ms:11000},
  {sel:"#p4", t:"Pregunta 4 · ¿Rinde el capital?",
-  d:"El ROIC es el ratio rey: cuánto te devuelven por cada 100 € invertidos. Por debajo del 10% la empresa gana menos de lo que le cuesta el dinero.", ms:14000},
+  d:"El ROIC es el ratio rey: cuánto te devuelven por cada 100 € invertidos. Por debajo del 10% la empresa gana menos de lo que le cuesta el dinero.", ms:11000},
  {sel:"#p6 .veredicto", t:"El IDC",
-  d:"El precio máximo que pagarías hoy para ganar un 15% anual durante cinco años. Debajo, la escala te sitúa el precio actual frente a la zona de compra.", ms:15000},
+  d:"El precio máximo que pagarías hoy para ganar un 15% anual durante cinco años. Debajo, la escala te sitúa el precio actual frente a la zona de compra.", ms:12000},
  {sel:"#res .kid", t:"Y explicado para cualquiera",
-  d:"El mismo análisis contado sin una sola palabra técnica. Abajo tienes el botón para guardarlo todo en PDF.", ms:13000},
+  d:"El mismo análisis contado sin una sola palabra técnica, con la analogía de la tienda del barrio. Debajo tienes cada ratio traducido a una pizzería y las conclusiones leídas en conjunto.", ms:11000},
  {sel:null, t:"Eso es todo",
-  d:"Un estado operativo abre un análisis; nunca autoriza una compra. Material formativo, no asesoramiento financiero.", ms:10000}
+  d:"Un estado operativo abre un análisis; nunca autoriza una compra. Material formativo, no asesoramiento financiero.", ms:8000}
 ];
 let tIdx=0, tTimer=null, tT0=0, tRest=0, tPausa=false, tAnim=null;
 
@@ -2094,6 +2332,59 @@ async function abrirIA(destino){
     $("progFalta").innerHTML = "Texto copiado. En Gemini solo tienes que pegar con <b>Ctrl+V</b>.";
   }
 }
+/* ── el modelo de negocio, formateado en cuanto lo fijas ── */
+function pintarNegocio(){
+  const t = $("negocio").value.trim();
+  if(!t){ $("negocioVista").classList.add("hide"); $("negocio").classList.remove("hide"); return; }
+  const parrafos = t.split(/\n{2,}/).map(p=>p.trim()).filter(Boolean);
+  const html = parrafos.map(p=>{
+    /* las listas se detectan por el guion o el punto inicial */
+    if(/^\s*[-•*·]\s+/m.test(p) && p.split("\n").length>1)
+      return `<ul style="margin:.5rem 0 .5rem 1.1rem">${p.split("\n")
+        .map(l=>l.replace(/^\s*[-•*·]\s+/,"").trim()).filter(Boolean)
+        .map(l=>`<li style="margin-bottom:.35rem">${resalta(l)}</li>`).join("")}</ul>`;
+    return `<p style="margin-bottom:.7rem">${resalta(p.replace(/\n/g," "))}</p>`;
+  }).join("");
+  $("negocioVista").innerHTML = `<div class="expl" style="margin:0">
+      <span class="t">El negocio, en tus palabras</span>${html}</div>`;
+  $("negocioVista").classList.remove("hide");
+  $("negocio").classList.add("hide");
+}
+/* resalta cifras y porcentajes para que la ficha se lea de un vistazo */
+function resalta(s){
+  return esc(s).replace(/(\d[\d.,]*\s?(?:%|millones|mil millones|M€|M\$|€|\$|puntos)?)/g,
+    m=>/\d/.test(m) ? `<b>${m}</b>` : m);
+}
+$("fijarNegocio").onclick = pintarNegocio;
+$("editarNegocio").onclick = () => {
+  $("negocioVista").classList.add("hide"); $("negocio").classList.remove("hide"); $("negocio").focus();
+};
+$("negocio").addEventListener("keydown", e => {
+  if(e.key==="Enter" && (e.ctrlKey||e.metaKey)){ e.preventDefault(); pintarNegocio(); }
+});
+$("negocio").addEventListener("paste", () => setTimeout(pintarNegocio, 60));
+
+/* ── el prompt del informe completo ── */
+const PROMPT_ANALISIS = document.getElementById("promptAnalisisFuente").textContent.trim();
+$("verAnalisis").onclick = () => {
+  $("promptAnalisisVista").value = PROMPT_ANALISIS;
+  $("analisisBox").classList.toggle("hide");
+};
+$("copiarAnalisis").onclick = async () => {
+  const b = $("copiarAnalisis");
+  try{ await navigator.clipboard.writeText(PROMPT_ANALISIS); b.textContent="✓ Copiado"; }
+  catch(e){ $("promptAnalisisVista").value=PROMPT_ANALISIS; $("analisisBox").classList.remove("hide");
+    $("promptAnalisisVista").select(); b.textContent="Cópialo del cuadro"; }
+  setTimeout(()=>b.textContent="Copiar el texto del informe", 2500);
+};
+$("irClaudeAnalisis").onclick = async () => {
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const t = PROMPT_ANALISIS + (T ? `\n\nEmpieza con el ticker: ${T}` : "");
+  try{ await navigator.clipboard.writeText(t); }catch(e){}
+  window.open("https://claude.ai/new", "_blank", "noopener");
+  $("promptAnalisisVista").value = t; $("analisisBox").classList.remove("hide");
+};
+
 $("irClaude").onclick  = () => abrirIA("claude");
 $("irChatgpt").onclick = () => abrirIA("chatgpt");
 $("irGemini").onclick  = () => abrirIA("gemini");
@@ -2168,6 +2459,50 @@ const EJEMPLO = {
   precioAno:[115,176,131,205,273,336,120,353,585,660]
 };
 
+/* Microsoft · datos del ejercicio fiscal (cierra en junio), tomados de InvestingPro.
+   El precio de cada año es el implícito de la capitalización a cierre de ejercicio. */
+const EJEMPLO_MSFT = {
+  _id:{ticker:"MSFT",nombre:"Microsoft",moneda:"$",precio:417,anioFin:2025},
+  ventas   :[91154,96571,110360,125843,143015,168088,198270,211915,245122,281724],
+  ebitda   :[33066,37131,44958,54559,65259,80816,97983,102023,129433,156528],
+  ebit     :[27188,29331,35058,42959,52959,69916,83383,88523,109433,128528],
+  interes  :[-340,-835,-519,76,89,-199,47,999,174,222],
+  impuestos:[5100,4412,19903,4448,8755,9831,10978,16950,19651,21795],
+  acciones :[8013,7832,7794,7753,7683,7608,7540,7472,7469,7465],
+  caja     :[6510,7663,11946,11356,13576,14224,13931,34704,18315,30242],
+  inversion:[106531,125238,121718,122476,122916,116032,90818,76552,57228,64323],
+  deudaCP  :[13198,10121,3998,5516,3749,8072,2749,5247,8942,2999],
+  deudaLP  :[40557,76073,72242,66662,59578,50074,47032,41990,42688,40152],
+  leaseCP  :[25,1536,1575,1832,2156,2753,3288,3606,5929,8596],
+  leaseLP  :[761,7797,9693,12445,16627,21379,25331,28598,40293,60437],
+  equity   :[71997,87711,82718,102330,118304,141988,166542,206223,268477,343479],
+  cobrar   :[18277,22431,26481,29524,32011,38043,44261,48688,56924,69905],
+  pagar    :[6898,7390,8617,9382,12530,15163,19000,18095,21996,27724],
+  inventar :[2251,2181,2662,2063,1895,2636,3742,2500,1246,938],
+  unearned :[33909,26656,32720,37206,39180,44141,48408,53813,60184,67265],
+  da       :[5878,7800,9900,11600,12300,10900,14600,13500,20000,28000],
+  capexMant:[4900,6100,7700,9700,10700,9300,12600,11000,15200,22000],
+  capex    :[8343,8129,11632,13925,15441,20622,23886,28107,44477,64600],
+  adquisi  :[1393,25944,888,2388,2521,8909,22038,1670,69132,6000],
+  recompra :[15969,11788,10721,19543,22968,27385,32696,22245,17254,18420],
+  dividendo:[11006,11845,12699,13811,15137,16521,18135,19800,21771,24100],
+  sbc      :[2668,3266,3940,4652,5289,6118,7502,9611,10734,12100],
+  precioAno:[null,85.19,101.95,156.79,220.97,334.58,238.56,375.35,421.72,483.58]
+};
+
+function cargarEjemplo(E, nota){
+  $("nAnios").value="10"; N=10;
+  ANIO_FIN=E._id.anioFin; $("anioFin").value=ANIO_FIN;
+  $("ticker").value=E._id.ticker; $("nombre").value=E._id.nombre;
+  $("moneda").value=E._id.moneda; MON=E._id.moneda; $("precio").value=E._id.precio;
+  CONCEPTOS.forEach(c=>{ D[c.k]=(E[c.k]||new Array(10).fill(null)).slice(); });
+  Object.keys(VAL).forEach(k=>VAL[k]=null); VAL.obj=15;
+  $("idinfo").innerHTML = `<div class="idcard"><div class="n">${esc(E._id.nombre)}</div>
+    <div class="m">Ejemplo con 10 ejercicios reales de InvestingPro.</div>
+    <div class="m" style="margin-top:.5rem;color:var(--muted-txt)">${nota}</div></div>`;
+  pintarEnlaces(); pintarMatriz(); informe(calcular());
+}
+
 /* ══════════════════ ARRANQUE ══════════════════ */
 function cambiarN(){
   const nuevo = +$("nAnios").value;
@@ -2209,21 +2544,11 @@ $("tourPausa").onclick = tourPausa;
 $("tourAtras").onclick = () => tourIr(tIdx-1);
 $("tourAdelante").onclick = () => tourIr(tIdx+1);
 $("tourSalir").onclick = tourFin;
-$("demo").onclick = () => {
-  $("nAnios").value = "10"; N = 10;
-  ANIO_FIN = EJEMPLO._id.anioFin; $("anioFin").value = ANIO_FIN;
-  $("ticker").value = EJEMPLO._id.ticker; $("nombre").value = EJEMPLO._id.nombre;
-  $("moneda").value = EJEMPLO._id.moneda; MON = EJEMPLO._id.moneda;
-  $("precio").value = EJEMPLO._id.precio;
-  CONCEPTOS.forEach(c => { D[c.k] = (EJEMPLO[c.k]||new Array(10).fill(null)).slice(); });
-  Object.keys(VAL).forEach(k=>VAL[k]=null); VAL.obj=15;
-  $("idinfo").innerHTML = `<div class="idcard"><div class="n">Meta Platforms</div>
-    <div class="m">Ejemplo cargado con 10 años reales de Investing.com (2016-2025).</div>
-    <div class="m" style="margin-top:.5rem;color:var(--muted)">⚠️ La fila <b>«Precio al cierre del año»</b>
-    es aproximada, así que los múltiplos históricos salen con un margen de ±3% frente a la plantilla
-    original. Todo lo demás son cifras exactas del informe anual.</div></div>`;
-  pintarEnlaces(); pintarMatriz(); informe(calcular());
-};
+$("demo").onclick = () => cargarEjemplo(EJEMPLO,
+  "Ejercicios 2016-2025. Los precios de cierre son aproximados, así que los múltiplos históricos salen con ±3% frente a la plantilla original. El resto son cifras exactas del informe anual.");
+$("demoMsft").onclick = () => cargarEjemplo(EJEMPLO_MSFT,
+  "Ejercicios fiscales 2016-2025 (Microsoft cierra en junio, no en diciembre). Los precios son los implícitos de la capitalización a cierre de cada ejercicio, así que los múltiplos coinciden con la plantilla.");
+$("demoMsftNav").onclick = () => $("demoMsft").click();
 
 ANIO_FIN = new Date().getFullYear()-1;
 $("anioFin").value = ANIO_FIN;
