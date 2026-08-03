@@ -38,18 +38,48 @@ body{background:var(--bg);color:var(--text);font-family:var(--font-d);line-heigh
 #intro-cinematica{position:fixed;inset:0;z-index:100;background:var(--bg);
   display:flex;align-items:center;justify-content:center;transition:opacity .9s ease,visibility .9s}
 #intro-cinematica.fin{opacity:0;visibility:hidden;pointer-events:none}
-.ic-inner{text-align:center}
-.ic-kick{font-family:var(--font-m);font-size:.68rem;letter-spacing:.5em;text-transform:uppercase;
-  color:var(--amber);opacity:0;animation:icKick .6s var(--ease-out) .1s forwards}
-.ic-num{font-family:var(--font-m);font-size:clamp(4rem,14vw,7.5rem);font-weight:700;
-  letter-spacing:-.05em;line-height:1;color:var(--amber-strong);margin:.16em 0 .08em;
-  font-variant-numeric:tabular-nums;text-shadow:0 0 60px rgba(245,158,11,.35)}
-.ic-sub{color:var(--soft);font-size:.92rem;opacity:0;animation:icKick .6s var(--ease-out) .7s forwards}
-.ic-linea{height:2px;width:min(240px,40vw);margin:1.4rem auto 0;background:var(--amber);
-  transform:scaleX(0);transform-origin:left;animation:icLinea .5s var(--ease-out) 1s forwards}
-@keyframes icKick{from{opacity:0;transform:translateY(10px);letter-spacing:.7em}
-  to{opacity:1;transform:none}}
-@keyframes icLinea{to{transform:scaleX(1)}}
+/* ── intro cinematográfica ── */
+#intro-cinematica{background:radial-gradient(ellipse 60% 50% at 50% 45%,#0d1526 0%,#080808 68%)}
+.ic-inner{text-align:center;position:relative}
+#icLogo{width:min(230px,46vw);height:auto;display:block;margin:0 auto;
+  filter:drop-shadow(0 0 46px rgba(245,158,11,.32))}
+#icLogo .traz{fill:none;stroke:var(--amber);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:var(--l);stroke-dashoffset:var(--l);animation:dibuja 1.5s var(--ease-out) .25s forwards}
+#icLogo .rell{opacity:0;animation:aparece .8s var(--ease-out) 1.35s forwards}
+#icLogo .mono{opacity:0;transform-origin:center;animation:mono .9s var(--ease-out) 1.05s forwards}
+#icLogo .barra{opacity:0;transform-origin:center bottom;animation:sube1 .5s var(--ease-out) forwards}
+#icLogo .b1{animation-delay:1.5s}#icLogo .b2{animation-delay:1.62s}
+#icLogo .b3{animation-delay:1.74s}#icLogo .b4{animation-delay:1.86s}
+#icLogo .flecha{opacity:0;stroke-dasharray:90;stroke-dashoffset:90;
+  animation:flecha .7s var(--ease-out) 1.95s forwards}
+@keyframes dibuja{to{stroke-dashoffset:0}}
+@keyframes aparece{to{opacity:1}}
+@keyframes mono{from{opacity:0;transform:scale(.72)}to{opacity:1;transform:scale(1)}}
+@keyframes sube1{to{opacity:1;transform:scaleY(1)}}
+@keyframes flecha{to{opacity:1;stroke-dashoffset:0}}
+
+.ic-marca{margin-top:1.5rem;opacity:0;animation:icSube .8s var(--ease-out) 2.25s forwards}
+.ic-marca .n1{font-family:var(--font-h);font-weight:800;font-size:clamp(1.9rem,6vw,3.2rem);
+  letter-spacing:.02em;line-height:.98;
+  background:linear-gradient(180deg,#FDE9A8 8%,#F59E0B 52%,#B4750A 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.ic-marca .n2{font-family:var(--font-h);font-weight:800;font-size:clamp(1.9rem,6vw,3.2rem);
+  letter-spacing:.02em;line-height:.98;
+  background:linear-gradient(180deg,#FFFFFF 8%,#C9CFD8 52%,#7C8592 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.ic-lema{margin-top:.9rem;font-family:var(--font-m);font-size:.6rem;letter-spacing:.26em;
+  text-transform:uppercase;color:rgba(245,158,11,.72);opacity:0;
+  animation:icSube .8s var(--ease-out) 2.65s forwards}
+.ic-linea{height:1px;width:0;margin:1.5rem auto 0;
+  background:linear-gradient(90deg,transparent,var(--amber),transparent);
+  animation:icLinea .9s var(--ease-out) 2.9s forwards}
+.ic-saltar{position:fixed;bottom:1.6rem;left:50%;transform:translateX(-50%);
+  font-family:var(--font-m);font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;
+  color:rgba(250,250,248,.26);background:none;border:none;cursor:pointer;
+  opacity:0;animation:aparece .5s ease 1.6s forwards}
+.ic-saltar:hover{color:var(--amber)}
+@keyframes icSube{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes icLinea{to{width:min(300px,52vw)}}
 
 /* entrada escalonada de la portada */
 #pagina.on .portada > *{opacity:0;animation:sube var(--dur-2) var(--ease-out) forwards}
@@ -223,11 +253,48 @@ button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:3px}
 <!-- ══════════ HUECO PARA TU INTRO CINEMATOGRÁFICA ══════════ -->
 <div id="intro-cinematica" role="presentation">
   <div class="ic-inner">
-    <div class="ic-kick">Valoración Peaky Minders</div>
-    <div class="ic-num" id="icNum">0</div>
-    <div class="ic-sub">números para entender una empresa por dentro</div>
+    <!-- Escudo Peaky Minders. Para usar tu logo original: sustituye este <svg> por
+         <img id="icLogo" src="logo.png" alt="Peaky Minders"> y deja el PNG al lado
+         de este archivo. Todo lo demás sigue funcionando igual. -->
+    <svg id="icLogo" viewBox="0 0 200 220" aria-label="Peaky Minders">
+      <defs>
+        <linearGradient id="oro" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#FDE9A8"/><stop offset="45%" stop-color="#F1A81B"/>
+          <stop offset="100%" stop-color="#9C6407"/>
+        </linearGradient>
+        <linearGradient id="fondoEsc" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#16233d"/><stop offset="100%" stop-color="#0a1120"/>
+        </linearGradient>
+      </defs>
+      <path class="rell" d="M100 8 L186 38 V112 C186 162 148 196 100 212 C52 196 14 162 14 112 V38 Z" fill="url(#fondoEsc)"/>
+      <path class="traz" style="--l:560" d="M100 8 L186 38 V112 C186 162 148 196 100 212 C52 196 14 162 14 112 V38 Z"/>
+      <path class="traz" style="--l:520;animation-delay:.45s;stroke-width:1;stroke-opacity:.45"
+            d="M100 18 L177 45 V112 C177 156 143 187 100 201 C57 187 23 156 23 112 V45 Z"/>
+      <g fill="url(#oro)">
+        <rect class="barra b1" x="122" y="108" width="9" height="24" rx="2"/>
+        <rect class="barra b2" x="135" y="96"  width="9" height="36" rx="2"/>
+        <rect class="barra b3" x="148" y="80"  width="9" height="52" rx="2"/>
+        <rect class="barra b4" x="161" y="62"  width="9" height="70" rx="2"/>
+      </g>
+      <path class="flecha" d="M118 92 L138 74 L152 82 L172 50" fill="none" stroke="url(#oro)"
+            stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path class="flecha" style="animation-delay:2.15s" d="M158 48 L174 46 L172 62" fill="none"
+            stroke="url(#oro)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text class="mono" x="78" y="116" text-anchor="middle" font-family="Syne,Georgia,serif"
+            font-weight="800" font-size="62" fill="url(#oro)">PM</text>
+      <path class="rell" style="animation-delay:1.8s" d="M52 150 H148 L140 166 H60 Z" fill="url(#oro)" opacity=".9"/>
+      <text class="rell" style="animation-delay:2s" x="100" y="162" text-anchor="middle"
+            font-family="ui-monospace,monospace" font-size="9" letter-spacing="2.4" fill="#0a1120">MINDERS</text>
+    </svg>
+
+    <div class="ic-marca">
+      <div class="n1">PEAKY</div>
+      <div class="n2">MINDERS</div>
+    </div>
+    <div class="ic-lema">Mente para crecer · Libertad para vivir</div>
     <div class="ic-linea"></div>
   </div>
+  <button class="ic-saltar" id="icSaltar" type="button">Saltar intro</button>
 </div>
 
 <div id="pagina">
@@ -236,6 +303,7 @@ button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:3px}
   <span class="sep"></span>
   <a class="t on" href="index.html">Guía</a>
   <a class="t" href="valorador.html">Valorador</a>
+  <a class="t" href="valorador.html#tour" style="border:1px solid var(--amber-line);color:var(--amber-strong)">&#9654; C&oacute;mo funciona</a>
 </div></nav>
 
 <!-- ══════════ PORTADA ══════════ -->
@@ -651,20 +719,15 @@ function cifrasCuentan(){
 }
 /* intro por defecto: 1,9 s · saltable · una vez por sesión · fuera con reduced-motion */
 (function(){
-  const vista = sessionStorage.getItem("introVista") === "1";
-  if(RM() || vista){ window.finIntro(); return; }
-  sessionStorage.setItem("introVista","1");
-  const n = $("icNum"), t0 = performance.now();
-  (function tick(t){
-    const p = Math.min(1,(t-t0-300)/900);
-    if(p>0) n.textContent = Math.round(25*(1-Math.pow(1-p,3)));
-    if(p<1) requestAnimationFrame(tick);
-  })(t0);
-  const fin = setTimeout(window.finIntro, 1900);
-  const salta = () => { if(performance.now()-t0 < 350) return;   // ignora clics residuales
+  /* la intro se ve en cada recarga; con reduced-motion se salta entera */
+  if(RM()){ window.finIntro(); return; }
+  const t0 = performance.now();
+  const fin = setTimeout(window.finIntro, 4200);
+  const salta = () => { if(performance.now()-t0 < 400) return;   // ignora clics residuales
     clearTimeout(fin); window.finIntro();
     removeEventListener("keydown",salta); removeEventListener("pointerdown",salta); };
   addEventListener("keydown",salta); addEventListener("pointerdown",salta);
+  const btn = $("icSaltar"); if(btn) btn.onclick = salta;
 })();
 
 /* ══ bloques y enlaces ══ */

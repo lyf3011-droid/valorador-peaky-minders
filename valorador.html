@@ -234,6 +234,32 @@ table.rs td.l{color:var(--soft)}
 #nav a:focus-visible{outline:2px solid var(--amber-strong);outline-offset:2px}
 @media print{#nav{display:none}}.hide{display:none}
 
+/* ═══ RECORRIDO GUIADO ═══ */
+#tourFoco{position:fixed;z-index:900;border-radius:10px;pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.80), 0 0 0 2px var(--amber), 0 0 44px rgba(245,158,11,.45);
+  transition:all .55s var(--ease-out);opacity:0}
+#tourFoco.on{opacity:1}
+#tourCaja{position:fixed;z-index:901;max-width:min(430px,calc(100vw - 2rem));
+  background:var(--panel);border:1px solid var(--amber-line);border-radius:13px;
+  padding:1.15rem 1.25rem 1rem;box-shadow:0 28px 70px rgba(0,0,0,.8);
+  transition:top .55s var(--ease-out),left .55s var(--ease-out);opacity:0}
+#tourCaja.on{opacity:1}
+#tourCaja .paso{font-family:var(--font-m);font-size:.6rem;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--amber)}
+#tourCaja h4{font-family:var(--font-h);font-size:1.08rem;font-weight:800;letter-spacing:-.02em;margin:.35rem 0 .45rem}
+#tourCaja p{font-size:.88rem;color:var(--soft);line-height:1.6}
+#tourCaja .barra{height:3px;background:var(--surface);border-radius:2px;overflow:hidden;margin:.9rem 0 .8rem}
+#tourCaja .barra i{display:block;height:100%;background:var(--amber);width:0;
+  transition:width .25s linear}
+#tourCaja .bots{display:flex;gap:.45rem;align-items:center;flex-wrap:wrap}
+#tourCaja button{font-family:var(--font-m);font-size:.7rem;letter-spacing:.06em;padding:.42rem .75rem;
+  border-radius:6px;border:1px solid var(--line-strong);background:transparent;color:var(--soft);cursor:pointer}
+#tourCaja button:hover{border-color:var(--amber-line);color:var(--amber-strong)}
+#tourCaja button.pri{background:var(--amber);color:#0a0a0a;border-color:var(--amber);font-weight:700}
+#tourCaja .sep{flex:1}
+#tourCaja .cerrar{color:var(--muted-txt)}
+@media print{#tourFoco,#tourCaja{display:none}}
+
 /* ═══ P2.c · VEREDICTO IDC COMO BANDA ═══ */
 .veredicto{border:1px solid var(--amber-line);border-radius:14px;margin:1.4rem 0;
   padding:1.8rem clamp(1rem,3vw,2.2rem);
@@ -340,6 +366,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   <span class="sep"></span>
   <a class="t" href="index.html">Guía</a>
   <a class="t on" href="valorador.html">Valorador</a>
+  <button type="button" class="t" id="tourNav" style="cursor:pointer;background:transparent;color:var(--amber-strong);font-family:var(--font-m);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--amber-line);padding:.42rem .8rem;border-radius:6px">&#9654; C&oacute;mo funciona &middot; 3 min</button>
   <button type="button" class="t" id="demoNav" style="cursor:pointer;background:var(--amber);color:#0a0a0a;font-family:var(--font-h);font-weight:800;font-size:.72rem;letter-spacing:.02em;text-transform:none;border:none;padding:.45rem .9rem;border-radius:6px">&#9654; Ejemplo META</button>
   <button type="button" class="t" id="btnSonido" style="cursor:pointer;background:transparent;font-family:var(--font-m);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;border:1px solid transparent;padding:.42rem .8rem;border-radius:6px" aria-pressed="false">&#9834; sin sonido</button>
 </div></nav><header><div class="wrap">
@@ -503,6 +530,22 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   </div>
 </section>
 
+<!-- recorrido guiado -->
+<div id="tourFoco"></div>
+<div id="tourCaja" role="dialog" aria-live="polite">
+  <div class="paso"></div>
+  <h4></h4>
+  <p></p>
+  <div class="barra"><i></i></div>
+  <div class="bots">
+    <button type="button" id="tourPausa" class="pri">⏸ Pausa</button>
+    <button type="button" id="tourAtras">‹</button>
+    <button type="button" id="tourAdelante">›</button>
+    <span class="sep"></span>
+    <button type="button" id="tourSalir" class="cerrar">Salir</button>
+  </div>
+</div>
+
 <!-- ═══════════ 3 · INFORME ═══════════ -->
 <nav id="railidx" aria-label="Índice del informe"></nav>
 <div id="informe"></div>
@@ -558,6 +601,19 @@ const CONCEPTOS = [
  {k:"precioAno",g:"MK", lab:"Precio al cierre del año",   src:"Cotización a 31/12", auto:1}
 ];
 const REQ = CONCEPTOS.filter(c=>c.req).map(c=>c.k);
+
+/* qué deja de poder calcularse si falta cada partida obligatoria */
+const BLOQUEA = {
+  ventas   : "los márgenes y el crecimiento de ventas",
+  ebitda   : "el flujo de caja libre, la conversión en caja y el ratio de deuda",
+  ebit     : "el margen operativo, el ROIC y el beneficio normalizado",
+  impuestos: "el ROIC y el beneficio normalizado",
+  acciones : "el beneficio por acción y todo el bloque de precio",
+  caja     : "la deuda neta",
+  deudaLP  : "la deuda neta y el capital invertido",
+  equity   : "el ROE y el capital invertido",
+  da       : "el CapEx de mantenimiento y, con él, el flujo de caja libre"
+};
 
 /* sinónimos para el reconocedor de bloques */
 const SIN = {
@@ -1095,8 +1151,14 @@ function calcular(){
   const interes=g("interes"), impuestos=abs(g("impuestos")), da=abs(g("da"));
   const capex=abs(g("capex")), sbc=abs(g("sbc"));
 
-  const falta = REQ.filter(k=>!has(k));
-  if(falta.length) return {error:"Faltan partidas obligatorias: "+falta.map(k=>CONCEPTOS.find(c=>c.k===k).lab).join(", ")+"."};
+  /* Nunca se bloquea el análisis: se calcula todo lo que los datos permitan y se
+     dice con claridad qué falta y qué impide cada ausencia. */
+  R.faltan = REQ.filter(k=>!has(k)).map(k=>{
+    const c = CONCEPTOS.find(x=>x.k===k);
+    return {lab:c.lab, src:c.src, tab:G[c.g], impide:BLOQUEA[k]||"parte del análisis"};
+  });
+  if(!has("ventas") && !has("ebitda") && !has("fcf"))
+    return {error:"Todavía no hay datos suficientes para empezar. Rellena al menos las ventas o el EBITDA de algún año, o pulsa «Ejemplo META» para ver cómo funciona."};
 
   /* derivados por año */
   const der = {};
@@ -1144,12 +1206,13 @@ function calcular(){
   R.der = der; R.ventas=ventas; R.ebitda=ebitda; R.ebit=ebit; R.acciones=acciones;
   R.impuestos=impuestos; R.interes=interes; R.capex=capex; R.da=da;
 
-  /* último año con datos */
-  let L = N-1; while(L>0 && ventas[L]===null) L--;
+  /* último año con datos: se busca sobre cualquier magnitud disponible */
+  const guia = A.map((_,i)=> ventas[i]!==null ? 1 : (ebitda[i]!==null ? 1 : (der.fcf[i]!==null ? 1 : null)));
+  let L = N-1; while(L>0 && guia[L]===null) L--;
   R.L = L;
 
   /* crecimiento */
-  let p0=0; while(p0<L && (ventas[p0]===null)) p0++;
+  let p0=0; while(p0<L && (guia[p0]===null)) p0++;
   const span = L-p0;
   R.span = span;
   R.cagrV = cagr(ventas[L],ventas[p0],span);
@@ -1186,6 +1249,7 @@ function calcular(){
   const precio = parseNum($("precio").value);
   R.precio = precio;
   if(precio===null){ R.sinPrecio = true; return R; }
+  if(!(der.fcf[L] > 0) || !acciones[L]){ R.sinVal = true; return R; }
 
   const accHoy = acciones[L];
   const multObj = VAL.mult!==null ? VAL.mult : (R.cMult.evFcf.v!==null ? Math.round(R.cMult.evFcf.v*10)/10 : null);
@@ -1382,6 +1446,23 @@ function informe(R){
     out.scrollIntoView({behavior:"smooth"}); return; }
   const A=R.A, d=R.der, L=R.L, nom=esc($("nombre").value||"la empresa");
   let H = "";
+
+  /* faltan datos: se avisa, pero el análisis sigue con lo que hay */
+  if(R.faltan && R.faltan.length) H += `<div class="step" style="border-color:var(--amber-line)">
+    <div class="step-h"><span class="step-n">Faltan datos</span>
+      <span class="step-q">El análisis está incompleto</span></div>
+    <p class="step-w">He calculado todo lo que permiten los datos que hay. Estas
+    ${R.faltan.length} partida${R.faltan.length>1?"s":""} faltan, y por eso hay huecos:</p>
+    <div class="tw"><table class="rs">
+      <thead><tr><th>Falta</th><th>Dónde está</th><th>Sin ella no se puede calcular</th></tr></thead>
+      <tbody>${R.faltan.map(f=>`<tr>
+        <td class="l"><b style="color:var(--amber-strong)">${esc(f.lab)}</b></td>
+        <td class="l" style="font-family:var(--font-m);font-size:.76rem">${esc(f.tab)} → ${esc(f.src)}</td>
+        <td class="l">${esc(f.impide)}</td></tr>`).join("")}</tbody>
+    </table></div>
+    <div class="note">Sube arriba, rellena lo que falte y vuelve a pulsar
+    <b>Analizar la empresa</b>. Lo que ya está calculado no se pierde.</div>
+  </div>`;
 
   /* vetos */
   if(R.veto.length) H += `<div class="step"><div class="step-h"><span class="step-n">⛔ Alto</span>
@@ -1780,6 +1861,129 @@ function enlazarValoracion(){
   });
 }
 
+/* ══════════════════ RECORRIDO GUIADO ══════════════════
+   Doce paradas de unos 13 segundos: menos de tres minutos en total.
+   Se puede pausar y al reanudar sigue solo. Con reduced-motion no
+   avanza automáticamente: se pasa a mano.                              */
+const TOUR = [
+ {sel:null, t:"Valoración Peaky Minders",
+  d:"Seis preguntas sobre el negocio y, solo al final, el precio. En tres minutos te enseño cómo funciona. Puedes pausar cuando quieras.", ms:9000},
+ {sel:"#demoNav", t:"Empieza por el ejemplo",
+  d:"Este botón rellena las 250 casillas con las cuentas reales de Meta de los últimos diez años. Lo pulso ahora para que veas el recorrido completo.",
+  ms:11000, hacer:()=>$("demo").click()},
+ {sel:"#negocio", t:"Antes de los números: el negocio",
+  d:"Lo primero es saber de dónde sale cada euro de ventas. Los botones de arriba abren Claude o ChatGPT con una pregunta ya escrita de nivel analista, y la respuesta se pega aquí. Encabezará el informe.", ms:15000},
+ {sel:"#srcbar", t:"Los datos vienen de InvestingPro",
+  d:"Estos enlaces abren la pestaña exacta de esta empresa. Cambian solos según el ticker que escribas arriba.", ms:12000},
+ {sel:"#abrirBloque", t:"Copia la tabla entera",
+  d:"Seleccionas toda la tabla en Investing, la pegas aquí y el sistema reparte cada fila en su sitio. Tres copias —resultados, balance y flujo de caja— y ya está.", ms:14000},
+ {sel:"#matriz", t:"Diez años, no uno",
+  d:"Cada fila lleva debajo el nombre literal que hay que buscar en la web. Las que tienen el botón ƒ se calculan solas si no las encuentras.", ms:13000},
+ {sel:".tab[data-g='MK']", t:"El precio de cada año, automático",
+  d:"Esta pestaña guarda la cotización al cierre de los últimos diez años. Hay un botón que la trae sola: es lo que permite saber qué múltiplo ha pagado el mercado históricamente.",
+  ms:13000, hacer:()=>document.querySelector(".tab[data-g='MK']")?.click()},
+ {sel:"#analizar", t:"Y ahora, el análisis",
+  d:"Aquí se generan las seis preguntas con sus gráficas. Lo lanzo.",
+  ms:9000, hacer:()=>$("analizar").click()},
+ {sel:"#p1", t:"Pregunta 1 · ¿Crece?",
+  d:"Cada pregunta trae su número grande, sus gráficas y una explicación en cristiano. El orden importa: la calidad del negocio se juzga antes que el precio.", ms:14000},
+ {sel:"#p4", t:"Pregunta 4 · ¿Rinde el capital?",
+  d:"El ROIC es el ratio rey: cuánto te devuelven por cada 100 € invertidos. Por debajo del 10% la empresa gana menos de lo que le cuesta el dinero.", ms:14000},
+ {sel:"#p6 .veredicto", t:"El IDC",
+  d:"El precio máximo que pagarías hoy para ganar un 15% anual durante cinco años. Debajo, la escala te sitúa el precio actual frente a la zona de compra.", ms:15000},
+ {sel:"#res .kid", t:"Y explicado para cualquiera",
+  d:"El mismo análisis contado sin una sola palabra técnica. Abajo tienes el botón para guardarlo todo en PDF.", ms:13000},
+ {sel:null, t:"Eso es todo",
+  d:"Un estado operativo abre un análisis; nunca autoriza una compra. Material formativo, no asesoramiento financiero.", ms:10000}
+];
+let tIdx=0, tTimer=null, tT0=0, tRest=0, tPausa=false, tAnim=null;
+
+function tourIr(i){
+  clearTimeout(tTimer); cancelAnimationFrame(tAnim);
+  if(i<0 || i>=TOUR.length) return tourFin();
+  tIdx = i;
+  const p = TOUR[i];
+  if(p.hacer){ try{ p.hacer(); }catch(e){} }
+  setTimeout(()=>tourPinta(p), p.hacer ? 500 : 0);
+}
+function tourPinta(p){
+  const foco=$("tourFoco"), caja=$("tourCaja");
+  const el = p.sel ? document.querySelector(p.sel) : null;
+  if(el){
+    el.scrollIntoView({behavior:RM()?"auto":"smooth", block:"center"});
+    setTimeout(()=>{
+      const r = el.getBoundingClientRect();
+      const alto = Math.min(r.height, window.innerHeight*0.62);
+      foco.style.cssText += `;top:${r.top-6}px;left:${r.left-6}px;width:${r.width+12}px;height:${alto+12}px`;
+      foco.classList.add("on");
+      colocaCaja(r);
+    }, RM()?0:420);
+  } else {
+    foco.classList.remove("on");
+    caja.style.top = "50%"; caja.style.left = "50%";
+    caja.style.transform = "translate(-50%,-50%)";
+  }
+  caja.querySelector(".paso").textContent = `Paso ${tIdx+1} de ${TOUR.length}`;
+  caja.querySelector("h4").textContent = p.t;
+  caja.querySelector("p").textContent = p.d;
+  caja.classList.add("on");
+  tArranca(p.ms);
+}
+function colocaCaja(r){
+  const caja=$("tourCaja"); caja.style.transform="none";
+  const w = caja.offsetWidth, h = caja.offsetHeight, m = 16;
+  let top = r.bottom + m, left = r.left;
+  if(top + h > window.innerHeight - m) top = Math.max(m, r.top - h - m);
+  if(top + h > window.innerHeight - m) top = Math.max(m,(window.innerHeight-h)/2);
+  if(left + w > window.innerWidth - m) left = window.innerWidth - w - m;
+  caja.style.top = top+"px"; caja.style.left = Math.max(m,left)+"px";
+}
+function tArranca(ms){
+  tRest = ms; tT0 = performance.now(); tPausa = false;
+  $("tourPausa").textContent = "⏸ Pausa";
+  if(RM()){ $("tourCaja").querySelector(".barra i").style.width="100%"; return; }
+  const barra = $("tourCaja").querySelector(".barra i");
+  (function tick(t){
+    if(tPausa) return;
+    const p = Math.min(1,(t-tT0)/ms);
+    barra.style.width = (p*100)+"%";
+    if(p<1) tAnim = requestAnimationFrame(tick);
+  })(tT0);
+  tTimer = setTimeout(()=>tourIr(tIdx+1), ms);
+}
+function tourPausa(){
+  if(tPausa){                                   // reanudar y seguir solo
+    tT0 = performance.now() - (TOUR[tIdx].ms - tRest);
+    tPausa = false; $("tourPausa").textContent = "⏸ Pausa";
+    const barra=$("tourCaja").querySelector(".barra i"), ms=TOUR[tIdx].ms;
+    (function tick(t){ if(tPausa) return;
+      const p=Math.min(1,(t-tT0)/ms); barra.style.width=(p*100)+"%";
+      if(p<1) tAnim=requestAnimationFrame(tick); })(performance.now());
+    tTimer = setTimeout(()=>tourIr(tIdx+1), tRest);
+  } else {                                      // pausar
+    clearTimeout(tTimer); cancelAnimationFrame(tAnim);
+    tRest = Math.max(0, TOUR[tIdx].ms - (performance.now()-tT0));
+    tPausa = true; $("tourPausa").textContent = "▶ Seguir";
+  }
+}
+function tourFin(){
+  clearTimeout(tTimer); cancelAnimationFrame(tAnim);
+  $("tourFoco").classList.remove("on"); $("tourCaja").classList.remove("on");
+  setTimeout(()=>{ $("tourFoco").style.cssText="position:fixed;z-index:900;border-radius:10px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.80), 0 0 0 2px var(--amber), 0 0 44px rgba(245,158,11,.45);transition:all .55s var(--ease-out);opacity:0"; }, 600);
+  document.removeEventListener("keydown", tourTecla);
+}
+function tourTecla(e){
+  if(e.key==="Escape") tourFin();
+  else if(e.key===" "){ e.preventDefault(); tourPausa(); }
+  else if(e.key==="ArrowRight") tourIr(tIdx+1);
+  else if(e.key==="ArrowLeft") tourIr(tIdx-1);
+}
+function tourEmpieza(){
+  document.addEventListener("keydown", tourTecla);
+  window.scrollTo({top:0, behavior:"auto"});
+  tourIr(0);
+}
+
 /* ══════════════════ ACCESO A YAHOO ══════════════════
    Desde un archivo local (file://) el navegador deja llamar a Yahoo directamente.
    Desde un dominio https NO: Yahoo no autoriza ese origen. Por eso se intenta
@@ -1999,6 +2203,12 @@ $("limpiar").onclick = () => {
 };
 $("demoTop").onclick = () => $("demo").click();
 $("demoNav").onclick = () => $("demo").click();
+$("tourNav").onclick = tourEmpieza;
+if(location.hash === "#tour") setTimeout(tourEmpieza, 700);
+$("tourPausa").onclick = tourPausa;
+$("tourAtras").onclick = () => tourIr(tIdx-1);
+$("tourAdelante").onclick = () => tourIr(tIdx+1);
+$("tourSalir").onclick = tourFin;
 $("demo").onclick = () => {
   $("nAnios").value = "10"; N = 10;
   ANIO_FIN = EJEMPLO._id.anioFin; $("anioFin").value = ANIO_FIN;
