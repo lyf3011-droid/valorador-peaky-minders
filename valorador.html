@@ -442,13 +442,27 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   Debajo del nombre de cada fila tienes el nombre <em>literal</em> que hay que buscar.</p>
 
   <details open>
-    <summary>⚡ Truco: no escribas número a número</summary>
+    <summary>⚡ Lo más rápido: copiar la tabla entera</summary>
     <div class="dbody">
+      <p style="margin-bottom:.7rem"><b>Una pestaña de Investing, de una sola vez.</b>
+      Igual que haces en el Excel con TIKR: seleccionas toda la tabla y la app reparte cada
+      fila en su sitio.</p>
       <ol>
-        <li>En la web de origen, selecciona con el ratón <b>la fila entera</b> de una partida
-            (los 10 números) y cópiala con <code>Ctrl+C</code>.</li>
-        <li>Aquí, haz clic en <b>la primera casilla</b> de esa misma fila y pega con
-            <code>Ctrl+V</code>. Los 10 años se rellenan de golpe.</li>
+        <li>En Investing, pon el selector en <code>Annual</code> y despliega los grupos que
+            quieras (el botón <em>Collapse All</em> / <em>Expand All</em> de arriba).</li>
+        <li>Selecciona <b>desde «Period Ending» hasta la última fila</b> y copia con
+            <code>Ctrl+C</code>.</li>
+        <li>Pulsa <b>📋 Pegar bloque de Investing</b>, pega con <code>Ctrl+V</code> y dale a
+            <b>Reconocer filas</b>. Verás una tabla con lo que ha entendido para que lo revises.</li>
+        <li>Repite con <b>Balance</b> y <b>Flujo de caja</b>. Tres copias y ya está.</li>
+      </ol>
+      <p style="margin-top:.7rem;color:var(--muted-txt)">Funciona porque al copiar, el navegador
+      guarda también la estructura de la tabla, no solo el texto. Por eso hay que <b>pegar</b>
+      la selección: si escribes el texto a mano, esa estructura se pierde.</p>
+      <p style="margin-top:.7rem"><b>Fila a fila</b>, si lo prefieres:</p>
+      <ol>
+        <li>Selecciona con el ratón <b>los 10 números</b> de una partida y <code>Ctrl+C</code>.</li>
+        <li>Clic en <b>la primera casilla</b> de esa fila y <code>Ctrl+V</code>. Se rellenan de golpe.</li>
       </ol>
       <p style="margin-top:.6rem">Si tu fuente ordena los años del reciente al antiguo,
       marca la casilla <b>«los años vienen del más nuevo al más viejo»</b> de abajo.</p>
@@ -460,13 +474,13 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   </details>
 
   <div class="bar-actions" style="margin-bottom:.6rem">
-    <button class="b2" id="abrirBloque">📋 Pegar bloque de Investing</button>
+    <button class="b1" id="abrirBloque">📋 Pegar la tabla entera de Investing</button>
     <label style="display:flex;align-items:center;gap:.45rem;margin:0;font-size:.8rem;cursor:pointer">
       <input type="checkbox" id="invertir" style="width:auto"> los años vienen del más nuevo al más viejo</label>
   </div>
 
   <div id="bloqueBox" class="hide">
-    <textarea id="bloque" placeholder="Pega aquí lo que copies de Investing (Income Statement, Balance Sheet o Cash Flow)…"></textarea>
+    <textarea id="bloque" placeholder="Pega aquí la tabla que copies de Investing — Income Statement, Balance Sheet o Cash Flow. Pega con Ctrl+V; no escribas el texto a mano."></textarea>
     <div class="bar-actions" style="margin-top:.6rem">
       <button class="b1" id="procesarBloque">Reconocer filas</button>
       <button class="b2" id="cerrarBloque">Cerrar</button>
@@ -557,7 +571,7 @@ const SIN = {
  deudaCP:["short-term borrowings","short term borrowings"],
  deudaLP:["long-term debt","long term debt"],
  leaseCP:["current portion of leases"], leaseLP:["long-term leases","long term leases"],
- equity:["total equity","total shareholders equity"],
+ equity:["total equity","total shareholders' equity","total shareholders equity"],
  cobrar:["accounts receivable, total","accounts receivable"],
  pagar:["accounts payable, total","accounts payable"],
  inventar:["inventory","inventories"],
@@ -899,8 +913,126 @@ function progreso(){
   $("progFalta").textContent = falta.length ? "faltan obligatorios: "+falta.join(", ") : "obligatorios completos ✓";
 }
 
+/* ══════════════════ RECONOCEDOR DE TABLAS PEGADAS ══════════════════
+   Al copiar de Investing, el portapapeles lleva DOS versiones: texto plano y HTML.
+   El texto plano llega desordenado porque la web usa tablas separadas para los
+   nombres y para las cifras. El HTML conserva esa estructura, así que se lee de ahí.
+   Se contemplan los dos formatos que usa Investing en la misma página:
+     A) filas con el nombre y sus cifras juntos  (cuenta de resultados, y la
+        tabla principal de balance con Total Assets, Total Equity…)
+     B) una tabla de nombres seguida de otra de cifras, fila a fila
+        (los grupos plegables de balance y flujo de caja)                        */
+let HTML_PEGADO = null;
+
+function esCifra(s){ return /^[+\-(]?[\d.,]+[)%]?$/.test(String(s).trim()) && /\d/.test(s); }
+function aNumero(s){
+  const t = String(s).replace(/,/g,"").replace(/[()]/g,"").trim();
+  if(!t || t==="-" || t==="—" || t==="–") return null;
+  const v = parseFloat(t);
+  return isFinite(v) ? (String(s).includes("(") ? -v : v) : null;
+}
+function leerHTMLInvesting(html){
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const tablas = [...doc.querySelectorAll("table")].filter(t=>t.rows.length>0);
+  const tipo = t => {
+    const f = [...t.rows].map(r=>[...r.cells].map(c=>c.textContent.trim()));
+    return f.filter(x=>x.filter(Boolean).some(esCifra)).length > f.length/2 ? "NUM" : "ETI";
+  };
+  const tp = tablas.map(tipo), out = [], usadas = new Set();
+
+  /* B) pares nombre-tabla / cifras-tabla */
+  for(let i=0;i<tablas.length-1;i++){
+    if(tp[i]!=="ETI" || tp[i+1]!=="NUM") continue;
+    const A=tablas[i], B=tablas[i+1];
+    if(A.rows.length !== B.rows.length) continue;
+    usadas.add(i); usadas.add(i+1);
+    for(let r=0;r<A.rows.length;r++){
+      const et = [...A.rows[r].cells].map(c=>c.textContent.trim()).filter(Boolean).pop() || "";
+      const cs = [...B.rows[r].cells].map(c=>c.textContent.trim());
+      if(!et || cs.some(c=>c.includes("%"))) continue;
+      const val = cs.map(aNumero);
+      /* basta con un año: el emparejamiento es estructural, no adivinado.
+         Las filas que el método no usa se descartan después, al buscar el nombre. */
+      if(val.some(v=>v!==null)) out.push({et, val});
+    }
+  }
+  /* A) filas mixtas: nombre + cifras en la misma fila */
+  tablas.forEach((t,i)=>{
+    if(usadas.has(i)) return;
+    [...t.rows].forEach(r=>{
+      const cs = [...r.cells].map(c=>c.textContent.trim());
+      const et = cs.find(c=>c && !esCifra(c) && !/^\d{4}$/.test(c));
+      if(!et) return;
+      const cifras = cs.filter(c=>esCifra(c) && !c.includes("%"));
+      if(cifras.length < 3) return;
+      const val = cifras.map(aNumero);
+      if(val.filter(v=>v!==null).length >= 3) out.push({et, val});
+    });
+  });
+  return out;
+}
+
+/* normaliza una etiqueta de Investing para poder buscarla en los sinónimos */
+function normEt(s){
+  return String(s).toLowerCase().replace(/\s+/g," ").replace(/\*+$/,"").trim();
+}
+function procesarHTML(){
+  let filas;
+  try{ filas = leerHTMLInvesting(HTML_PEGADO); }catch(e){ return false; }
+  if(!filas.length) return false;
+
+  const halladas = [], ignoradas = [];
+  const usadas = new Set();
+  for(const f of filas){
+    const et = normEt(f.et);
+    let key = null;
+    for(const [k,alts] of Object.entries(SIN)){ if(alts.includes(et)){ key = k; break; } }
+    if(!key){ ignoradas.push(f.et); continue; }
+    if(usadas.has(key)) continue;                       // gana la primera aparición
+    const con = CONCEPTOS.find(c=>c.k===key);
+    let arr = f.val.slice();
+    /* Investing da capex, adquisiciones, recompras, dividendos e impuestos en
+       negativo; la matriz los pide en positivo, así que se normaliza el signo. */
+    if(con.pos) arr = arr.map(v => v===null ? null : Math.abs(v));
+    if($("invertir").checked) arr.reverse();
+    if(arr.length > N) arr = arr.slice(-N);
+    D[key] = new Array(N).fill(null);
+    arr.forEach((v,x)=>{ const pos = N - arr.length + x; if(pos>=0) D[key][pos] = v; });
+    usadas.add(key);
+    const c = CONCEPTOS.find(c=>c.k===key);
+    const llenos = arr.filter(v=>v!==null);
+    halladas.push({lab:c.lab, ult:llenos.length?llenos[llenos.length-1]:null, n:llenos.length});
+  }
+  pintarMatriz();
+
+  const faltan = CONCEPTOS.filter(c=>c.req && !usadas.has(c.k) && D[c.k].every(v=>v===null))
+                          .map(c=>c.lab);
+  $("bloqueRes").innerHTML =
+    (halladas.length
+      ? `<div class="ok"><b>✓ Leídas ${halladas.length} filas de la tabla.</b> Revisa que cuadren:</div>
+         <div class="tw" style="margin-top:.5rem"><table class="rs"><thead><tr>
+           <th>Partida</th><th style="text-align:right">Años</th><th style="text-align:right">Último año</th>
+         </tr></thead><tbody>${halladas.map(h=>
+           `<tr><td class="l">${esc(h.lab)}</td><td class="n">${h.n}</td>
+            <td class="n" style="color:var(--amber-strong)">${h.ult===null?"—":nf(h.ult,0)}</td></tr>`).join("")}
+         </tbody></table></div>`
+      : `<div class="warn"><b>He leído la tabla pero no he reconocido ninguna partida.</b>
+         ¿Seguro que es Investing en inglés?</div>`) +
+    (faltan.length ? `<div class="note">Siguen faltando: <b>${esc(faltan.join(", "))}</b>.
+       Están en otra pestaña — cópiala y pégala también.</div>`
+                   : `<div class="ok">Obligatorios completos.</div>`) +
+    (ignoradas.length ? `<div class="note" style="color:var(--muted-txt)">Se han ignorado
+       ${ignoradas.length} filas que el método no usa (subtotales, crecimientos, partidas ajenas).</div>` : "");
+  HTML_PEGADO = null;
+  return true;
+}
+
 /* ══════════════════ RECONOCEDOR DE BLOQUES ══════════════════ */
 function procesarBloque(){
+  /* si el portapapeles traía la tabla en HTML, se lee de ahí: es lo único
+     que conserva qué cifras pertenecen a qué nombre en balance y flujo de caja */
+  if(HTML_PEGADO){ const r = procesarHTML(); if(r) return; }
+
   const lineas = $("bloque").value.split(/\n/).map(l=>l.trim());
   const halladas=[], perdidas=[];
   const usadas = new Set();
@@ -1851,6 +1983,14 @@ $("analizar").onclick = () => { MON = $("moneda").value||"$"; informe(calcular()
 $("abrirBloque").onclick = () => $("bloqueBox").classList.toggle("hide");
 $("cerrarBloque").onclick = () => $("bloqueBox").classList.add("hide");
 $("procesarBloque").onclick = procesarBloque;
+$("bloque").addEventListener("paste", e => {
+  const dt = e.clipboardData || window.clipboardData;
+  const html = dt ? dt.getData("text/html") : "";
+  HTML_PEGADO = (html && html.includes("<table")) ? html : null;
+  if(HTML_PEGADO){
+    $("bloqueRes").innerHTML = '<div class="note">Tabla detectada. Pulsa <b>Reconocer filas</b>.</div>';
+  }
+});
 $("limpiar").onclick = () => {
   CONCEPTOS.forEach(c=>D[c.k]=new Array(N).fill(null));
   ["ticker","nombre","precio"].forEach(i=>$(i).value="");
