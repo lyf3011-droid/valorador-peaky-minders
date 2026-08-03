@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23080808'/%3E%3Ctext x='16' y='23' font-family='monospace' font-weight='700' font-size='17' fill='%23F59E0B' text-anchor='middle'%3EI%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#080808">
+<title>Guía de datos — Valoración Peaky Minders</title>
+<style>
+@font-face{font-family:"Syne";src:url(data:font/woff2;base64,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) format("woff2");font-weight:800;font-style:normal;font-display:swap;unicode-range:U+0000-00FF,U+20AC;}
+
+:root{
+  --bg:#080808; --surface:#111; --raised:#171717; --panel:#0f0f0f;
+  --text:#FAFAF8; --soft:rgba(250,250,248,.55); --muted:rgba(250,250,248,.30);
+  --line:rgba(255,255,255,.07); --line-strong:rgba(255,255,255,.14);
+  --amber:#F59E0B; --amber-strong:#FBBF24; --amber-muted:rgba(245,158,11,.14); --amber-line:rgba(245,158,11,.32);
+  --d1:#C2740A; --d2:#0E8FBF;
+  --green:#4ADE80; --red:#F87171;
+  --font-d:"Segoe UI",system-ui,-apple-system,sans-serif;
+  --font-h:"Syne","Segoe UI",system-ui,sans-serif;
+  --font-m:ui-monospace,"JetBrains Mono","Cascadia Mono",Consolas,monospace;
+}
+:root{--ease-out:cubic-bezier(.22,1,.36,1);--dur-1:.45s;--dur-2:.8s;--muted-txt:rgba(250,250,248,.50)}
+*{box-sizing:border-box;margin:0;padding:0}
+h1,h2,h3,.step-q,.bq .ti,.paso .h,.dnom,figcaption,.form .h,.veredicto .k{font-family:var(--font-h);letter-spacing:-.02em}
+button{font-family:var(--font-h)}
+body{background:var(--bg);color:var(--text);font-family:var(--font-d);line-height:1.55;
+  -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+.wrap{max-width:1140px;margin:0 auto;padding:0 clamp(1rem,4vw,2.2rem)}
+
+/* ═══ HUECO PARA TU INTRO CINEMATOGRÁFICA ═══
+   Pega tu efecto dentro de #intro-cinematica.
+   Cuando termine, llama a  window.finIntro()  y esta página entra con un fundido.
+   Si no lo llamas, entra sola a los 300 ms.                                     */
+#intro-cinematica{position:fixed;inset:0;z-index:100;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;transition:opacity .9s ease,visibility .9s}
+#intro-cinematica.fin{opacity:0;visibility:hidden;pointer-events:none}
+.ic-inner{text-align:center}
+.ic-kick{font-family:var(--font-m);font-size:.68rem;letter-spacing:.5em;text-transform:uppercase;
+  color:var(--amber);opacity:0;animation:icKick .6s var(--ease-out) .1s forwards}
+.ic-num{font-family:var(--font-m);font-size:clamp(4rem,14vw,7.5rem);font-weight:700;
+  letter-spacing:-.05em;line-height:1;color:var(--amber-strong);margin:.16em 0 .08em;
+  font-variant-numeric:tabular-nums;text-shadow:0 0 60px rgba(245,158,11,.35)}
+.ic-sub{color:var(--soft);font-size:.92rem;opacity:0;animation:icKick .6s var(--ease-out) .7s forwards}
+.ic-linea{height:2px;width:min(240px,40vw);margin:1.4rem auto 0;background:var(--amber);
+  transform:scaleX(0);transform-origin:left;animation:icLinea .5s var(--ease-out) 1s forwards}
+@keyframes icKick{from{opacity:0;transform:translateY(10px);letter-spacing:.7em}
+  to{opacity:1;transform:none}}
+@keyframes icLinea{to{transform:scaleX(1)}}
+
+/* entrada escalonada de la portada */
+#pagina.on .portada > *{opacity:0;animation:sube var(--dur-2) var(--ease-out) forwards}
+#pagina.on .portada .kick{animation-delay:.05s}
+#pagina.on .portada h1{animation-delay:.15s}
+#pagina.on .portada .lead{animation-delay:.32s}
+#pagina.on .portada .cifras{animation-delay:.48s}
+#pagina.on .portada .tk{animation-delay:.62s}
+#pagina.on .portada .bloques{animation-delay:.75s}
+@keyframes sube{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.cifra .n{font-variant-numeric:tabular-nums}
+.bq .ico{color:var(--amber);opacity:.9}
+.bq .ico svg{display:block}
+
+#pagina{opacity:0;transform:translateY(14px);transition:opacity 1s ease .15s,transform 1s ease .15s}
+#pagina.on{opacity:1;transform:none}
+
+/* ═══ BARRA DE NAVEGACION ═══ */
+#nav{position:sticky;top:0;z-index:60;background:rgba(8,8,8,.88);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line)}
+#nav .in{max-width:1180px;margin:0 auto;padding:.65rem clamp(.9rem,3.5vw,2rem);
+  display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap}
+#nav .marca{font-family:var(--font-h);font-weight:800;font-size:.95rem;letter-spacing:-.02em;
+  color:var(--text);text-decoration:none;display:flex;align-items:center;gap:.5rem}
+#nav .marca b{color:var(--amber)}
+#nav .sep{flex:1}
+#nav a.t{font-family:var(--font-m);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted-txt);text-decoration:none;padding:.42rem .8rem;border-radius:6px;
+  border:1px solid transparent;transition:all .15s}
+#nav a.t:hover{color:var(--text);border-color:var(--line-strong)}
+#nav a.t.on{color:var(--amber-strong);border-color:var(--amber-line);background:var(--amber-muted)}
+#nav a:focus-visible{outline:2px solid var(--amber-strong);outline-offset:2px}
+@media print{#nav{display:none}}/* ═══ PORTADA ═══ */
+.portada{min-height:88vh;display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(3rem,8vw,6rem) 0 3rem;
+  background:radial-gradient(ellipse 70% 55% at 50% 18%,rgba(245,158,11,.10),transparent 72%)}
+.kick{font-family:var(--font-m);font-size:.68rem;letter-spacing:.26em;text-transform:uppercase;color:var(--amber)}
+h1{font-size:clamp(2.4rem,7.5vw,5rem);line-height:.98;letter-spacing:-.04em;font-weight:800;margin:1.1rem 0}
+h1 em{font-style:normal;color:var(--amber)}
+.lead{color:var(--soft);max-width:56ch;font-size:clamp(1rem,2.2vw,1.2rem)}
+.cifras{display:flex;gap:clamp(1.5rem,5vw,3.5rem);flex-wrap:wrap;margin:2.4rem 0 2rem}
+.cifra .n{font-family:var(--font-m);font-size:clamp(2rem,5vw,3rem);font-weight:700;
+  letter-spacing:-.04em;color:var(--amber-strong);line-height:1}
+.cifra .t{font-family:var(--font-m);font-size:.63rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);margin-top:.4rem}
+
+/* ticker */
+.tk{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.5rem;
+  border:1px solid var(--amber-line);border-radius:11px;padding:.9rem 1.1rem;background:var(--panel);max-width:560px}
+.tk label{font-family:var(--font-m);font-size:.63rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.tk input{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--line-strong);color:var(--amber-strong);
+  font-family:var(--font-m);font-size:1.15rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  padding:.5rem .8rem;border-radius:7px}
+.tk input:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-muted)}
+
+/* ═══ TARJETAS DE BLOQUE ═══ */
+.bloques{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:1rem;margin-top:2.2rem}
+.bq{border:1px solid var(--line);background:var(--panel);border-radius:13px;padding:1.3rem 1.3rem 1.1rem;
+  display:flex;flex-direction:column;transition:border-color .2s,transform .2s}
+.bq:hover{border-color:var(--amber-line);transform:translateY(-2px)}
+.bq .ico{font-size:1.9rem;line-height:1;margin-bottom:.7rem}
+.bq .ti{font-size:1.08rem;font-weight:800;letter-spacing:-.015em}
+.bq .n{font-family:var(--font-m);font-size:.63rem;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--amber);margin-top:.25rem}
+.bq .de{font-size:.83rem;color:var(--soft);margin:.6rem 0 1rem;flex:1}
+.lk{display:flex;flex-direction:column;gap:.4rem}
+.lk a{display:flex;align-items:center;justify-content:space-between;gap:.5rem;
+  font-family:var(--font-m);font-size:.68rem;letter-spacing:.04em;text-decoration:none;
+  border:1px solid var(--line-strong);border-radius:6px;padding:.42rem .6rem;color:var(--soft);transition:all .15s}
+.lk a:hover{border-color:var(--amber-line);color:var(--amber-strong);background:var(--amber-muted)}
+.lk a.pri{border-color:var(--amber-line);color:var(--amber-strong)}
+.lk a::after{content:"↗";opacity:.5}
+.lk a:focus-visible{outline:2px solid var(--amber-strong);outline-offset:2px}
+
+/* ═══ SECCIONES ═══ */
+section{padding:clamp(3rem,7vw,5rem) 0;border-top:1px solid var(--line)}
+.snum{font-family:var(--font-m);font-size:.65rem;letter-spacing:.22em;text-transform:uppercase;color:var(--amber)}
+h2{font-size:clamp(1.6rem,4.2vw,2.6rem);letter-spacing:-.03em;margin:.6rem 0 .7rem;font-weight:800}
+h3{font-size:1.1rem;font-weight:800;margin:2rem 0 .8rem;letter-spacing:-.015em}
+.sub{color:var(--soft);max-width:68ch;font-size:.98rem}
+
+/* pasos */
+.pasos{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-top:2rem}
+.paso{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:1.3rem}
+.paso .p{font-family:var(--font-m);font-size:2.4rem;font-weight:700;color:var(--amber-strong);
+  line-height:1;letter-spacing:-.05em;opacity:.9}
+.paso .h{font-weight:800;margin:.6rem 0 .4rem;font-size:1rem}
+.paso .t{font-size:.87rem;color:var(--soft)}
+kbd{font-family:var(--font-m);font-size:.78em;background:var(--raised);border:1px solid var(--line-strong);
+  border-bottom-width:2px;border-radius:5px;padding:.1rem .4rem;color:var(--amber-strong)}
+
+/* ═══ FICHAS DE DATO ═══ */
+.grupo{margin-top:2.2rem}
+.gcab{display:flex;align-items:baseline;gap:.8rem;flex-wrap:wrap;margin-bottom:.9rem;
+  border-bottom:1px solid var(--line-strong);padding-bottom:.6rem}
+.gcab .ic{font-size:1.2rem}
+.gcab .ti{font-size:1.2rem;font-weight:800}
+.gcab .fu{font-family:var(--font-m);font-size:.65rem;letter-spacing:.1em;color:var(--muted);margin-left:auto}
+.gcab a{color:var(--amber);font-family:var(--font-m);font-size:.68rem;text-decoration:none;border-bottom:1px solid var(--amber-line)}
+.gcab a:hover{color:var(--amber-strong)}
+
+.dato{border:1px solid var(--line);background:var(--panel);border-radius:10px;margin-bottom:.55rem;overflow:hidden}
+.dato[open]{border-color:var(--amber-line)}
+.dato summary{cursor:pointer;list-style:none;padding:.8rem 1rem;display:grid;
+  grid-template-columns:1.4fr 1.6fr auto;gap:.8rem;align-items:center}
+.dato summary::-webkit-details-marker{display:none}
+.dato summary:hover{background:var(--surface)}
+.dato summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
+.dnom{font-weight:700;font-size:.93rem;display:flex;align-items:center;gap:.4rem}
+.dnom .b{font-family:var(--font-m);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase;
+  color:#0a0a0a;background:var(--amber);border-radius:3px;padding:.05rem .3rem}
+.dnom .b.calc{background:var(--d2);color:#fff}
+.dfila{font-family:var(--font-m);font-size:.75rem;color:var(--amber-strong);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmas{font-family:var(--font-m);font-size:.62rem;color:var(--muted);letter-spacing:.1em}
+.dato[open] .dmas::after{content:"CERRAR"}
+.dato:not([open]) .dmas::after{content:"QUÉ ES"}
+.dbody{padding:0 1rem 1.15rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;
+  border-top:1px solid var(--line);padding-top:1rem;margin:0 1rem;margin-left:0;padding-left:1rem}
+.db{font-size:.86rem;line-height:1.65}
+.db .t{font-family:var(--font-m);font-size:.58rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--muted);display:block;margin-bottom:.3rem}
+.db.trampa .t{color:var(--red)}
+.db.trampa{border-left:2px solid rgba(248,113,113,.4);padding-left:.8rem}
+.db.calc{border-left:2px solid var(--amber-line);padding-left:.8rem}
+.db.calc .t{color:var(--amber)}
+code{font-family:var(--font-m);font-size:.8em;color:var(--amber-strong);background:var(--surface);
+  padding:.1rem .35rem;border-radius:3px}
+
+/* fórmulas */
+.form{border:1px solid var(--amber-line);border-radius:11px;padding:1.2rem 1.3rem;margin-bottom:.8rem;
+  background:linear-gradient(150deg,rgba(245,158,11,.08),transparent 62%)}
+.form .h{font-weight:800;font-size:1rem;margin-bottom:.5rem}
+.form .f{font-family:var(--font-m);font-size:.86rem;color:var(--amber-strong);background:var(--surface);
+  border-radius:7px;padding:.7rem .85rem;margin:.5rem 0;line-height:1.7;overflow-x:auto}
+.form .w{font-size:.85rem;color:var(--soft)}
+
+/* verificación IA */
+.ia{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:1.4rem;margin-top:1.4rem}
+.iap{font-family:var(--font-m);font-size:.78rem;line-height:1.65;background:var(--surface);
+  border:1px solid var(--line-strong);border-radius:8px;padding:1rem;color:var(--soft);
+  white-space:pre-wrap;max-height:280px;overflow-y:auto}
+button{font-family:var(--font-d);font-weight:700;font-size:.85rem;border-radius:7px;padding:.65rem 1.2rem;
+  cursor:pointer;border:1px solid transparent;transition:all .15s}
+button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:3px}
+.b1{background:var(--amber);color:#0a0a0a}
+.b1:hover{background:var(--amber-strong)}
+.b2{background:transparent;color:var(--soft);border-color:var(--line-strong)}
+.b2:hover{color:var(--text);border-color:var(--amber-line)}
+
+/* cta final */
+.cta{text-align:center;padding:clamp(3.5rem,9vw,6rem) 0}
+.cta a{display:inline-flex;align-items:center;gap:.7rem;background:var(--amber);color:#0a0a0a;
+  font-weight:800;font-size:1.1rem;padding:1rem 2.2rem;border-radius:10px;text-decoration:none;transition:all .15s}
+.cta a:hover{background:var(--amber-strong);transform:translateY(-2px)}
+.cta a:focus-visible{outline:2px solid var(--amber-strong);outline-offset:4px}
+
+.note{border-left:2px solid var(--amber-line);background:rgba(245,158,11,.05);padding:.75rem .95rem;
+  border-radius:0 6px 6px 0;font-size:.86rem;color:var(--soft);margin:.7rem 0}
+.warn{border-left:2px solid var(--red);background:rgba(248,113,113,.07);padding:.75rem .95rem;
+  border-radius:0 6px 6px 0;font-size:.86rem;color:var(--soft);margin:.7rem 0}
+.warn b{color:var(--red)}
+.foot{border-top:1px solid var(--line);padding:1.6rem 0 3rem;font-family:var(--font-m);
+  font-size:.72rem;color:var(--muted);line-height:1.8}
+@media(max-width:640px){ .dato summary{grid-template-columns:1fr auto} .dfila{grid-column:1/-1;font-size:.7rem} }
+@media(prefers-reduced-motion:reduce){*{transition:none!important} #pagina{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<!-- ══════════ HUECO PARA TU INTRO CINEMATOGRÁFICA ══════════ -->
+<div id="intro-cinematica" role="presentation">
+  <div class="ic-inner">
+    <div class="ic-kick">Valoración Peaky Minders</div>
+    <div class="ic-num" id="icNum">0</div>
+    <div class="ic-sub">números para entender una empresa por dentro</div>
+    <div class="ic-linea"></div>
+  </div>
+</div>
+
+<div id="pagina">
+<nav id="nav"><div class="in">
+  <a class="marca" href="index.html">Valoración <b>Peaky Minders</b></a>
+  <span class="sep"></span>
+  <a class="t on" href="index.html">Guía</a>
+  <a class="t" href="valorador.html">Valorador</a>
+</div></nav>
+
+<!-- ══════════ PORTADA ══════════ -->
+<div class="wrap">
+<div class="portada">
+  <div class="kick">Valoración Peaky Minders · Guía de datos</div>
+  <h1>Los <em>25 números</em><br>que necesitas</h1>
+  <p class="lead">Analizar una empresa es como decidir si comprarías la panadería de tu barrio:
+  ¿cuánto vende, cuánto le queda, cuánto debe? Estos 25 números responden a eso.
+  Aquí verás dónde está cada uno, qué significa de verdad y qué trampa esconde.
+  Tú los copias; todas las cuentas las hace la máquina.</p>
+
+  <div class="cifras">
+    <div class="cifra"><div class="n">25</div><div class="t">datos que copias</div></div>
+    <div class="cifra"><div class="n">4</div><div class="t">pestañas de origen</div></div>
+    <div class="cifra"><div class="n">2</div><div class="t">decisiones tuyas</div></div>
+    <div class="cifra"><div class="n">0</div><div class="t">cálculos a mano</div></div>
+  </div>
+
+  <div class="tk">
+    <label for="tk">Ticker</label>
+    <input id="tk" placeholder="META" value="META" autocomplete="off" spellcheck="false">
+    <span style="font-size:.78rem;color:var(--muted)">escribe las siglas de tu empresa en bolsa (su «ticker») y todos los enlaces de abajo apuntarán a ella</span>
+  </div>
+
+  <div class="bloques" id="bloques"></div>
+</div>
+</div>
+
+<!-- ══════════ CÓMO SE PEGAN ══════════ -->
+<section><div class="wrap">
+  <div class="snum">Lo primero</div>
+  <h2>No escribas ni un número</h2>
+  <p class="sub">Son 25 filas por 10 años: 250 cifras. Teclearlas a mano es la forma más segura
+  de equivocarse y de abandonar. El gesto correcto es copiar y pegar por filas enteras:
+  tres pasos, y en unos ocho minutos tienes una empresa completa.</p>
+
+  <div class="pasos">
+    <div class="paso"><div class="p">1</div><div class="h">Selecciona la fila entera</div>
+      <div class="t">En la web donde están las cuentas, arrastra el ratón sobre <b>los diez números</b>
+      de una fila — de 2016 a 2025. No hace falta que cojas el nombre de la fila.</div></div>
+    <div class="paso"><div class="p">2</div><div class="h">Copia con <kbd>Ctrl</kbd>+<kbd>C</kbd></div>
+      <div class="t">Da igual que se cuelen espacios, tabuladores, comas de millar o guiones
+      en los años vacíos. El valorador lo limpia todo.</div></div>
+    <div class="paso"><div class="p">3</div><div class="h">Pega en la <b>primera</b> casilla</div>
+      <div class="t">Clic en la casilla del año más antiguo de esa fila y <kbd>Ctrl</kbd>+<kbd>V</kbd>.
+      Los diez años se rellenan de golpe. Repite 22 veces y ya está.</div></div>
+  </div>
+
+  <div class="note">Si tu fuente muestra los años <b>del más nuevo al más viejo</b> (Investing lo hace
+  en algunas vistas), marca la casilla <b>«los años vienen del más nuevo al más viejo»</b> en el
+  valorador antes de pegar. Con eso se corrige el orden solo.</div>
+
+  <div class="warn"><b>El error número uno:</b> pegar datos <b>de un trimestre</b> (tres meses)
+  creyendo que son del año entero. Las cifras salen unas cuatro veces menores y todo el análisis
+  queda mal sin que salte ningún aviso. Comprueba siempre que el selector de la web está en
+  <code>Annual</code> (anual), no en <code>Quarterly</code> (trimestral).</div>
+</div></section>
+
+<!-- ══════════ LOS 25 DATOS ══════════ -->
+<section><div class="wrap">
+  <div class="snum">El grueso</div>
+  <h2>Los 25 datos, uno a uno</h2>
+  <p class="sub">Pulsa sobre cualquiera para ver qué mide de verdad, por qué está en el método y
+  qué trampa tiene. Los 25 se explican con la misma panadería de aquí abajo: cuando termines
+  de leerlos, la habrás analizado entera sin darte cuenta. La etiqueta
+  <span class="b" style="font-family:var(--font-m);font-size:.58rem;background:var(--amber);color:#0a0a0a;padding:.05rem .3rem;border-radius:3px">CLAVE</span>
+  marca los que sin ellos no se puede calcular nada.</p>
+
+  <div class="form" style="margin-top:1.8rem">
+    <div class="h">🥖 La panadería de Marta — el ejemplo que usaremos las 23 veces</div>
+    <div class="w">Imagina que Marta, la panadera de tu barrio, te ofrece comprarle un trozo de su
+    negocio. Antes de poner un euro querrías saber cuánto vende, cuánto le queda y cuánto debe.
+    Eso, exactamente, es analizar una empresa. Estas son las cuentas de su panadería este año:</div>
+    <div class="f">Vende al año: 100.000 €<br>
+Gasta en harina, luz y sueldos: 70.000 €<br>
+Desgaste del horno y la furgoneta: 5.000 € al año<br>
+Debe al banco: 23.000 € (3.000 se devuelven este año)<br>
+En la cuenta: 10.000 € · En letras del Tesoro: 5.000 €<br>
+Alquiler del local: 10.000 € este año + 40.000 € de años futuros<br>
+Hacienda se lleva: 6.000 €<br>
+Partida en 100 participaciones (+5 prometidas al panadero jefe)</div>
+    <div class="w">Los nombres en inglés que verás en cada ficha (<code>Total Revenues</code>,
+    <code>EBITDA</code>…) son estas mismas ideas, escritas como las escriben las webs de bolsa.
+    Guárdate estos números: vamos a usarlos en todo lo que viene.</div>
+  </div>
+
+  <div id="datos"></div>
+</div></section>
+
+<!-- ══════════ LOS QUE NO SE COPIAN ══════════ -->
+<section><div class="wrap">
+  <div class="snum">Cuidado con estos</div>
+  <h2>Cuatro números que <em style="font-style:normal;color:var(--amber)">nunca</em> se copian</h2>
+  <p class="sub">Estos cuatro aparecen publicados en las webs, pero el método <b>no los copia:
+  los calcula por su cuenta</b>. No es capricho: copiados tal cual llevan a conclusiones
+  equivocadas. En el valorador salen solos; aquí tienes el porqué, primero con la panadería
+  de Marta y después con una empresa de verdad.</p>
+
+  <div style="margin-top:1.8rem">
+    <div class="form">
+      <div class="h">1 · Beneficio neto normalizado</div>
+      <div class="f">EBIT&nbsp; +&nbsp; Intereses netos&nbsp; −&nbsp; Impuestos</div>
+      <div class="w">Imagina que un año a Marta le cae una multa de 5.000 € por una obra del local.
+      Ese año el beneficio se hunde, pero el pan se vendió igual que siempre. Para saber si la
+      panadería funciona, la multa se aparta y se apunta en otra lista: la de los sustos.
+      Eso es «normalizar»: quitar lo que no es del negocio del día a día.
+      <b>Y en una empresa de verdad se ve así:</b> el beneficio publicado de META en 2019 fue
+      18.485 M$; el normalizado, 23.563 M$. La diferencia son exactamente los 5.000 M$ de la multa
+      de la FTC más 78 M$ de partidas ajenas al negocio. Con el número publicado parece que META
+      se hundió ese año. No se hundió: le pusieron una multa. <b>Y esa multa no se pierde</b> —
+      el método la registra aparte, como señal de alerta.</div>
+    </div>
+
+    <div class="form">
+      <div class="h">2 · Flujo de caja libre</div>
+      <div class="f">EBITDA&nbsp; −&nbsp; Depreciación&nbsp; −&nbsp; Impuestos&nbsp; +&nbsp; Intereses netos&nbsp; −&nbsp; Variación de circulante</div>
+      <div class="w">El flujo de caja libre es el dinero que de verdad sobra al final del año.
+      Marta gasta 5.000 € en reparar el horno (obligatorio: sin horno no hay pan) y 4.000 € en una
+      amasadora para producir más (una apuesta de crecimiento, no una obligación). Las webs restan
+      las dos cosas como si fueran lo mismo, y hacen que Marta parezca más pobre de lo que es.
+      El método solo resta lo obligatorio: a Marta le sobran 18.000 €, no 14.000.
+      <b>Y en una empresa de verdad se ve así:</b> META gastó en 2025 unos 69.691 M$ en inversiones,
+      de los que solo ~18.000 son de mantenimiento. Con la cifra de la web, META cuesta 61 veces
+      el dinero que genera; con la del método, 24,8 veces. <b>El mismo día, la misma empresa,
+      y una conclusión opuesta.</b></div>
+    </div>
+
+    <div class="form">
+      <div class="h">3 · Deuda neta</div>
+      <div class="f">Deuda a corto&nbsp; +&nbsp; Deuda a largo&nbsp; −&nbsp; Caja&nbsp; −&nbsp; Inversiones financieras</div>
+      <div class="w">Marta debe 23.000 € al banco, pero tiene 10.000 € en la cuenta y 5.000 € en
+      letras del Tesoro. Su deuda de verdad son <b>8.000 €</b>: si mañana quisiera, pagaría el
+      resto con lo que tiene. El alquiler del local no es un préstamo del banco, así que aquí no
+      se cuenta; cuenta en otro sitio (en el dinero total metido en el negocio).
+      <b>Y en una empresa de verdad se ve así:</b> la fila <code>Total Debt</code> de las webs
+      mete los alquileres. Para META 2025 marca 85.081 M$ frente a 58.744 M$ de deuda real con
+      bancos y bonos. Si usas la primera, META parece endeudada cuando en realidad le <b>sobran</b>
+      22.848 M$ después de contar sus ahorros.</div>
+    </div>
+
+    <div class="form">
+      <div class="h">4 · Tipo impositivo</div>
+      <div class="f">Impuestos&nbsp; ÷&nbsp; (EBIT&nbsp; +&nbsp; Intereses netos)</div>
+      <div class="w">El porcentaje de impuestos que paga la empresa de verdad. Marta paga 6.000 €
+      sobre una base de 24.000 € (sus 25.000 € de beneficio menos los 1.000 € de intereses):
+      su tipo real es el <b>25%</b>, diga lo que diga el tipo oficial del país.
+      Se calcula así, sobre las mismas cifras limpias, para que todos los números del método
+      hablen el mismo idioma.</div>
+    </div>
+  </div>
+
+  <div class="note">Los cuatro los calcula el valorador solo. Están aquí porque
+  <b>entender por qué no se copian es la mitad del método</b>: es la diferencia entre leer una web
+  y analizar una empresa.</div>
+</div></section>
+
+<!-- ══════════ MANTENER NO ES CRECER ══════════ -->
+<section><div class="wrap">
+  <div class="snum">La decisión que lo cambia todo</div>
+  <h2>Mantener no es crecer</h2>
+  <p class="sub">De todo el método, esta es la idea que más separa el resultado del de cualquier
+  web financiera. Si solo te llevas una cosa de esta guía, que sea esta.</p>
+
+  <div class="form" style="margin-top:1.8rem">
+    <div class="h">🥖 Marta gasta 9.000 € este año. ¿Es un coste o una inversión?</div>
+    <div class="w" style="margin-top:.6rem">
+      Marta gasta <b>5.000 €</b> en reparar el horno y la furgoneta. Si no lo hace, dentro de unos
+      años no puede hornear: la panadería deja de existir. Eso <b>no es una inversión, es el peaje
+      de seguir vivo</b>. Se llama <b>CapEx de mantenimiento</b>.<br><br>
+      Y gasta <b>4.000 €</b> en una amasadora nueva para producir el doble. Si no la compra, la
+      panadería sigue funcionando exactamente igual que hoy. Eso <b>no es un coste, es una apuesta
+      voluntaria por crecer</b>. Se llama <b>CapEx de expansión</b>.
+    </div>
+  </div>
+
+  <div class="pasos" style="margin-top:1.6rem">
+    <div class="paso"><div class="p">✗</div><div class="h">Lo que hacen las webs</div>
+      <div class="t">Restan los <b>9.000 €</b> enteros. Resultado: 30.000 − 5.000 − 6.000 − 1.000 − 9.000
+      = <b>9.000 € de caja libre</b>. Marta parece un negocio mediocre.</div></div>
+    <div class="paso"><div class="p">✓</div><div class="h">Lo que hace este método</div>
+      <div class="t">Resta solo los <b>5.000 €</b> de mantener. Resultado: <b>18.000 € de caja libre</b>.
+      Marta es lo que de verdad es: un buen negocio que además está invirtiendo en crecer.</div></div>
+    <div class="paso"><div class="p">2×</div><div class="h">La diferencia</div>
+      <div class="t">El doble. Con el mismo año, las mismas cuentas y la misma empresa. Por eso el
+      flujo de caja libre <b>no se copia nunca</b>: se construye.</div></div>
+  </div>
+
+  <h3>Por qué es lo correcto y no un truco para que salga mejor</h3>
+  <p class="sub">Porque estás valorando <b>la capacidad de generar dinero que ya tiene el negocio</b>,
+  no la de un negocio que ha decidido dejar de crecer. La amasadora es opcional: Marta puede no
+  comprarla y llevarse esos 4.000 € a su bolsillo. La reparación del horno no es opcional.<br><br>
+  Dicho de otra forma: <b>el CapEx de expansión no desaparece del análisis, cambia de sitio.</b>
+  Se mira aparte, en la pregunta del ROIC, donde se responde a la única cosa que importa de una
+  inversión voluntaria: <b>¿cuánto te devuelve cada euro que metes?</b> Si Marta mete 4.000 € y le
+  rinden al 19%, esa amasadora crea valor. Si le rindieran al 3%, estaría destruyéndolo — y ahí sí
+  sería un problema, pero un problema de rentabilidad, no de caja.</p>
+
+  <div class="warn"><b>Y aquí está el peligro, que también hay que decirlo:</b> este método es más
+  generoso con las empresas que invierten mucho en crecer. Si una compañía clasifica como
+  «expansión» un gasto que en realidad es de mantenimiento, su caja libre parece mayor de lo que es.
+  Por eso el método usa <b>la depreciación</b> como suelo del mantenimiento: es un número que la
+  empresa no elige a conveniencia. Y por eso conviene revisar que el CapEx de expansión de verdad
+  se traduzca en más ventas años después. Si crece el gasto y no crecen las ventas, algo no cuadra.</div>
+
+  <div class="note"><b>Caso real, META 2025:</b> gastó <b>69.691 M$</b> en inversiones, de los cuales
+  unos <b>18.000 M$</b> son mantenimiento y más de <b>51.000 M$</b> son centros de datos para
+  inteligencia artificial que hoy no producen nada. Con el criterio de las webs, META cotiza a
+  61 veces su caja. Con este método, a 24,8 veces. La misma empresa, el mismo día, dos conclusiones
+  opuestas — y la diferencia es enteramente esta decisión.</div>
+</div></section>
+
+<!-- ══════════ EJEMPLO COMPLETO ══════════ -->
+<section><div class="wrap">
+  <div class="snum">El método entero, de principio a fin</div>
+  <h2>La panadería de Marta, resuelta</h2>
+  <p class="sub">Las seis preguntas con la calculadora en la mano. Cada número de aquí abajo
+  se puede comprobar a mano en treinta segundos. Si entiendes esto, entiendes lo que hace el
+  valorador con cualquier empresa del mundo — solo cambia el tamaño de las cifras.</p>
+
+  <div class="grupo">
+    <div class="gcab"><span class="ti">Las seis preguntas</span></div>
+
+    <details class="dato" open><summary>
+      <span class="dnom">1 · ¿Crece?</span>
+      <span class="dfila">5,7% anual · frenando cada año</span><span class="dmas"></span></summary>
+      <div class="dbody">
+        <div class="db"><span class="t">La cuenta</span>Las ventas fueron 80.000 → 85.000 → 90.000 →
+          95.000 → 100.000 €.<br><code>(100.000 / 80.000)^(1/4) − 1 = 5,7%</code></div>
+        <div class="db"><span class="t">Lo que dice</span>Crece todos los años, pero cada año un poco
+          menos: +6,25% → +5,88% → +5,56% → +5,26%. Eso es lo normal en cualquier negocio, y es
+          exactamente por lo que después no se proyecta con un crecimiento plano.</div>
+      </div></details>
+
+    <details class="dato"><summary>
+      <span class="dnom">2 · ¿Con qué márgenes?</span>
+      <span class="dfila">25 € de cada 100 vendidos</span><span class="dmas"></span></summary>
+      <div class="dbody">
+        <div class="db"><span class="t">La cuenta</span><code>EBITDA 30.000 / 100.000 = 30%</code><br>
+          <code>EBIT 25.000 / 100.000 = 25%</code></div>
+        <div class="db"><span class="t">Lo que dice</span>Si ganar 25 € por cada 100 vendiendo pan
+          fuera fácil, alguien habría abierto enfrente bajando precios. Un margen alto que aguanta
+          años es la prueba medible de que su pan tiene algo que no se copia.</div>
+      </div></details>
+
+    <details class="dato"><summary>
+      <span class="dnom">3 · ¿El dinero llega a la caja?</span>
+      <span class="dfila">18.000 € · convierte el 60%</span><span class="dmas"></span></summary>
+      <div class="dbody">
+        <div class="db"><span class="t">Beneficio limpio</span><code>25.000 − 1.000 − 6.000 = 18.000 €</code>
+          <br>EBIT + intereses netos − impuestos.</div>
+        <div class="db"><span class="t">Dinero real</span><code>30.000 − 5.000 − 6.000 − 1.000 = 18.000 €</code>
+          <br>EBITDA − <b>solo el mantenimiento</b> − impuestos + intereses.
+          Los 4.000 € de la amasadora <b>no se restan</b>.</div>
+        <div class="db"><span class="t">Conversión en caja</span><code>18.000 / 30.000 = 60%</code><br>
+          De cada 100 € que dice ganar, 60 € son dinero de verdad. Normal para un negocio con horno
+          y furgoneta; una empresa de software estaría por encima del 75%.</div>
+      </div></details>
+
+    <details class="dato"><summary>
+      <span class="dnom">4 · ¿Rinde el capital?</span>
+      <span class="dfila">ROIC 18,75%</span><span class="dmas"></span></summary>
+      <div class="dbody">
+        <div class="db"><span class="t">Capital invertido</span><code>32.000 + 23.000 + 50.000 − 5.000 = 100.000 €</code>
+          <br>Patrimonio + deuda + alquileres − inversiones financieras.</div>
+        <div class="db"><span class="t">La cuenta</span>Tipo impositivo <code>6.000 / 24.000 = 25%</code><br>
+          <code>25.000 × 0,75 / 100.000 = 18,75%</code></div>
+        <div class="db"><span class="t">Lo que dice</span>Marta mete 100 € en el negocio y al año
+          siguiente le devuelven 18,75 €. Muy por encima de lo que le cuesta el dinero al banco.
+          Aquí es donde se juzga la amasadora de 4.000 €.</div>
+      </div></details>
+
+    <details class="dato"><summary>
+      <span class="dnom">5 · ¿Algo raro bajo la alfombra?</span>
+      <span class="dfila">deuda 0,27 años de beneficio</span><span class="dmas"></span></summary>
+      <div class="dbody">
+        <div class="db"><span class="t">Deuda neta</span><code>3.000 + 20.000 − 10.000 − 5.000 = 8.000 €</code>
+          <br><code>8.000 / 30.000 = 0,27 veces el EBITDA</code>. Con tres meses de beneficio paga
+          todo lo que debe.</div>
+        <div class="db"><span class="t">Red flags</span>Ningún año con ventas cayendo, ninguno con
+          caja negativa, ninguno con ROIC bajo. La compra de la panadería de la esquina se apunta y
+          se vigila, pero las ventas siguieron subiendo solas después.</div>
+      </div></details>
+
+    <details class="dato"><summary>
+      <span class="dnom">6 · ¿Cuánto cuesta?</span>
+      <span class="dfila">pide 1.200 € · vale 998,60 €</span><span class="dmas"></span></summary>
+      <div class="dbody" style="grid-template-columns:1fr">
+        <div class="db"><span class="t">La cuenta completa</span>
+          <code>Escalera de crecimiento: 6% → 5% → 4% → 3% → 2%</code><br>
+          <code>FCF dentro de 5 años = 18.000 × 1,216 = 21.890 €</code><br>
+          <code>Valor del negocio = 10 × 21.890 = 218.896 €</code><br>
+          <code>− deuda neta 8.000 = 210.896 €</code><br>
+          <code>÷ 105 participaciones = 2.008,54 € por participación</code><br>
+          <code>IDC = 2.008,54 ÷ 1,15⁵ = 998,60 €</code><br>
+          <code>Zona de compra = 998,60 × 0,85 = 848,81 €</code>
+        </div>
+      </div></details>
+  </div>
+
+  <div class="form" style="margin-top:1.8rem">
+    <div class="h">El veredicto</div>
+    <div class="w" style="margin-top:.6rem">
+      La panadería de Marta es <b>un buen negocio</b>: crece todos los años, se queda 25 € de cada
+      100 que vende, convierte bien en caja, apenas debe nada y cuando invierte le rinde al 18,75%.<br><br>
+      Pero <b>Marta pide 1.200 € por participación</b> y las cuentas dicen que, para ganar un 15%
+      anual, no deberías pagar más de <b>998,60 €</b>. Al precio que pide, tu retorno esperado sería
+      del <b>10,9% anual</b> — bueno, pero no es lo que buscas.<br><br>
+      <b>Estado: VIGILAR.</b> Buen negocio, precio caro. Ni se descarta ni se compra: se apunta el
+      número y se espera. El precio al que merecería la pena mirarlo en serio son <b>848,81 €</b>.
+    </div>
+  </div>
+
+  <div class="tw" style="margin-top:1.4rem"><table class="rs">
+    <thead><tr><th>De un vistazo</th><th style="text-align:right">Marta</th><th style="text-align:right">Escala</th></tr></thead>
+    <tbody>
+      <tr><td class="l">Crecimiento de ventas</td><td class="n">5,7%</td><td class="n"><span class="tag y">normal</span></td></tr>
+      <tr><td class="l">Margen EBIT</td><td class="n">25,0%</td><td class="n"><span class="tag g">bueno</span></td></tr>
+      <tr><td class="l">Conversión en caja</td><td class="n">60,0%</td><td class="n"><span class="tag y">normal</span></td></tr>
+      <tr><td class="l">ROIC</td><td class="n">18,75%</td><td class="n"><span class="tag y">normal</span></td></tr>
+      <tr><td class="l">Deuda neta / EBITDA</td><td class="n">0,27x</td><td class="n"><span class="tag g">bueno</span></td></tr>
+      <tr><td class="l">Precio que pide</td><td class="n">1.200,00 €</td><td class="n">—</td></tr>
+      <tr><td class="l"><b>IDC · precio máximo</b></td><td class="n"><b style="color:var(--amber-strong)">998,60 €</b></td><td class="n">—</td></tr>
+      <tr><td class="l">Zona de compra</td><td class="n">848,81 €</td><td class="n">—</td></tr>
+      <tr><td class="l">Retorno anual esperado</td><td class="n">10,9%</td><td class="n"><span class="tag y">normal</span></td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<!-- ══════════ VERIFICAR CON IA ══════════ -->
+<section><div class="wrap">
+  <div class="snum">Control de calidad</div>
+  <h2>Comprueba los datos con una IA</h2>
+  <p class="sub">Transcribir 230 números es donde se cuela el error. Un dato mal copiado produce un
+  análisis impecable y falso. Esta es la forma de cazarlo en dos minutos, y funciona con cualquier
+  IA que acepte imágenes.</p>
+
+  <div class="pasos">
+    <div class="paso"><div class="p">1</div><div class="h">Captura la fuente</div>
+      <div class="t">En Investing (o StockAnalysis), haz una captura de la tabla anual completa de
+      <b>Cuenta de resultados</b>. Repite con <b>Balance</b> y <b>Flujo de caja</b>.</div></div>
+    <div class="paso"><div class="p">2</div><div class="h">Captura lo que has metido</div>
+      <div class="t">En el valorador, pulsa <b>«Verificar con IA»</b> en la pestaña correspondiente:
+      te copia al portapapeles la tabla de lo que has introducido, ya formateada.</div></div>
+    <div class="paso"><div class="p">3</div><div class="h">Pásaselo a la IA</div>
+      <div class="t">Adjunta las capturas, pega la tabla y el texto de abajo. Te devuelve las celdas
+      que no cuadran, con el valor correcto.</div></div>
+  </div>
+
+  <div class="ia">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.8rem">
+      <div style="font-weight:800">Texto para pegarle a la IA</div>
+      <button class="b1" id="copiar">Copiar el texto</button>
+    </div>
+    <div class="iap" id="prompt"></div>
+    <div class="note" style="margin-top:.9rem">Fíjate en que el texto le prohíbe explícitamente
+    <b>rellenar huecos por su cuenta</b>. Una IA a la que le pides que verifique una tabla tiende a
+    «arreglarla» inventando lo que no ve en la captura. Esto lo corta.</div>
+  </div>
+
+  <div class="warn"><b>Esto verifica la transcripción, no el análisis.</b> Que los 230 números estén
+  bien copiados no significa que la empresa sea buena ni que tus supuestos de crecimiento tengan
+  sentido. Eso sigue siendo tuyo.</div>
+</div></section>
+
+<!-- ══════════ CTA ══════════ -->
+<div class="wrap"><div class="cta">
+  <a href="valorador.html">Abrir el valorador →</a>
+  <p style="color:var(--muted);font-size:.83rem;margin-top:1.1rem">Los enlaces a las cuentas de la
+  empresa también están dentro, en cada pestaña.</p>
+</div></div>
+
+<div class="wrap"><div class="foot">
+GUÍA DE DATOS · Valoración Peaky Minders v2.0 · 2026-08-03<br>
+Sistema de valoración propio, desarrollado a partir de metodología de inversión en calidad.<br><br>
+⚠️ Material formativo. No constituye asesoramiento financiero ni recomendación de compra o venta.
+</div></div>
+
+</div><!-- /#pagina -->
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ══ intro cinematográfica ══ */
+const RM = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+window.finIntro = function(){
+  const i = $("intro-cinematica"); if(i) i.classList.add("fin");
+  $("pagina").classList.add("on");
+  cifrasCuentan();
+};
+/* count-up reutilizable */
+function cuentaHasta(el, txtFinal, ms){
+  if(RM()){ el.textContent = txtFinal; return; }
+  const m = txtFinal.match(/-?[\d.]*\d(?:,\d+)?/);
+  if(!m){ el.textContent = txtFinal; return; }
+  const fin = parseFloat(m[0].replace(/\./g,"").replace(",",".")),
+        dec = (m[0].split(",")[1]||"").length, t0 = performance.now(), D = ms||700;
+  if(!isFinite(fin)){ el.textContent = txtFinal; return; }
+  (function tick(t){
+    const p = Math.min(1,(t-t0)/D), v = fin*(1-Math.pow(1-p,3));
+    el.textContent = txtFinal.replace(m[0], v.toLocaleString("es-ES",
+      {minimumFractionDigits:dec,maximumFractionDigits:dec}));
+    if(p<1) requestAnimationFrame(tick); else el.textContent = txtFinal;
+  })(t0);
+}
+let cifrasHechas = false;
+function cifrasCuentan(){
+  if(cifrasHechas) return; cifrasHechas = true;
+  setTimeout(()=>document.querySelectorAll(".cifra .n")
+    .forEach(el=>cuentaHasta(el, el.textContent, 800)), 500);
+}
+/* intro por defecto: 1,9 s · saltable · una vez por sesión · fuera con reduced-motion */
+(function(){
+  const vista = sessionStorage.getItem("introVista") === "1";
+  if(RM() || vista){ window.finIntro(); return; }
+  sessionStorage.setItem("introVista","1");
+  const n = $("icNum"), t0 = performance.now();
+  (function tick(t){
+    const p = Math.min(1,(t-t0-300)/900);
+    if(p>0) n.textContent = Math.round(25*(1-Math.pow(1-p,3)));
+    if(p<1) requestAnimationFrame(tick);
+  })(t0);
+  const fin = setTimeout(window.finIntro, 1900);
+  const salta = () => { if(performance.now()-t0 < 350) return;   // ignora clics residuales
+    clearTimeout(fin); window.finIntro();
+    removeEventListener("keydown",salta); removeEventListener("pointerdown",salta); };
+  addEventListener("keydown",salta); addEventListener("pointerdown",salta);
+})();
+
+/* ══ bloques y enlaces ══ */
+const SVGI = {
+  IS:`<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 20V9M10 20V4M16 20v-7M22 20H2"/></svg>`,
+  BS:`<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h18M5 10v8M12 10v8M19 10v8M2 20h20M12 3 3 8h18z"/></svg>`,
+  CF:`<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c3 4.5 6 7.6 6 11a6 6 0 1 1-12 0c0-3.4 3-6.5 6-11z"/></svg>`,
+  MK:`<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-5 4 3 7-8M14 7h5v5"/></svg>`
+};
+const BLOQUES = [
+  {k:"IS", ico:SVGI.IS, ti:"Cuenta de resultados", n:"6 datos",
+   de:"Lo que la empresa vende y lo que le queda. De aquí salen el crecimiento y los márgenes.",
+   sa:"financials/", inv:"income statement", ya:"financials"},
+  {k:"BS", ico:SVGI.BS, ti:"Balance", n:"11 datos",
+   de:"Lo que tiene y lo que debe. De aquí salen la deuda neta y el capital que hay metido.",
+   sa:"financials/balance-sheet/", inv:"balance sheet", ya:"balance-sheet"},
+  {k:"CF", ico:SVGI.CF, ti:"Flujo de caja", n:"7 datos",
+   de:"Por dónde entra y sale el dinero de verdad. De aquí sale el flujo de caja libre.",
+   sa:"financials/cash-flow-statement/", inv:"cash flow", ya:"cash-flow"},
+  {k:"MK", ico:SVGI.MK, ti:"Mercado", n:"1 dato",
+   de:"El precio de cierre de cada año. Es lo que permite saber cuánto ha pagado el mercado por esta empresa históricamente.",
+   sa:"", inv:"chart", ya:"history"}
+];
+function urls(t){
+  const T = (t||"").trim().toUpperCase();
+  return {
+    sa : b => T ? `https://stockanalysis.com/stocks/${encodeURIComponent(T)}/${b.sa}` : "#",
+    saM: () => T ? `https://stockanalysis.com/stocks/${encodeURIComponent(T)}/history/` : "#",
+    inv: b => T ? `https://www.investing.com/search/?q=${encodeURIComponent(T)}` : "#",
+    ya : b => T ? `https://finance.yahoo.com/quote/${encodeURIComponent(T)}/${b.ya}` : "#"
+  };
+}
+function pintarBloques(){
+  const U = urls($("tk").value);
+  $("bloques").innerHTML = BLOQUES.map(b=>`
+    <div class="bq">
+      <div class="ico">${b.ico}</div>
+      <div class="ti">${esc(b.ti)}</div>
+      <div class="n">${esc(b.n)}</div>
+      <div class="de">${esc(b.de)}</div>
+      <div class="lk">
+        <a class="pri" href="${U.inv(b)}" target="_blank" rel="noopener">InvestingPro · fuente principal</a>
+        <a href="${b.k==="MK"?U.saM():U.sa(b)}" target="_blank" rel="noopener">StockAnalysis · gratis, directo</a>
+        <a href="${U.ya(b)}" target="_blank" rel="noopener">Yahoo Finance</a>
+      </div>
+    </div>`).join("");
+  document.querySelectorAll(".gcab a").forEach(a=>{
+    const b = BLOQUES.find(x=>x.k===a.dataset.b);
+    a.href = b.k==="MK" ? U.saM() : U.sa(b);
+  });
+}
+
+/* ══ LOS 25 DATOS ══ */
+const D = [
+ {g:"IS",n:"Ventas",f:"Total Revenues",clave:1,
+  q:"Todo el dinero que entra por la caja en un año. En la panadería de Marta: los 100.000 € de barras, cruasanes y encargos.",
+  p:"Dice el tamaño real del negocio. Si Marta no vende más pan cada año, recortar gastos solo la salva un rato.",
+  t:"Crecer comprando otras panaderías no es lo mismo que vender más pan. Si las ventas suben a la vez que la fila «Cash Acquisitions» (compras de empresas), parte del crecimiento está comprado, no ganado."},
+ {g:"IS",n:"EBITDA",f:"EBITDA",clave:1,calc:"Operating Income + Depreciation & Amortization",
+  q:"Lo que queda tras pagar harina, luz y sueldos, antes del desgaste, del banco y de Hacienda. Marta: 100.000 − 70.000 = <b>30.000 €</b>.",
+  p:"Es el punto de partida para calcular la caja que genera el negocio. EBITDA solo significa eso: beneficio antes de intereses, impuestos y desgaste.",
+  t:"Es el número favorito de las empresas flojas: esconde justo lo que más les cuesta, reponer sus máquinas. Nunca lo mires solo; compáralo siempre con el EBIT (el beneficio contando ya el desgaste)."},
+ {g:"IS",n:"EBIT",f:"Operating Income",clave:1,calc:"EBITDA − Depreciation & Amortization",
+  q:"El beneficio del negocio contando ya que el horno y la furgoneta se gastan. Marta: 30.000 − 5.000 de desgaste = <b>25.000 €</b>.",
+  p:"Si Marta gana 25 de cada 100 € año tras año, su pan tiene algo especial. Si fuera fácil, otra panadería habría abierto enfrente bajando precios. Un margen alto sostenido diez años es la prueba de esa ventaja.",
+  t:"En Investing aparece dos veces: arriba como «Operating Income» y al final de la tabla como «EBIT». Son la misma cifra, no las sumes."},
+ {g:"IS",n:"Intereses netos",f:"Net Interest Expenses",calc:"Interest And Investment Income − Interest Expense, Total",
+  q:"Lo que cobra por sus ahorros menos lo que paga por sus préstamos. Marta cobra 200 € y paga 1.200 €: intereses netos de <b>−1.000 €</b>.",
+  p:"Una empresa con más ahorros que deudas cobra más de lo que paga: es un ingreso extra. Una endeudada pierde dinero por aquí cada año, y no se ve en el beneficio del negocio.",
+  t:"El signo. Positivo significa que cobra MÁS de lo que paga. Si tu fuente lo da al revés, el flujo de caja saldrá mal por el doble de la cifra."},
+ {g:"IS",n:"Impuestos",f:"Income Tax Expense",clave:1,
+  q:"Lo que se lleva Hacienda ese año. A Marta le tocan <b>6.000 €</b>.",
+  p:"Sirven para calcular el porcentaje real que paga la empresa. Marta: 6.000 € sobre una base de 24.000 € = 25%. Ese porcentaje se usa luego para medir cuánto rinde el dinero metido en el negocio.",
+  t:"Investing lo da en positivo aunque sea un gasto. Y ojo con los años raros: META pagó un 30% en 2025 frente al 12-17% habitual. Un año así distorsiona cualquier media — por eso el método usa cifras limpias (las «normaliza»)."},
+ {g:"IS",n:"Acciones diluidas",f:"Diluted Weighted Average Shares Outstanding",clave:1,
+  q:"En cuántos trozos está partida la empresa, contando los prometidos que aún no existen. La panadería: 100 participaciones + 5 prometidas al panadero jefe = <b>105</b>.",
+  p:"Es el divisor de todo: del beneficio por trozo, del precio objetivo. Si cada año hay más trozos, tu trozo encoge sin que hagas nada.",
+  t:"Usa la DILUIDA, nunca la básica. La diferencia son esas 5 participaciones prometidas a los empleados: acabarán existiendo de verdad y encogiendo tu parte."},
+
+ {g:"BS",n:"Caja",f:"Cash And Equivalents",clave:1,
+  q:"El dinero disponible ya, en la cuenta. Marta tiene <b>10.000 €</b> en la cuenta de la panadería.",
+  p:"Se resta de la deuda para saber lo que se debe de verdad. Y con la hucha llena, Marta puede comprar harina barata cuando otros no pueden ni pagar la luz.",
+  t:"No la confundas con «Total Cash» de algunas webs: a veces ya incluye las inversiones financieras y las restarías dos veces."},
+ {g:"BS",n:"Inversiones financieras",f:"Short Term Investments",
+  q:"Dinero aparcado fuera de la cuenta corriente. Marta tiene <b>5.000 €</b> en letras del Tesoro que puede recuperar cuando quiera.",
+  p:"Cuenta como caja al calcular la deuda: es dinero, solo que aparcado. Y se resta del capital invertido (el dinero metido en el negocio) para no castigar a quien ahorra.",
+  t:"Es la partida que más gente olvida. Sin restarla, META parecería tener 22.848 M$ más de deuda de los que tiene."},
+ {g:"BS",n:"Deuda a corto",f:"Short-term Borrowings",
+  q:"Lo que hay que devolver al banco en menos de un año. Marta: los <b>3.000 €</b> del préstamo que vencen este año.",
+  p:"Entra en la deuda neta (lo que se debe menos lo que se tiene) y en el capital invertido.",
+  t:"Si está vacío, déjalo vacío. Muchas empresas sanas no deben nada a corto plazo; meter un cero no cambia nada, pero inventarse una cifra sí."},
+ {g:"BS",n:"Deuda a largo",f:"Long-Term Debt",clave:1,
+  q:"Lo que se debe al banco a más de un año vista. Marta: los <b>20.000 €</b> que quedan del préstamo del horno.",
+  p:"Es el grueso de la deuda. Comparada con lo que gana la panadería, dice cuántos años tardaría en pagarla. Es el único número del método que puede llevarte a perderlo todo.",
+  t:"NO uses la fila «Total Debt»: incluye los alquileres. En META 2025 son 85.081 M$ frente a 58.744 M$ de deuda real."},
+ {g:"BS",n:"Alquileres a corto",f:"Current Portion of Leases",
+  q:"Lo que el contrato de alquiler obliga a pagar este año. El local de Marta: <b>10.000 €</b>.",
+  p:"El local alquilado es una herramienta del negocio, igual que el horno. Por eso, desde 2019, los alquileres comprometidos cuentan en el capital invertido.",
+  t:"Entra en el capital invertido pero NO en la deuda neta. Meterlo en los dos sitios castiga a Marta dos veces por el mismo local."},
+ {g:"BS",n:"Alquileres a largo",f:"Long-Term Leases",
+  q:"Lo que el contrato obliga a pagar en los años siguientes. Marta: <b>40.000 €</b> por los cuatro años que le quedan de contrato.",
+  p:"Igual que el anterior: capital invertido sí, deuda neta no.",
+  t:"En cadenas de tiendas o restaurantes esta partida es enorme y cambia mucho el resultado. No la dejes vacía por pereza."},
+ {g:"BS",n:"Patrimonio neto",f:"Total Equity",clave:1,
+  q:"Lo que quedaría para los dueños si Marta vendiera todo a precio de inventario y pagara todas las deudas: <b>32.000 €</b>.",
+  p:"Es la parte de la panadería que de verdad pertenece a los socios, y el corazón del capital invertido.",
+  t:"En empresas que llevan años recomprando sus propias acciones puede quedar mínimo o negativo. Eso infla el ROE (beneficio dividido entre patrimonio): no lo leas como calidad."},
+ {g:"BS",n:"Cuentas a cobrar",f:"Accounts Receivable, Total",
+  q:"Pan ya vendido pero aún no cobrado. Dos restaurantes pagan a Marta a fin de mes: <b>2.000 €</b> pendientes.",
+  p:"Es dinero atrapado. Junto con la harina almacenada y lo que se debe al molino forma el circulante (el dinero atrapado en el día a día).",
+  t:"Si crece mucho más rápido que las ventas, cuidado: se está vendiendo fiado para aparentar crecimiento. Es una de las señales de peligro más fiables."},
+ {g:"BS",n:"Cuentas a pagar",f:"Accounts Payable, Total",
+  q:"Compras hechas y aún no pagadas. Marta debe al molino la harina del mes: <b>3.000 €</b>.",
+  p:"Es financiación gratis: el molino pone la harina hoy y cobra el mes que viene. Cuanto más te fíen, menos dinero tuyo queda atrapado.",
+  t:"Un salto brusco al alza puede significar que la empresa estira los pagos porque va justa de dinero, no que negocie mejor."},
+ {g:"BS",n:"Inventarios",f:"Inventory",
+  q:"Mercancía comprada y aún sin vender. Los sacos de harina del almacén de Marta: <b>1.000 €</b>.",
+  p:"La parte más peligrosa del circulante: dinero convertido en cosas que quizá no se vendan.",
+  t:"En empresas de software está vacío, y es buenísima señal: no atrapan dinero en almacenes. Déjalo vacío, no pongas ceros."},
+ {g:"BS",n:"Ingresos diferidos",f:"Unearned Revenue Current, Total",
+  q:"Dinero cobrado por adelantado por trabajo aún no hecho. Marta cobró <b>500 €</b> de una tarta de boda que entregará el mes que viene.",
+  p:"Es lo contrario de fiar: los clientes financian a Marta. Se resta del dinero atrapado (el circulante), así que mejora el flujo de caja.",
+  t:"Solo se resta en negocios ligeros (suscripciones, encargos). Si no encuentras la fila, déjala vacía: no pasa nada."},
+
+ {g:"CF",n:"Depreciación y amortización",f:"Depreciation & Amortization, Total",clave:1,
+  q:"El desgaste anual de las máquinas. El horno y la furgoneta de Marta pierden <b>5.000 €</b> de valor cada año.",
+  p:"Sirve de red de seguridad: si no consigues la fila siguiente (el gasto real de mantener), el método usa este desgaste en su lugar.",
+  t:"Incluye dos cosas distintas: el desgaste físico (depreciación) y el desgaste de cosas intangibles como marcas compradas (amortización). Para mantener el negocio solo cuenta el primero."},
+ {g:"CF",n:"CapEx de mantenimiento",f:"Depreciation (solo) · o el dato que publique la directiva",
+  q:"Lo que cuesta que la panadería no se caiga a trozos. Marta: <b>5.000 €</b> al año en reparar el horno y la furgoneta.",
+  p:"Es la pieza que hace honesto el flujo de caja: se resta esto, no toda la inversión. Reparar el horno es un coste; la amasadora nueva es una apuesta.",
+  t:"Orden de búsqueda: ① la «Depreciation» sola del flujo de caja · ② la de la cuenta de resultados · ③ si solo aparece la amortización, usa el botón ƒ: D&A total − amortización · ④ si nada de esto existe, déjalo vacío y se usará la D&A total (opción prudente)."},
+ {g:"CF",n:"CapEx total",f:"Capital Expenditure",
+  q:"Todo lo invertido en máquinas y obras ese año. Marta: <b>9.000 €</b> — reparar el horno (5.000) y una amasadora nueva para producir más (4.000).",
+  p:"Restándole el desgaste (5.000 €) queda lo invertido en crecer: 4.000 €. Eso es una apuesta de futuro, no un coste del negocio.",
+  t:"Viene en negativo: mételo en positivo. Y no lo restes entero del flujo de caja; eso es justo lo que hacen las webs y por eso sus cifras engañan."},
+ {g:"CF",n:"Adquisiciones",f:"Cash Acquisitions",
+  q:"Dinero gastado en comprar otros negocios enteros. El año que Marta compró la panadería de la esquina: <b>15.000 €</b>.",
+  p:"Comparado con el crecimiento de las ventas, dice si el negocio crece por sí solo o crece a base de comprar.",
+  t:"Comprar mucho y luego apuntar «Impairments» (reconocer que se pagó de más) año tras año es una de las peores combinaciones que existen."},
+ {g:"CF",n:"Recompras",f:"Repurchase of Common Stock",
+  q:"Dinero gastado en recomprar sus propias participaciones y romperlas. Marta recompra las 5 de un primo que se jubila.",
+  p:"Al quedar menos trozos, el tuyo representa más panadería sin que hagas nada. <b>Si se paga buen precio</b>, es la forma más eficiente de devolver dinero al socio.",
+  t:"Recomprar caro destruye valor, como pagar de más por cualquier cosa. Si gasta mucho y el número de participaciones apenas baja, solo está tapando las que regala a los empleados."},
+ {g:"CF",n:"Dividendos",f:"Common & Preferred Stock Dividends Paid",
+  q:"Dinero repartido directamente a los socios. Marta reparte <b>10.000 €</b> entre los dueños a final de año.",
+  p:"Junto con recompras, inversiones y compras de negocios, dibuja qué hace la dueña con el dinero que sobra.",
+  t:"Un reparto mayor que la caja que genera el negocio se paga con deuda o vendiendo cosas. Eso no es un dividendo: es una liquidación lenta."},
+ {g:"CF",n:"Pagos en acciones (SBC)",f:"Stock-Based Compensation",
+  q:"Pagar a los empleados con trozos de la empresa en vez de con dinero. Marta promete 2 participaciones al año al panadero jefe.",
+  p:"Es un coste real que no sale de la caja, así que no aparece en el flujo de caja libre. Se vigila aparte.",
+  t:"Si la empresa recompra justo el mismo importe que regala en participaciones, tú no eres dueño de más empresa: solo se tapa el agujero."},
+
+ {g:"MK",n:"Precio al cierre del año",f:"Cotización a 31 de diciembre de cada año",clave:1,auto:1,
+  q:"Lo que costaba un trozo de la empresa al terminar cada año. Como si cada 31 de diciembre alguien tasara la panadería de Marta.",
+  p:"Con diez precios se ve cuánto ha pagado la gente históricamente por este negocio. Sin ese histórico, el precio razonable te lo tendrías que inventar.",
+  t:"No está en las pestañas de cuentas de ninguna web. En el valorador hay un botón que lo trae de Yahoo Finance para los diez años. Úsalo: es el único dato que no merece la pena buscar a mano."}
+];
+
+function pintarDatos(){
+  const U = urls($("tk").value);
+  $("datos").innerHTML = BLOQUES.map(b=>{
+    const fichas = D.filter(d=>d.g===b.k).map(d=>`
+      <details class="dato">
+        <summary>
+          <span class="dnom">${esc(d.n)}
+            ${d.clave?'<span class="b">clave</span>':""}
+            ${d.auto?'<span class="b calc">auto</span>':""}</span>
+          <span class="dfila">${esc(d.f)}</span>
+          <span class="dmas"></span>
+        </summary>
+        <div class="dbody">
+          <div class="db"><span class="t">Qué es</span>${d.q}</div>
+          <div class="db"><span class="t">Por qué está en el método</span>${d.p}</div>
+          <div class="db trampa"><span class="t">⚠ La trampa</span>${d.t}</div>
+          ${d.calc?`<div class="db calc"><span class="t">ƒ Si no lo encuentras</span>
+            Se calcula: <code>${esc(d.calc)}</code>. En el valorador tienes el botón <b>ƒ</b>
+            en esta misma fila: te pide esas partidas y la rellena sola.</div>`:""}
+        </div>
+      </details>`).join("");
+    return `<div class="grupo">
+      <div class="gcab"><span class="ic">${b.ico}</span><span class="ti">${esc(b.ti)}</span>
+        <span class="fu">${esc(b.n)}</span>
+        <a data-b="${b.k}" href="#" target="_blank" rel="noopener">abrir esta pestaña ↗</a></div>
+      ${fichas}</div>`;
+  }).join("");
+  pintarBloques();
+}
+
+/* ══ prompt de verificación ══ */
+function prompt(){
+  const T = ($("tk").value||"[TICKER]").trim().toUpperCase();
+  return `Actúa como auditor de datos financieros. Tu único trabajo es comprobar una transcripción.
+
+EMPRESA: ${T}
+
+Te adjunto:
+1. Capturas de pantalla de las cuentas anuales oficiales, tal y como aparecen en la web
+   de origen (cuenta de resultados, balance y flujo de caja).
+2. Una tabla con los datos que YO he transcrito a mi hoja de valoración.
+
+QUÉ TIENES QUE HACER
+Comparar celda por celda mi tabla contra las capturas, y devolverme SOLO las diferencias.
+
+REGLAS INNEGOCIABLES
+1. NO rellenes ningún hueco por tu cuenta. Si un dato no se lee con claridad en la
+   captura, dilo: "NO LEGIBLE". No lo deduzcas, no lo estimes, no lo busques en tu memoria.
+2. NO uses conocimiento propio sobre esta empresa. La única fuente válida es la captura.
+3. NO corrijas mi metodología. Si mi beneficio neto no coincide con el publicado, NO es un
+   error: lo calculo a propósito como EBIT + intereses netos − impuestos, para quitar
+   multas y partidas extraordinarias. Lo mismo con el flujo de caja libre y la deuda neta.
+   Limítate a las partidas copiadas directamente.
+4. Comprueba también estas tres cosas, que son los fallos más frecuentes:
+   · que las cifras sean ANUALES y no trimestrales
+   · que el orden de los años coincida (del más antiguo al más reciente)
+   · que los signos sean coherentes (impuestos y capex en positivo)
+
+FORMATO DE RESPUESTA
+Una tabla con: Partida | Año | Lo que yo he puesto | Lo que dice la captura | Diferencia
+Y al final, una línea: "X diferencias encontradas de Y celdas comprobadas".
+Si todo cuadra, dilo en una frase y no añadas nada más.
+
+MI TABLA:
+[pega aquí lo que te copie el botón «Verificar con IA» del valorador]`;
+}
+
+/* ══ eventos ══ */
+$("tk").addEventListener("input", ()=>{ pintarBloques(); $("prompt").textContent = prompt(); });
+$("copiar").onclick = async () => {
+  try{ await navigator.clipboard.writeText(prompt()); $("copiar").textContent = "✓ Copiado"; }
+  catch(e){ const r=document.createRange(); r.selectNode($("prompt"));
+    getSelection().removeAllRanges(); getSelection().addRange(r); $("copiar").textContent = "Selecciónalo y copia"; }
+  setTimeout(()=>$("copiar").textContent="Copiar el texto", 2200);
+};
+
+pintarDatos();
+$("prompt").textContent = prompt();
+</script>
+</body>
+</html>
