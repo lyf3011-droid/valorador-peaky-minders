@@ -843,8 +843,7 @@ async function traerPrecios(){
   if(!T){ $("progFalta").textContent = "Escribe primero el ticker arriba"; return; }
   const btn = $("traerPrecios"); btn.textContent = "Buscando…"; btn.disabled = true;
   try{
-    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(T)}?range=10y&interval=1mo`);
-    const j = await r.json();
+    const j = await yahoo(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(T)}?range=10y&interval=1mo`);
     const res = j.chart?.result?.[0];
     if(!res) throw new Error("sin datos");
     const ts = res.timestamp || [], cl = res.indicators.quote[0].close || [];
@@ -1646,6 +1645,24 @@ function enlazarValoracion(){
   });
 }
 
+/* ══════════════════ ACCESO A YAHOO ══════════════════
+   Desde un archivo local (file://) el navegador deja llamar a Yahoo directamente.
+   Desde un dominio https NO: Yahoo no autoriza ese origen. Por eso se intenta
+   primero la vía directa y, si el navegador la bloquea, se reintenta a través de
+   un reenviador público. Solo viaja el ticker; ningún dato tuyo sale de aquí.
+   Si las dos fallan, el campo se rellena a mano y la app funciona igual. */
+async function yahoo(url){
+  try{
+    const c = new AbortController(); setTimeout(()=>c.abort(), 9000);
+    const r = await fetch(url, {signal:c.signal});
+    if(r.ok) return await r.json();
+  }catch(e){ /* bloqueado por el navegador: seguimos */ }
+  const c2 = new AbortController(); setTimeout(()=>c2.abort(), 12000);
+  const r2 = await fetch("https://corsproxy.io/?url=" + encodeURIComponent(url), {signal:c2.signal});
+  if(!r2.ok) throw new Error("sin respuesta");
+  return await r2.json();
+}
+
 /* ══════════════════ MODELO DE NEGOCIO ══════════════════ */
 function promptNegocio(){
   const T = ($("ticker").value||"").trim().toUpperCase();
@@ -1756,8 +1773,7 @@ async function buscar(){
   $("idinfo").innerHTML = `<div class="note">Buscando <b>${esc(t)}</b>…</div>`;
   let info = {}, err = [];
   try{
-    const r = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?range=1d&interval=1d`);
-    const j = await r.json();
+    const j = await yahoo(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t)}?range=1d&interval=1d`);
     const m = j.chart?.result?.[0]?.meta;
     if(m){ info = {nombre:m.longName||m.shortName||"", precio:m.regularMarketPrice,
       moneda:({USD:"$",EUR:"€",GBP:"£",GBp:"p",CHF:"CHF",CAD:"C$",JPY:"¥"})[m.currency]||m.currency,
