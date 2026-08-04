@@ -134,6 +134,10 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   border:1px solid var(--line-strong);border-radius:6px;padding:.32rem .58rem;color:var(--muted-txt);
   background:transparent;cursor:pointer}
 #fuentes .alt a:hover,#fuentes .alt button:hover{border-color:var(--amber-line);color:var(--amber-strong)}
+#fuentes .alt a.busca{border-color:var(--amber-line);color:var(--amber-strong);background:var(--amber-muted)}
+#fuentes .red{margin-top:.7rem;padding-top:.7rem;border-top:1px solid var(--line);
+  font-size:.75rem;color:var(--muted-txt);line-height:1.55}
+#fuentes .red b{color:var(--amber)}
 
 /* barra de enlaces por pestaña */
 .srcbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:-.2rem 0 .9rem}
@@ -1027,13 +1031,18 @@ function pintarFuentes(){
       ${hay
         ? (slug
             ? `Abre cada tabla, ponla en <b>Annual</b>, selecciónala entera y <kbd>Ctrl</kbd>+<kbd>C</kbd>. Después, aquí abajo, <b>Pegar la tabla entera</b>.`
-            : `No tengo memorizada esta empresa, así que los enlaces abren la búsqueda de Investing. Pulsa <b>Enlace directo</b> y pégame su dirección una vez.`)
-        : `Escribe el ticker en el paso 1 —o pulsa <b>Ejemplo META</b> arriba— y estos cuatro enlaces te llevarán directos a sus tablas.`}
+            : `Estos enlaces abren la <b>búsqueda</b> de Investing: escribe ahí el nombre y entra en su ficha. Si quieres que vayan directos la próxima vez, pulsa <b>Recordar esta empresa</b>.`)
+        : `Escribe el ticker en el paso 1 —o pulsa <b>Ejemplo META</b> arriba— y estos cuatro enlaces te llevarán a sus tablas.`}
       <span class="alt">
+        ${hay?`<a class="busca" href="https://www.investing.com/search/?q=${encodeURIComponent(T)}"
+             target="_blank" rel="noopener" title="Siempre funciona: busca la empresa por su nombre o ticker">🔎 Buscar en Investing</a>`:""}
         ${hay?`<a href="https://stockanalysis.com/stocks/${encodeURIComponent(T)}/financials/" target="_blank" rel="noopener">StockAnalysis · gratis</a>`:""}
-        ${hay&&!slug?`<button type="button" id="fijarSlug2">🔗 Enlace directo…</button>`:""}
+        ${hay&&!slug?`<button type="button" id="fijarSlug2">🔗 Recordar esta empresa</button>`:""}
       </span>
-    </div>`;
+    </div>
+    ${hay&&slug?`<div class="red" >Si alguno de los cuatro enlaces no carga —Investing cambia sus
+      direcciones de vez en cuando—, usa <b>🔎 Buscar en Investing</b> y entra por ahí.
+      El resto de la herramienta funciona igual.</div>`:""}`;
   if($("fijarSlug2")) $("fijarSlug2").onclick = pedirSlug;
   $("fuentes").querySelectorAll(".fcard").forEach(a=>{
     a.addEventListener("click", e => {
