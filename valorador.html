@@ -414,18 +414,58 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
 /* ═══ P5 · impresión ═══ */
 @media print{
-  header,section,#railidx,.bar-actions,.actions{display:none!important}
-  body{background:#fff;color:#111;padding:0}
-  .step,.panel,figure,.kpi,.kid{border-color:#ddd!important;background:#fff!important;
-    box-shadow:none!important;break-inside:avoid}
-  .step::before{display:none}
-  .veredicto{background:#fff!important;border-color:#8a5a00!important}
-  .veredicto .n,.kpi.hero .v,.informe-cab .kicker,.step-n{color:#8a5a00!important;text-shadow:none!important}
-  .step-q,h2,h3{color:#111!important}
-  .sub,.step-w,.d,.expl,.kid{color:#333!important}
-  table.rs td,table.rs th{border-color:#ddd!important;color:#111!important}
-  .expl{background:#faf6ee!important}
-  .marca-pie{color:#666!important}
+  /* 1 · fuera todo lo que no es el informe */
+  header,section,#railidx,#nav,#tourFoco,#tourCaja,.bar-actions,.actions,
+  .cta-print button,button{display:none!important}
+
+  /* 2 · reset total: nada puede quedarse con la tinta clara del tema oscuro */
+  *{background-image:none!important;box-shadow:none!important;text-shadow:none!important;
+    color:#111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{background:#fff!important;padding:0;font-size:10.5pt}
+  .wrap{padding:0;max-width:100%}
+  .step,.panel,figure,.kpi,.kid,.negocio-doc,.veredicto,.expl,.note,.warn,.ok,pre,blockquote{
+    background:#fff!important;border-color:#ccc!important;break-inside:avoid}
+  .step{overflow:visible!important;page-break-inside:auto;padding:0 0 1.2rem;border:none;
+    border-top:1px solid #ddd;border-radius:0;margin-bottom:1rem}
+  .step::before{display:none!important}
+  .step.rv{opacity:1!important;transform:none!important}
+
+  /* 3 · el ámbar pasa a un dorado oscuro que sí se lee en papel */
+  .veredicto .n,.kpi.hero .v,.informe-cab .kicker,.step-n,.score-n,
+  .expl .t,.md-h,.negocio-doc b,.veredicto .d b,.kid b,.tag,
+  h2,h3,.step-q,figcaption{color:#8a5a00!important}
+  .veredicto,.expl,.note{border-left:3px solid #8a5a00!important}
+  .veredicto{border:1px solid #8a5a00!important}
+  .warn{border-left:3px solid #a11!important}
+  .ok{border-left:3px solid #157347!important}
+
+  /* 4 · texto secundario legible, no gris fantasma */
+  .sub,.step-w,.kpi .d,.kpi .k,.fsub,.d,.marca-pie,.brow .lb,
+  table.rs th,.negocio-doc i,code{color:#555!important}
+
+  /* 5 · las gráficas: su tinta era blanca translúcida y desaparecía en papel */
+  svg.ch text{fill:#444!important}
+  svg.ch line{stroke:#bbb!important}
+  svg.ch rect{fill:#8a5a00!important}
+  svg.ch polyline{stroke:#8a5a00!important}
+  svg.ch circle{fill:#8a5a00!important;stroke:#fff!important}
+
+  /* 6 · tablas y semáforo */
+  table.rs td,table.rs th{border-color:#ddd!important}
+  .tw{overflow:visible!important}
+  .dot{border:1px solid #666!important}
+  .dot.g{background:#157347!important}.dot.y{background:#b8860b!important}.dot.r{background:#a11!important}
+  .tag{border:1px solid #999!important;background:#f5f5f5!important}
+  .brow .fl{background:#8a5a00!important}
+  .brow .tr{background:#eee!important;border:1px solid #ddd}
+  .sello{border:1.5px solid #8a5a00!important;color:#8a5a00!important}
+  .sello i{background:#8a5a00!important}
+  .escala .rail{background:#ddd!important}
+  .escala .marca{background:#111!important}
+  pre,code{background:#f6f6f6!important;border-color:#ddd!important;color:#333!important}
+  a{color:#8a5a00!important;text-decoration:underline}
+  .marca-pie{display:block!important}
+  @page{margin:14mm 12mm}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}
   .step.rv{opacity:1;transform:none}}
