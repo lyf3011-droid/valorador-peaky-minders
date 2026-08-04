@@ -234,6 +234,42 @@ table.rs td.l{color:var(--soft)}
 #nav a:focus-visible{outline:2px solid var(--amber-strong);outline-offset:2px}
 @media print{#nav{display:none}}.hide{display:none}
 
+/* ═══ FICHA DEL MODELO DE NEGOCIO (Markdown renderizado) ═══ */
+.negocio-doc{border:1px solid var(--amber-line);border-radius:12px;padding:1.4rem clamp(1rem,2.5vw,1.7rem);
+  background:linear-gradient(160deg,rgba(245,158,11,.055),transparent 55%),var(--panel);
+  font-size:.93rem;line-height:1.72;color:var(--text)}
+.negocio-doc .nd-cab{font-family:var(--font-m);font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--amber);border-bottom:1px solid var(--line);padding-bottom:.6rem;margin-bottom:1.1rem}
+.negocio-doc p{margin:0 0 .85rem}
+.negocio-doc .md-h{font-family:var(--font-h);font-weight:800;letter-spacing:-.015em;
+  color:var(--amber-strong);margin:1.4rem 0 .55rem;line-height:1.25}
+.negocio-doc .md-h:first-of-type{margin-top:0}
+.negocio-doc .md-h1{font-size:1.35rem}
+.negocio-doc .md-h2{font-size:1.12rem}
+.negocio-doc .md-h3{font-size:.99rem;color:var(--text)}
+.negocio-doc .md-h4{font-size:.9rem;color:var(--soft);text-transform:uppercase;letter-spacing:.08em;
+  font-family:var(--font-m);font-weight:500}
+.negocio-doc ul,.negocio-doc ol{margin:0 0 .9rem 1.25rem}
+.negocio-doc li{margin-bottom:.42rem}
+.negocio-doc li::marker{color:var(--amber)}
+.negocio-doc b{color:var(--amber-strong);font-weight:700}
+.negocio-doc i{color:var(--soft)}
+.negocio-doc a{color:var(--amber);text-decoration:none;border-bottom:1px solid var(--amber-line)}
+.negocio-doc code{font-family:var(--font-m);font-size:.84em;background:var(--surface);
+  border:1px solid var(--line);border-radius:4px;padding:.06rem .34rem;color:var(--amber-strong)}
+.negocio-doc pre{font-family:var(--font-m);font-size:.72rem;line-height:1.45;background:var(--surface);
+  border:1px solid var(--line-strong);border-radius:8px;padding:.9rem 1rem;margin:0 0 1rem;
+  overflow-x:auto;color:var(--soft);white-space:pre}
+.negocio-doc blockquote{border-left:2px solid var(--amber-line);background:rgba(245,158,11,.05);
+  margin:0 0 1rem;padding:.7rem .95rem;border-radius:0 6px 6px 0;color:var(--soft);font-size:.9rem}
+.negocio-doc blockquote p:last-child{margin-bottom:0}
+.negocio-doc hr{border:none;border-top:1px solid var(--line);margin:1.3rem 0}
+.negocio-doc table.rs{font-size:.82rem}
+.negocio-doc .tw{margin:0 0 1rem}
+@media print{.negocio-doc{background:#fff!important;border-color:#ddd!important}
+  .negocio-doc .md-h,.negocio-doc b{color:#8a5a00!important}
+  .negocio-doc pre,.negocio-doc code{background:#f6f6f6!important;color:#333!important}}
+
 /* ═══ RECORRIDO GUIADO ═══ */
 #tourFoco{position:fixed;z-index:900;border-radius:10px;pointer-events:none;
   box-shadow:0 0 0 9999px rgba(0,0,0,.80), 0 0 0 2px var(--amber), 0 0 44px rgba(245,158,11,.45);
@@ -1704,8 +1740,8 @@ function informe(R){
        ${$("ticker").value?`<span style="color:var(--amber)">${esc($("ticker").value.toUpperCase())}</span>`:""}</h2>
      <p class="sub">${A[0]}–${A[A.length-1]} · ${R.span+1} ejercicios analizados${
        R.precio?` · precio de referencia ${mo(R.precio)}`:""} · Valoración Peaky Minders</p>
-     ${negocio ? `<div class="expl" style="margin-top:1.3rem"><span class="t">El negocio</span>
-       ${esc(negocio).replace(/\n+/g,"<br>")}</div>`
+     ${negocio ? `<div style="margin-top:1.4rem"><div class="negocio-doc">
+       <div class="nd-cab">El negocio · ficha de trabajo</div>${md2html(negocio)}</div></div>`
      : `<div class="note" style="margin-top:1.3rem">Aún no has explicado <b>a qué se dedica la empresa</b>.
        Súbelo arriba: entender el negocio va antes que cualquier número.</div>`}
    </div>`;
@@ -2332,28 +2368,136 @@ async function abrirIA(destino){
     $("progFalta").innerHTML = "Texto copiado. En Gemini solo tienes que pegar con <b>Ctrl+V</b>.";
   }
 }
+/* ── Markdown a HTML ────────────────────────────────────────────────
+   Las IA responden en Markdown: encabezados, negritas, listas, citas,
+   tablas y bloques de código con diagramas. Esto lo convierte en algo
+   legible. Se escapa el HTML de entrada ANTES de aplicar nada, así que
+   pegar texto de terceros no puede inyectar etiquetas.                */
+function md2html(src){
+  const bloques = [];
+  let t = String(src).replace(/\r\n?/g, "\n");
+
+  /* 1 · los bloques de código se apartan para que nada los toque */
+  t = t.replace(/```[^\n]*\n([\s\S]*?)```/g, (m, code) => {
+    bloques.push(code.replace(/\n+$/, ""));
+    return ` BLOQUE${bloques.length - 1} `;
+  });
+
+  t = esc(t);                                   /* a partir de aquí, todo es texto */
+
+  const enLinea = s => s
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*\*([^*]+)\*\*\*/g, '<b><i>$1</i></b>')
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<i>$2</i>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+             '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  const lineas = t.split("\n");
+  const out = [];
+  let i = 0;
+  const esTabla = l => /^\s*\|.*\|\s*$/.test(l);
+
+  while(i < lineas.length){
+    const l = lineas[i];
+
+    if(/^\s*$/.test(l)){ i++; continue; }
+
+    /* marcador de bloque de código */
+    const mb = l.match(/^ BLOQUE(\d+) $/);
+    if(mb){ out.push(`<pre>${esc(bloques[+mb[1]])}</pre>`); i++; continue; }
+
+    /* separador */
+    if(/^\s*(---+|___+|\*\*\*+)\s*$/.test(l)){ out.push('<hr>'); i++; continue; }
+
+    /* encabezados */
+    const mh = l.match(/^\s*(#{1,6})\s+(.*)$/);
+    if(mh){
+      const n = Math.min(mh[1].length, 4);
+      out.push(`<div class="md-h md-h${n}">${enLinea(mh[2].trim())}</div>`);
+      i++; continue;
+    }
+
+    /* tabla */
+    if(esTabla(l) && esTabla(lineas[i+1]||"") && /^[\s|:\-]+$/.test(lineas[i+1])){
+      const cel = fila => fila.trim().replace(/^\||\|$/g,"").split("|").map(c=>enLinea(c.trim()));
+      const cab = cel(l); i += 2;
+      const cuerpo = [];
+      while(i<lineas.length && esTabla(lineas[i])){ cuerpo.push(cel(lineas[i])); i++; }
+      out.push(`<div class="tw"><table class="rs"><thead><tr>${
+        cab.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${
+        cuerpo.map(f=>`<tr>${f.map(c=>`<td class="l">${c}</td>`).join("")}</tr>`).join("")
+      }</tbody></table></div>`);
+      continue;
+    }
+
+    /* cita */
+    if(/^\s*&gt;\s?/.test(l)){
+      const cita = [];
+      while(i<lineas.length && /^\s*&gt;\s?/.test(lineas[i])){
+        cita.push(lineas[i].replace(/^\s*&gt;\s?/,"")); i++;
+      }
+      /* dentro de una cita puede haber listas: se respetan */
+      const dentro = cita.map(x=>x.trimEnd());
+      let htmlCita = "", buf = [];
+      const vuelca = () => { if(buf.length){ htmlCita += `<p>${enLinea(buf.join(" "))}</p>`; buf=[]; } };
+      let lista = [];
+      const vuelcaLista = () => { if(lista.length){ htmlCita += `<ul>${lista.join("")}</ul>`; lista=[]; } };
+      dentro.forEach(x=>{
+        if(/^\s*$/.test(x)){ vuelca(); vuelcaLista(); return; }
+        if(/^\s*([-*+•·]|\d+[.)])\s+/.test(x)){ vuelca();
+          lista.push(`<li>${enLinea(x.replace(/^\s*([-*+•·]|\d+[.)])\s+/,""))}</li>`); return; }
+        vuelcaLista(); buf.push(x.trim());
+      });
+      vuelca(); vuelcaLista();
+      out.push(`<blockquote>${htmlCita}</blockquote>`);
+      continue;
+    }
+
+    /* listas */
+    if(/^\s*([-*+•·]|\d+[.)])\s+/.test(l)){
+      const ordenada = /^\s*\d+[.)]\s+/.test(l);
+      const items = [];
+      while(i<lineas.length && /^\s*([-*+•·]|\d+[.)])\s+/.test(lineas[i])){
+        let txt = lineas[i].replace(/^\s*([-*+•·]|\d+[.)])\s+/,"");
+        i++;
+        while(i<lineas.length && !/^\s*$/.test(lineas[i]) &&
+              !/^\s*([-*+•·]|\d+[.)])\s+/.test(lineas[i]) &&
+              !/^\s*#{1,6}\s/.test(lineas[i]) && !esTabla(lineas[i])){
+          txt += " " + lineas[i].trim(); i++;
+        }
+        items.push(`<li>${enLinea(txt)}</li>`);
+      }
+      out.push(`<${ordenada?"ol":"ul"}>${items.join("")}</${ordenada?"ol":"ul"}>`);
+      continue;
+    }
+
+    /* párrafo */
+    const par = [];
+    while(i<lineas.length && !/^\s*$/.test(lineas[i]) && !/^\s*#{1,6}\s/.test(lineas[i]) &&
+          !/^\s*&gt;\s?/.test(lineas[i]) && !/^\s*([-*+•·]|\d+[.)])\s+/.test(lineas[i]) &&
+          !esTabla(lineas[i]) && !/^ BLOQUE\d+ $/.test(lineas[i]) &&
+          !/^\s*(---+|___+)\s*$/.test(lineas[i])){
+      par.push(lineas[i].trim()); i++;
+    }
+    if(par.length) out.push(`<p>${enLinea(par.join(" "))}</p>`);
+  }
+  return out.join("");
+}
+function md2htmlInterno(txt, enLinea){
+  return txt.split(/\n{2,}/).filter(p=>p.trim())
+            .map(p=>`<p>${enLinea(p.replace(/\n/g," ").trim())}</p>`).join("");
+}
+
 /* ── el modelo de negocio, formateado en cuanto lo fijas ── */
 function pintarNegocio(){
   const t = $("negocio").value.trim();
   if(!t){ $("negocioVista").classList.add("hide"); $("negocio").classList.remove("hide"); return; }
-  const parrafos = t.split(/\n{2,}/).map(p=>p.trim()).filter(Boolean);
-  const html = parrafos.map(p=>{
-    /* las listas se detectan por el guion o el punto inicial */
-    if(/^\s*[-•*·]\s+/m.test(p) && p.split("\n").length>1)
-      return `<ul style="margin:.5rem 0 .5rem 1.1rem">${p.split("\n")
-        .map(l=>l.replace(/^\s*[-•*·]\s+/,"").trim()).filter(Boolean)
-        .map(l=>`<li style="margin-bottom:.35rem">${resalta(l)}</li>`).join("")}</ul>`;
-    return `<p style="margin-bottom:.7rem">${resalta(p.replace(/\n/g," "))}</p>`;
-  }).join("");
-  $("negocioVista").innerHTML = `<div class="expl" style="margin:0">
-      <span class="t">El negocio, en tus palabras</span>${html}</div>`;
+  $("negocioVista").innerHTML = `<div class="negocio-doc">
+      <div class="nd-cab">El negocio · ficha de trabajo</div>
+      ${md2html(t)}</div>`;
   $("negocioVista").classList.remove("hide");
   $("negocio").classList.add("hide");
-}
-/* resalta cifras y porcentajes para que la ficha se lea de un vistazo */
-function resalta(s){
-  return esc(s).replace(/(\d[\d.,]*\s?(?:%|millones|mil millones|M€|M\$|€|\$|puntos)?)/g,
-    m=>/\d/.test(m) ? `<b>${m}</b>` : m);
 }
 $("fijarNegocio").onclick = pintarNegocio;
 $("editarNegocio").onclick = () => {
