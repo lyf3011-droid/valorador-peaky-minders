@@ -139,6 +139,24 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   font-size:.75rem;color:var(--muted-txt);line-height:1.55}
 #fuentes .red b{color:var(--amber)}
 
+/* ═══ UN CUADRO DE PEGADO POR CUENTA ═══ */
+.pegagrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:.8rem}
+.pegabox{border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:.85rem .9rem}
+.pegabox.ok{border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.05)}
+.pegabox .pt{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
+.pegabox .pn{font-family:var(--font-h);font-weight:800;font-size:.9rem}
+.pegabox .pe{font-family:var(--font-m);font-size:.6rem;letter-spacing:.08em;color:var(--muted-txt)}
+.pegabox textarea{min-height:88px;font-size:.72rem}
+.pegabox .pb{display:flex;gap:.45rem;margin-top:.5rem;flex-wrap:wrap}
+.pegabox .pb button{font-family:var(--font-m);font-size:.66rem;padding:.35rem .65rem;border-radius:6px;
+  border:1px solid var(--line-strong);background:transparent;color:var(--soft);cursor:pointer}
+.pegabox .pb button.pri{background:var(--amber);color:#0a0a0a;border-color:var(--amber);font-weight:700}
+.pegabox .pb button:hover{border-color:var(--amber-line);color:var(--amber-strong)}
+.pegabox .pr{margin-top:.5rem;font-size:.74rem;line-height:1.5}
+.pegabox .pr .bien{color:var(--green)}
+.pegabox .pr .mal{color:var(--red)}
+.pegabox .pr ul{margin:.3rem 0 0 1rem;color:var(--soft)}
+
 /* barra de enlaces por pestaña */
 .srcbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:-.2rem 0 .9rem}
 .srcbar .lb{font-family:var(--font-m);font-size:.62rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
@@ -647,12 +665,10 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   </div>
 
   <div id="bloqueBox" class="hide">
-    <textarea id="bloque" placeholder="Pega aquí la tabla que copies de Investing — Income Statement, Balance Sheet o Cash Flow. Pega con Ctrl+V; no escribas el texto a mano."></textarea>
-    <div class="bar-actions" style="margin-top:.6rem">
-      <button class="b1" id="procesarBloque">Reconocer filas</button>
-      <button class="b2" id="cerrarBloque">Cerrar</button>
-    </div>
-    <div id="bloqueRes"></div>
+    <div class="note" style="margin-bottom:.9rem">Un cuadro por cuenta. Copia cada tabla de
+      InvestingPro y pégala en el suyo con <kbd>Ctrl</kbd>+<kbd>V</kbd>: se reconoce sola.
+      No hace falta que las pegues todas ni en orden.</div>
+    <div class="pegagrid" id="pegagrid"></div>
   </div>
 
   <div id="fuentes"></div>
@@ -1042,9 +1058,11 @@ function pintarEnlaces(){
     (T ? `<a class="pri" href="${inv}" target="_blank" rel="noopener">↗ Abrir ${esc(f.lab)} de ${esc(T)} en InvestingPro</a>
           <a href="${ya}" target="_blank" rel="noopener">Yahoo</a>` : ``) +
     `<span class="sep"></span>` +
-    (TAB==="MK" ? `<button type="button" id="traerPrecios">📈 Traer precios de Yahoo</button>` : ``) +
+    (TAB==="MK" ? `<button type="button" id="traerPrecios">📈 Traer precios de Yahoo</button>
+                   <button type="button" id="promptPrecios">🤖 Pedírselos a una IA</button>` : ``) +
     `<button type="button" id="verificarIA">🤖 Verificar con IA</button>`;
   if($("traerPrecios")) $("traerPrecios").onclick = traerPrecios;
+  if($("promptPrecios")) $("promptPrecios").onclick = pedirPreciosIA;
   $("verificarIA").onclick = verificarIA;
 }
 
@@ -1088,7 +1106,7 @@ function pintarFuentes(){
     a.addEventListener("click", e => {
       /* al abrir una tabla, la pestaña de abajo se pone en esa misma */
       const g = a.dataset.g;
-      if(g && g!==TAB){ TAB=g; pintarTabs(); pintarEnlaces(); pintarFuentes(); pintarMatriz(); }
+      if(g && g!==TAB){ TAB=g; pintarTabs(); pintarEnlaces(); pintarFuentes(); pintarMatriz(); pintarPegaGrid(); }
     });
   });
 }
@@ -1194,6 +1212,73 @@ function pintarMatriz(){
   $("matriz").querySelectorAll("[data-calc]").forEach(b=>b.onclick=()=>abrirCalc(b.dataset.calc));
   $("matriz").querySelectorAll("[data-aplicar]").forEach(b=>b.onclick=()=>aplicarCalc(b.dataset.aplicar));
   progreso();
+}
+
+/* ── plan B: pedirle los precios de cierre a una IA y pegarlos ── */
+function pedirPreciosIA(){
+  const T = ($("ticker").value||"").trim().toUpperCase() || "[TICKER]";
+  const nom = $("nombre").value.trim();
+  const A = anios();
+  const p =
+`Dame el precio de cierre de la acción ${nom?nom+" ("+T+")":T} al final de cada uno de estos ejercicios:
+${A.join(", ")}.
+
+REGLAS
+- Precio de cierre del ÚLTIMO día de negociación del ejercicio, sin ajustar por dividendos.
+- Si la empresa cierra su ejercicio fiscal en un mes distinto a diciembre, usa el último
+  día de negociación de SU ejercicio fiscal y dímelo al principio.
+- Si en algún año la empresa aún no cotizaba, escribe "-" en ese año.
+- No inventes ningún dato. Si no lo tienes, escribe "no disponible".
+- Indícame de dónde sacas los precios.
+
+FORMATO DE RESPUESTA
+Devuélvemelos en UNA SOLA LÍNEA, separados por espacios, del año más antiguo al más
+reciente, con punto decimal y sin símbolo de moneda. Ejemplo para diez años:
+115.05 176.46 131.09 205.25 273.16 336.35 120.34 353.96 585.51 660.09
+
+Después de esa línea, añade la tabla año-precio para que yo pueda revisarla.`;
+  $("bloqueBox").classList.remove("hide");
+  $("pegagrid").innerHTML =
+    `<div class="pegabox" style="grid-column:1/-1">
+      <div class="pt"><span class="pn">Precios de cierre · pedírselos a una IA</span></div>
+      <div style="font-size:.8rem;color:var(--soft);margin-bottom:.6rem">
+        Copia este texto, pégalo en ChatGPT, Gemini o Claude, y trae la línea de números.</div>
+      <textarea id="promptPreciosTxt" readonly style="min-height:150px">${esc(p)}</textarea>
+      <div class="pb">
+        <button type="button" class="pri" id="copiarPrecios">Copiar el texto</button>
+        <button type="button" id="irClaudePrecios">Abrir en Claude →</button>
+        <button type="button" id="irGeminiPrecios">Abrir Gemini →</button>
+      </div>
+      <div style="font-size:.8rem;color:var(--soft);margin:.9rem 0 .4rem">
+        Pega aquí la línea de ${N} números que te devuelva:</div>
+      <textarea id="pegaPrecios" placeholder="115.05 176.46 131.09 …" style="min-height:60px"></textarea>
+      <div class="pb"><button type="button" class="pri" id="aplicarPrecios">Rellenar los ${N} años</button></div>
+      <div class="pr" id="resPrecios"></div>
+    </div>`;
+  $("copiarPrecios").onclick = async () => {
+    const b=$("copiarPrecios");
+    try{ await navigator.clipboard.writeText(p); b.textContent="✓ Copiado"; }
+    catch(e){ $("promptPreciosTxt").select(); b.textContent="Selecciónalo y copia"; }
+    setTimeout(()=>b.textContent="Copiar el texto",2200);
+  };
+  const abrir = async (url) => { try{ await navigator.clipboard.writeText(p); }catch(e){}
+    window.open(url,"_blank","noopener"); };
+  $("irClaudePrecios").onclick = () => abrir("https://claude.ai/new?q="+encodeURIComponent(p));
+  $("irGeminiPrecios").onclick = () => abrir("https://gemini.google.com/app");
+  $("aplicarPrecios").onclick = () => {
+    const nums = tokensNum($("pegaPrecios").value);
+    const r = $("resPrecios");
+    if(nums.length < 2){ r.innerHTML = `<span class="mal">No he encontrado números. Pega la línea entera.</span>`; return; }
+    let arr = nums.slice();
+    if($("invertir").checked) arr.reverse();
+    if(arr.length > N) arr = arr.slice(-N);
+    D.precioAno = new Array(N).fill(null);
+    arr.forEach((v,x)=>{ const pos=N-arr.length+x; if(pos>=0) D.precioAno[pos]=v; });
+    pintarMatriz();
+    r.innerHTML = `<span class="bien">✓ ${arr.filter(v=>v!==null).length} precios puestos.</span>
+      ${arr.length<N?` Faltan ${N-arr.length}: revísalos en la tabla.`:""}`;
+  };
+  $("bloqueBox").scrollIntoView({behavior:modoScroll(),block:"center"});
 }
 
 /* ── traer precios de cierre de cada año desde Yahoo ── */
@@ -1311,6 +1396,109 @@ function leerHTMLInvesting(html){
       if(val.filter(v=>v!==null).length >= 3) out.push({et, val});
     });
   });
+  return out;
+}
+
+/* ── un cuadro de pegado por cuenta ── */
+const HTML_CAJA = {};                       /* HTML pegado en cada cuadro */
+function pintarPegaGrid(){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const slug = slugDe(T);
+  $("pegagrid").innerHTML = ["IS","BS","CF"].map(g=>{
+    const f = FUENTE[g];
+    const url = !T ? null
+      : slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
+             : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
+    const total = CONCEPTOS.filter(c=>c.g===g).length;
+    const hechos = CONCEPTOS.filter(c=>c.g===g && D[c.k].some(v=>v!==null)).length;
+    return `<div class="pegabox${hechos===total?" ok":""}" data-g="${g}">
+      <div class="pt"><span class="pn">${esc(G[g])}</span>
+        <span class="pe">${hechos}/${total} partidas</span></div>
+      ${url?`<a class="th-link" href="${url}" target="_blank" rel="noopener">abrir en InvestingPro ↗</a>`:""}
+      <textarea data-pega="${g}" placeholder="Pega aquí la tabla de ${esc(G[g].toLowerCase())}…"></textarea>
+      <div class="pb">
+        <button type="button" class="pri" data-leer="${g}">Reconocer</button>
+        <button type="button" data-limpiar="${g}">Limpiar</button>
+      </div>
+      <div class="pr" data-res="${g}"></div>
+    </div>`;
+  }).join("");
+
+  $("pegagrid").querySelectorAll("textarea").forEach(ta=>{
+    ta.addEventListener("paste", e => {
+      const dt = e.clipboardData || window.clipboardData;
+      const html = dt ? dt.getData("text/html") : "";
+      HTML_CAJA[ta.dataset.pega] = (html && html.includes("<table")) ? html : null;
+      setTimeout(()=>leerCaja(ta.dataset.pega), 80);      /* reconoce solo al pegar */
+    });
+  });
+  $("pegagrid").querySelectorAll("[data-leer]").forEach(b=>b.onclick=()=>leerCaja(b.dataset.leer));
+  $("pegagrid").querySelectorAll("[data-limpiar]").forEach(b=>b.onclick=()=>{
+    const g=b.dataset.limpiar;
+    CONCEPTOS.filter(c=>c.g===g).forEach(c=>D[c.k]=new Array(N).fill(null));
+    HTML_CAJA[g]=null; pintarMatriz(); pintarPegaGrid();
+  });
+}
+
+function leerCaja(g){
+  const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
+  const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
+  const soloDe = CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
+  let filas = [];
+  if(HTML_CAJA[g]){ try{ filas = leerHTMLInvesting(HTML_CAJA[g]); }catch(e){} }
+  if(!filas.length && ta.value.trim()) filas = leerTextoPlano(ta.value);
+
+  if(!filas.length){
+    caja.innerHTML = `<span class="mal">No he leído ninguna tabla.</span> Copia desde
+      «Period Ending» hasta el final y <b>pega</b> aquí (no escribas el texto).`;
+    return;
+  }
+  const puestas = [];
+  for(const f of filas){
+    const et = normEt(f.et);
+    let key = null;
+    for(const [k,alts] of Object.entries(SIN)){ if(alts.includes(et)){ key=k; break; } }
+    if(!key || !soloDe.includes(key)) continue;          /* cada cuadro, lo suyo */
+    if(puestas.some(p=>p.k===key)) continue;
+    const con = CONCEPTOS.find(c=>c.k===key);
+    let arr = f.val.slice();
+    if(con.pos) arr = arr.map(v=>v===null?null:Math.abs(v));
+    if($("invertir").checked) arr.reverse();
+    if(arr.length > N) arr = arr.slice(-N);
+    D[key] = new Array(N).fill(null);
+    arr.forEach((v,x)=>{ const p = N-arr.length+x; if(p>=0) D[key][p]=v; });
+    const llenos = arr.filter(v=>v!==null);
+    puestas.push({k:key, lab:con.lab, ult:llenos.length?llenos[llenos.length-1]:null});
+  }
+  pintarMatriz();
+  const faltan = CONCEPTOS.filter(c=>c.g===g && c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
+  caja.innerHTML = puestas.length
+    ? `<span class="bien">✓ ${puestas.length} partidas leídas.</span>
+       <ul>${puestas.map(p=>`<li>${esc(p.lab)} · último ${p.ult===null?"—":nf(p.ult,0)}</li>`).join("")}</ul>
+       ${faltan.length?`<div style="margin-top:.4rem;color:var(--amber)">Falta: ${esc(faltan.join(", "))}</div>`:""}`
+    : `<span class="mal">He leído la tabla pero no reconozco sus filas.</span>
+       ¿Es la tabla de ${esc(G[g].toLowerCase())} en inglés?`;
+  pintarPegaGrid();
+  $("pegagrid").querySelector(`textarea[data-pega="${g}"]`).value = ta.value;
+  $("pegagrid").querySelector(`[data-res="${g}"]`).innerHTML = caja.innerHTML;
+}
+
+/* respaldo cuando el portapapeles no trajo HTML */
+function leerTextoPlano(txt){
+  const out = [];
+  const L = txt.split(/\n/).map(x=>x.trim());
+  for(let i=0;i<L.length;i++){
+    if(!L[i]) continue;
+    const bajo = L[i].toLowerCase().replace(/\s+/g," ");
+    for(const [k,alts] of Object.entries(SIN)){
+      const alt = alts.find(a=>bajo===a || bajo.startsWith(a+" ") || bajo.startsWith(a+"\t"));
+      if(!alt) continue;
+      let nums = tokensNum(L[i].slice(alt.length));
+      if(nums.length < 3 && L[i+1]) nums = tokensNum(L[i+1]);
+      if(nums.length >= 3) out.push({et:alt, val:nums});
+      break;
+    }
+  }
   return out;
 }
 
@@ -2093,6 +2281,9 @@ function resumen(R){
 
     <h3>Conclusiones: cómo se leen estos datos juntos</h3>
     ${conclusiones(R)}
+    <h3>Cómo hemos llegado a este número</h3>
+    ${cadenaValoracion(R)}
+
     <h3>El paso que falta: qué dicen los analistas</h3>
     <div class="note" style="margin-top:.6rem">
       <b>Este informe proyecta el futuro extrapolando el pasado.</b> Coge lo que la empresa ha hecho
@@ -2250,6 +2441,75 @@ function conclusiones(R){
 
   return out.map(([ic,t,txt])=>`<div class="expl" style="margin:.8rem 0">
     <span class="t">${ic} ${esc(t)}</span>${txt}</div>`).join("");
+}
+
+/* ── la cadena entera: del dato al valor, y el precio DESPUÉS ── */
+function cadenaValoracion(R){
+  if(!R.v || !R.v.idc) return `<div class="note">Faltan datos para reconstruir la cadena.</div>`;
+  const v=R.v, d=R.der, L=R.L, A=R.A;
+  const pasos = [
+    ["1","Lo que gana operando", `EBITDA de ${A[L]}`, nf(d.ebitda?d.ebitda[L]:R.ebitda[L],0)+" M",
+     "Copiado de la cuenta de resultados de InvestingPro."],
+    ["2","Menos lo que cuesta no morir", "CapEx de mantenimiento", "− "+nf(d.capexMant[L],0)+" M",
+     "Solo el gasto de reponer, no el de crecer. Esta es la decisión que más cambia el resultado."],
+    ["3","Menos Hacienda y el banco", "impuestos e intereses",
+     (R.interes[L]>=0?"+ ":"− ")+nf(Math.abs(R.interes[L]),0)+" M · − "+nf(R.impuestos[L],0)+" M",
+     "Lo que se llevan antes de que el dinero sea tuyo."],
+    ["4","Menos lo que se queda atrapado", "variación de circulante",
+     (d.cwc[L]>=0?"− ":"+ ")+nf(Math.abs(d.cwc[L]),0)+" M",
+     "Almacén y facturas sin cobrar."],
+    ["5","= Dinero real del año", `flujo de caja libre ${A[L]}`, nf(d.fcf[L],0)+" M",
+     "Este número no está publicado en ninguna web: se construye."],
+    ["6","Proyectado a cinco años", `escalera ${v.pasosF.map(g=>nf(g,0)+"%").join(" → ")}`,
+     nf(v.fcf5,0)+" M", "El crecimiento se frena cada año. Es tu primera decisión."],
+    ["7","× lo que el mercado paga", `múltiplo EV/FCF ${mu(v.multObj)}`,
+     nf(v.multObj*v.fcf5,0)+" M", "Salido de lo que ha pagado estos años. Es tu segunda decisión."],
+    ["8","− deuda, ÷ acciones", `deuda ${nf(v.dn5,0)} M · ${nf(v.acc5,0)} M acciones`,
+     mo(R.P.evFcf), "Lo que valdría una acción dentro de cinco años."],
+    ["9","÷ tu rentabilidad exigida", `(1 + ${nf(v.obj*100,0)}%)⁵ = ${nf(v.factor,3)}`,
+     mo(v.idc), "Traído a hoy. Éste es el precio máximo que puedes pagar."]
+  ];
+  const barato = R.precio <= v.idc;
+  return `
+  <div class="tw"><table class="rs">
+    <thead><tr><th>Paso</th><th>De dónde sale</th><th style="text-align:right">Resultado</th><th>Por qué</th></tr></thead>
+    <tbody>${pasos.map(p=>`<tr>
+      <td class="l"><b style="color:var(--amber)">${p[0]}</b> ${esc(p[1])}</td>
+      <td class="l" style="font-family:var(--font-m);font-size:.76rem">${esc(p[2])}</td>
+      <td class="n" style="color:var(--amber-strong)"><b>${p[3]}</b></td>
+      <td class="l" style="font-size:.82rem">${esc(p[4])}</td></tr>`).join("")}
+    </tbody></table></div>
+
+  <div class="veredicto" style="margin-top:1.3rem">
+    <div class="k">Primero el valor · después el precio</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-top:1rem">
+      <div>
+        <div class="k" style="color:var(--amber)">Lo que vale para ti</div>
+        <div class="n" style="font-size:clamp(2.2rem,5.5vw,3.4rem)">${mo(v.idc)}</div>
+        <div class="d">Tu precio máximo para ganar un ${nf(v.obj*100,0)}% anual</div>
+      </div>
+      <div>
+        <div class="k">Lo que cuesta hoy</div>
+        <div class="n" style="font-size:clamp(2.2rem,5.5vw,3.4rem);color:var(--text);text-shadow:none">${mo(R.precio)}</div>
+        <div class="d">Lo que pide el mercado</div>
+      </div>
+      <div>
+        <div class="k">La diferencia</div>
+        <div class="n" style="font-size:clamp(2.2rem,5.5vw,3.4rem);color:var(--${barato?"green":"red"});text-shadow:none">${
+          v.recorr>=0?"+":"−"}${pc(Math.abs(v.recorr))}</div>
+        <div class="d">${barato?"El valor está por encima del precio":"El precio está por encima del valor"}</div>
+      </div>
+    </div>
+    <div class="d" style="margin-top:1.2rem;border-top:1px solid var(--line);padding-top:.9rem">
+      ${barato
+        ? `Con estos supuestos, <b style="color:var(--amber-strong)">el valor supera al precio</b>.
+           Eso no dice «compra»: dice que el precio ha dejado de ser el obstáculo y que ahora toca
+           confirmar que los supuestos de los pasos 6 y 7 se sostienen.`
+        : `Con estos supuestos, <b style="color:var(--amber-strong)">el precio supera al valor</b>.
+           Para justificar lo que pide el mercado hoy harían falta un crecimiento o un múltiplo
+           mayores que los que has puesto. Escríbelos y mira si te los crees.`}
+    </div>
+  </div>`;
 }
 
 function veredicto(R){
@@ -2839,17 +3099,10 @@ $("buscar").onclick = buscar;
 $("ticker").onkeydown = e => { if(e.key==="Enter"){ e.preventDefault(); buscar(); } };
 $("ticker").oninput = () => { pintarEnlaces(); pintarFuentes(); };
 $("analizar").onclick = () => { MON = $("moneda").value||"$"; informe(calcular()); };
-$("abrirBloque").onclick = () => $("bloqueBox").classList.toggle("hide");
-$("cerrarBloque").onclick = () => $("bloqueBox").classList.add("hide");
-$("procesarBloque").onclick = procesarBloque;
-$("bloque").addEventListener("paste", e => {
-  const dt = e.clipboardData || window.clipboardData;
-  const html = dt ? dt.getData("text/html") : "";
-  HTML_PEGADO = (html && html.includes("<table")) ? html : null;
-  if(HTML_PEGADO){
-    $("bloqueRes").innerHTML = '<div class="note">Tabla detectada. Pulsa <b>Reconocer filas</b>.</div>';
-  }
-});
+$("abrirBloque").onclick = () => { $("bloqueBox").classList.toggle("hide"); pintarPegaGrid(); };
+
+
+
 $("limpiar").onclick = () => {
   CONCEPTOS.forEach(c=>D[c.k]=new Array(N).fill(null));
   ["ticker","nombre","precio"].forEach(i=>$(i).value="");
@@ -2872,7 +3125,7 @@ $("demoMsftNav").onclick = () => $("demoMsft").click();
 
 ANIO_FIN = new Date().getFullYear()-1;
 $("anioFin").value = ANIO_FIN;
-pintarTabs(); pintarEnlaces(); pintarFuentes(); pintarMatriz();
+pintarTabs(); pintarEnlaces(); pintarFuentes(); pintarMatriz(); pintarPegaGrid();
 pintarSonido();
 $("btnSonido").onclick = () => { SND.on = !SND.on;
   localStorage.setItem("sonido", SND.on ? "1" : "0"); pintarSonido(); if(SND.on) SND.toca(); };
