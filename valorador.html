@@ -116,6 +116,11 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   background:transparent;cursor:pointer;transition:all .15s}
 .srcbar a:hover,.srcbar button:hover{border-color:var(--amber-line);color:var(--amber-strong);background:var(--amber-muted)}
 .srcbar a.pri{border-color:var(--amber-line);color:var(--amber-strong)}
+.th-link{color:var(--amber);text-decoration:none;font-family:var(--font-m);font-size:.6rem;
+  letter-spacing:.06em;text-transform:none;border-bottom:1px solid var(--amber-line);
+  padding-bottom:1px;white-space:nowrap}
+.th-link:hover{color:var(--amber-strong)}
+.th-link:focus-visible{outline:2px solid var(--amber-strong);outline-offset:2px}
 .srcbar a:focus-visible,.srcbar button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:2px}
 .srcbar .sep{flex:1}
 table.mx input{font-size:.82rem;padding:.35rem .3rem;text-align:right;border-radius:4px;min-width:78px;
@@ -914,28 +919,82 @@ function pintarTabs(){
 
 /* ── enlaces directos a la fuente, por pestaña ── */
 const FUENTE = {
-  IS:{sa:"financials/",                    ya:"financials",    lab:"cuenta de resultados"},
-  BS:{sa:"financials/balance-sheet/",      ya:"balance-sheet", lab:"balance"},
-  CF:{sa:"financials/cash-flow-statement/",ya:"cash-flow",     lab:"flujo de caja"},
-  MK:{sa:"history/",                       ya:"history",       lab:"cotización histórica"}
+  IS:{sa:"financials/",                    ya:"financials",    inv:"income-statement", lab:"cuenta de resultados"},
+  BS:{sa:"financials/balance-sheet/",      ya:"balance-sheet", inv:"balance-sheet",    lab:"balance"},
+  CF:{sa:"financials/cash-flow-statement/",ya:"cash-flow",     inv:"cash-flow",        lab:"flujo de caja"},
+  MK:{sa:"history/",                       ya:"history",       inv:"historical-data",  lab:"cotización histórica"}
 };
+
+/* Investing no usa el ticker en su URL, sino un nombre interno. Estos están
+   comprobados uno a uno contra la web americana (www.investing.com). Para el
+   resto de empresas, el usuario pega la URL una vez y queda guardada. */
+const SLUG_INV = {
+  META:"facebook-inc",     MSFT:"microsoft-corp",   AAPL:"apple-computer-inc",
+  GOOGL:"google-inc",      GOOG:"google-inc",       AMZN:"amazon-com-inc",
+  NVDA:"nvidia-corp",      V:"visa-inc",            MA:"mastercard-cl-a",
+  ADBE:"adobe-sys-inc",    COST:"costco-whsl-corp-new", NFLX:"netflix-inc",
+  TSLA:"tesla-motors",     PYPL:"paypal-holdings-inc",  AXP:"american-express",
+  JPM:"jp-morgan-chase",   CRM:"salesforce-com",    ORCL:"oracle-corp",
+  ASML:"asml-holdings",    CPRT:"copart-inc",       MCO:"moodys-corp",
+  SPGI:"mcgraw-hill",      MCD:"mcdonalds",         KO:"coca-cola-co",
+  DIS:"walt-disney-company", AMD:"adv-micro-device", QCOM:"qualcomm-inc",
+  AZO:"autozone-inc",      CTAS:"cintas-corp",      RACE:"ferrari-nv",
+  INTC:"intel-corp",       BRK:"berkshire-hathaway"
+};
+function slugGuardados(){
+  try{ return JSON.parse(localStorage.getItem("slugsInvesting")||"{}"); }catch(e){ return {}; }
+}
+function slugDe(t){
+  const T = (t||"").trim().toUpperCase();
+  return slugGuardados()[T] || SLUG_INV[T] || null;
+}
+/* de una URL de Investing saca el nombre interno y lo recuerda para ese ticker */
+function guardarSlug(url){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const m = String(url).match(/investing\.com\/equities\/([a-z0-9à-ÿ.,'’\-]+?)(?:-income-statement|-balance-sheet|-cash-flow|-historical-data|-ratios|-financial-summary|-earnings|\/|\?|$)/i);
+  if(!T || !m) return false;
+  const g = slugGuardados(); g[T] = m[1];
+  try{ localStorage.setItem("slugsInvesting", JSON.stringify(g)); }catch(e){}
+  return m[1];
+}
 function pintarEnlaces(){
   const T = ($("ticker").value||"").trim().toUpperCase();
   const f = FUENTE[TAB];
+  const slug = slugDe(T);
   const sa = T ? `https://stockanalysis.com/stocks/${encodeURIComponent(T)}/${f.sa}` : null;
-  const inv= T ? `https://www.investing.com/search/?q=${encodeURIComponent(T)}` : null;
+  /* si conocemos el nombre interno, el enlace abre la tabla exacta; si no, la búsqueda */
+  const inv = slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
+            : (T ? `https://www.investing.com/search/?q=${encodeURIComponent(T)}` : null);
   const ya = T ? `https://finance.yahoo.com/quote/${encodeURIComponent(T)}/${f.ya}` : null;
   $("srcbar").innerHTML =
     `<span class="lb">Abrir ${esc(f.lab)} de ${T||"…"}</span>` +
-    (T ? `<a class="pri" href="${inv}" target="_blank" rel="noopener">InvestingPro ↗ fuente principal</a>
+    (T ? `<a class="pri" href="${inv}" target="_blank" rel="noopener">${
+            slug ? `InvestingPro ↗ ${esc(f.lab)}` : "InvestingPro ↗ buscar"}</a>
           <a href="${sa}" target="_blank" rel="noopener">StockAnalysis · sin suscripción</a>
           <a href="${ya}" target="_blank" rel="noopener">Yahoo</a>`
        : `<span style="font-size:.76rem;color:var(--muted)">escribe el ticker arriba y aparecerán los enlaces</span>`) +
+    (T && !slug ? `<button type="button" id="fijarSlug" title="Pega la URL de Investing de esta empresa y los enlaces pasarán a ser directos">🔗 Enlace directo…</button>` : ``) +
     `<span class="sep"></span>` +
     (TAB==="MK" ? `<button type="button" id="traerPrecios">📈 Traer precios de Yahoo</button>` : ``) +
     `<button type="button" id="verificarIA">🤖 Verificar con IA</button>`;
   if($("traerPrecios")) $("traerPrecios").onclick = traerPrecios;
+  if($("fijarSlug")) $("fijarSlug").onclick = pedirSlug;
   $("verificarIA").onclick = verificarIA;
+}
+
+/* el usuario pega la URL de Investing una vez y esta empresa queda memorizada */
+function pedirSlug(){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const u = window.prompt(
+    `Abre ${T} en Investing.com y pega aquí la dirección de la página.\n\n` +
+    `Ejemplo:  https://www.investing.com/equities/microsoft-corp\n\n` +
+    `A partir de ahí, los tres enlaces de esta empresa irán directos a su tabla.`, "");
+  if(!u) return;
+  const s = guardarSlug(u);
+  pintarEnlaces();
+  $("progFalta").innerHTML = s
+    ? `✓ <b>${esc(T)}</b> memorizada. Los enlaces ya van directos a su tabla en Investing.`
+    : `No he reconocido esa dirección. Debe ser del tipo <b>investing.com/equities/…</b>`;
 }
 
 /* ── calculadoras ƒ ── */
@@ -963,7 +1022,13 @@ function aplicarCalc(k){
 function pintarMatriz(){
   const A = anios();
   const filas = CONCEPTOS.filter(c=>c.g===TAB);
-  let h = `<thead><tr><th class="c0">Partida</th>${A.map(a=>`<th>${a}</th>`).join("")}</tr></thead><tbody>`;
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const slug = slugDe(T);
+  const urlInv = slug ? `https://www.investing.com/equities/${slug}-${FUENTE[TAB].inv}`
+               : (T ? `https://www.investing.com/search/?q=${encodeURIComponent(T)}` : null);
+  let h = `<thead><tr><th class="c0">Partida${
+    urlInv ? ` · <a href="${urlInv}" target="_blank" rel="noopener" class="th-link">abrir en InvestingPro ↗</a>` : ""
+  }</th>${A.map(a=>`<th>${a}</th>`).join("")}</tr></thead><tbody>`;
   filas.forEach(c=>{
     h += `<tr><td class="c0"><div class="cl">${esc(c.lab)}${c.req?'<span class="req">●</span>':""}`
        + (c.calc?`<button type="button" class="fx" data-calc="${c.k}" title="Calcular a partir de otras dos partidas">ƒ</button>`:"")
