@@ -108,6 +108,33 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
 .helpbar .msg{font-size:.76rem;color:var(--soft)}
 .helpbar .msg b{color:var(--d2-hi);font-family:var(--font-m)}
 
+/* ═══ PANEL DE FUENTES · los enlaces para copiar las tablas ═══ */
+#fuentes{border:1px solid var(--amber-line);border-radius:12px;padding:1.1rem 1.2rem;margin:0 0 1rem;
+  background:linear-gradient(150deg,rgba(245,158,11,.08),transparent 62%),var(--panel)}
+#fuentes .ft{font-family:var(--font-m);font-size:.64rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:.85rem}
+#fuentes .ft b{color:var(--amber-strong)}
+.fcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:.6rem}
+.fcard{display:flex;flex-direction:column;gap:.2rem;text-decoration:none;border:1px solid var(--line-strong);
+  border-radius:9px;padding:.75rem .9rem;background:var(--surface);transition:all .15s}
+.fcard:hover{border-color:var(--amber);background:var(--amber-muted);transform:translateY(-1px)}
+.fcard:focus-visible{outline:2px solid var(--amber-strong);outline-offset:2px}
+.fcard .n{font-family:var(--font-h);font-weight:800;font-size:.92rem;color:var(--text);
+  display:flex;align-items:center;justify-content:space-between;gap:.5rem}
+.fcard .n span{color:var(--amber);font-weight:400}
+.fcard .d{font-family:var(--font-m);font-size:.6rem;color:var(--muted-txt);letter-spacing:.05em}
+.fcard.aqui{border-color:var(--amber);background:var(--amber-muted)}
+.fcard.aqui .n{color:var(--amber-strong)}
+.fcard.off{opacity:.4;pointer-events:none}
+#fuentes .pie{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-top:.9rem;
+  font-size:.8rem;color:var(--soft)}
+#fuentes .pie kbd{font-size:.72em}
+#fuentes .alt{margin-left:auto;display:flex;gap:.45rem;flex-wrap:wrap}
+#fuentes .alt a,#fuentes .alt button{font-family:var(--font-m);font-size:.66rem;text-decoration:none;
+  border:1px solid var(--line-strong);border-radius:6px;padding:.32rem .58rem;color:var(--muted-txt);
+  background:transparent;cursor:pointer}
+#fuentes .alt a:hover,#fuentes .alt button:hover{border-color:var(--amber-line);color:var(--amber-strong)}
+
 /* barra de enlaces por pestaña */
 .srcbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:-.2rem 0 .9rem}
 .srcbar .lb{font-family:var(--font-m);font-size:.62rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
@@ -584,6 +611,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
     <div id="bloqueRes"></div>
   </div>
 
+  <div id="fuentes"></div>
   <div class="tabs" id="tabs"></div>
   <div class="srcbar" id="srcbar"></div>
   <div class="mwrap"><table class="mx" id="matriz"></table></div>
@@ -914,7 +942,7 @@ function figura(titulo, sub, cfg){
 function pintarTabs(){
   $("tabs").innerHTML = Object.entries(G).map(([k,v])=>
     `<button type="button" class="tab${k===TAB?" on":""}" data-g="${k}">${v}</button>`).join("");
-  $("tabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{TAB=b.dataset.g;pintarTabs();pintarEnlaces();pintarMatriz();});
+  $("tabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{TAB=b.dataset.g;pintarTabs();pintarEnlaces();pintarFuentes();pintarMatriz();});
 }
 
 /* ── enlaces directos a la fuente, por pestaña ── */
@@ -967,19 +995,53 @@ function pintarEnlaces(){
             : (T ? `https://www.investing.com/search/?q=${encodeURIComponent(T)}` : null);
   const ya = T ? `https://finance.yahoo.com/quote/${encodeURIComponent(T)}/${f.ya}` : null;
   $("srcbar").innerHTML =
-    `<span class="lb">Abrir ${esc(f.lab)} de ${T||"…"}</span>` +
-    (T ? `<a class="pri" href="${inv}" target="_blank" rel="noopener">${
-            slug ? `InvestingPro ↗ ${esc(f.lab)}` : "InvestingPro ↗ buscar"}</a>
-          <a href="${sa}" target="_blank" rel="noopener">StockAnalysis · sin suscripción</a>
-          <a href="${ya}" target="_blank" rel="noopener">Yahoo</a>`
-       : `<span style="font-size:.76rem;color:var(--muted)">escribe el ticker arriba y aparecerán los enlaces</span>`) +
-    (T && !slug ? `<button type="button" id="fijarSlug" title="Pega la URL de Investing de esta empresa y los enlaces pasarán a ser directos">🔗 Enlace directo…</button>` : ``) +
+    (T ? `<a class="pri" href="${inv}" target="_blank" rel="noopener">↗ Abrir ${esc(f.lab)} de ${esc(T)} en InvestingPro</a>
+          <a href="${ya}" target="_blank" rel="noopener">Yahoo</a>` : ``) +
     `<span class="sep"></span>` +
     (TAB==="MK" ? `<button type="button" id="traerPrecios">📈 Traer precios de Yahoo</button>` : ``) +
     `<button type="button" id="verificarIA">🤖 Verificar con IA</button>`;
   if($("traerPrecios")) $("traerPrecios").onclick = traerPrecios;
-  if($("fijarSlug")) $("fijarSlug").onclick = pedirSlug;
   $("verificarIA").onclick = verificarIA;
+}
+
+/* ── panel de fuentes: los cuatro enlaces para copiar las tablas ── */
+function pintarFuentes(){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const slug = slugDe(T);
+  const hay = !!T;
+  const tarjeta = (g) => {
+    const f = FUENTE[g];
+    const url = !hay ? "#"
+      : slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
+             : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
+    const n = CONCEPTOS.filter(c=>c.g===g).length;
+    return `<a class="fcard${g===TAB?" aqui":""}${hay?"":" off"}" href="${url}"
+        target="_blank" rel="noopener" data-g="${g}">
+      <span class="n">${esc(G[g])} <span>↗</span></span>
+      <span class="d">${n} ${n===1?"dato":"datos"}${g===TAB?" · estás aquí":""}</span></a>`;
+  };
+  $("fuentes").innerHTML = `
+    <div class="ft">📋 Copiar las tablas de <b>${hay?esc(T):"tu empresa"}</b> desde InvestingPro</div>
+    <div class="fcards">${["IS","BS","CF","MK"].map(tarjeta).join("")}</div>
+    <div class="pie">
+      ${hay
+        ? (slug
+            ? `Abre cada tabla, ponla en <b>Annual</b>, selecciónala entera y <kbd>Ctrl</kbd>+<kbd>C</kbd>. Después, aquí abajo, <b>Pegar la tabla entera</b>.`
+            : `No tengo memorizada esta empresa, así que los enlaces abren la búsqueda de Investing. Pulsa <b>Enlace directo</b> y pégame su dirección una vez.`)
+        : `Escribe el ticker en el paso 1 —o pulsa <b>Ejemplo META</b> arriba— y estos cuatro enlaces te llevarán directos a sus tablas.`}
+      <span class="alt">
+        ${hay?`<a href="https://stockanalysis.com/stocks/${encodeURIComponent(T)}/financials/" target="_blank" rel="noopener">StockAnalysis · gratis</a>`:""}
+        ${hay&&!slug?`<button type="button" id="fijarSlug2">🔗 Enlace directo…</button>`:""}
+      </span>
+    </div>`;
+  if($("fijarSlug2")) $("fijarSlug2").onclick = pedirSlug;
+  $("fuentes").querySelectorAll(".fcard").forEach(a=>{
+    a.addEventListener("click", e => {
+      /* al abrir una tabla, la pestaña de abajo se pone en esa misma */
+      const g = a.dataset.g;
+      if(g && g!==TAB){ TAB=g; pintarTabs(); pintarEnlaces(); pintarFuentes(); pintarMatriz(); }
+    });
+  });
 }
 
 /* el usuario pega la URL de Investing una vez y esta empresa queda memorizada */
@@ -991,7 +1053,7 @@ function pedirSlug(){
     `A partir de ahí, los tres enlaces de esta empresa irán directos a su tabla.`, "");
   if(!u) return;
   const s = guardarSlug(u);
-  pintarEnlaces();
+  pintarEnlaces(); pintarFuentes();
   $("progFalta").innerHTML = s
     ? `✓ <b>${esc(T)}</b> memorizada. Los enlaces ya van directos a su tabla en Investing.`
     : `No he reconocido esa dirección. Debe ser del tipo <b>investing.com/equities/…</b>`;
@@ -2709,7 +2771,7 @@ function cargarEjemplo(E, nota){
   $("idinfo").innerHTML = `<div class="idcard"><div class="n">${esc(E._id.nombre)}</div>
     <div class="m">Ejemplo con 10 ejercicios reales de InvestingPro.</div>
     <div class="m" style="margin-top:.5rem;color:var(--muted-txt)">${nota}</div></div>`;
-  pintarEnlaces(); pintarMatriz(); informe(calcular());
+  pintarEnlaces(); pintarFuentes(); pintarMatriz(); informe(calcular());
 }
 
 /* ══════════════════ ARRANQUE ══════════════════ */
@@ -2726,7 +2788,7 @@ $("anioFin").onchange = e => { const v=parseInt(e.target.value,10); if(v>1900&&v
 $("moneda").oninput = e => { MON = e.target.value || "$"; };
 $("buscar").onclick = buscar;
 $("ticker").onkeydown = e => { if(e.key==="Enter"){ e.preventDefault(); buscar(); } };
-$("ticker").oninput = pintarEnlaces;
+$("ticker").oninput = () => { pintarEnlaces(); pintarFuentes(); };
 $("analizar").onclick = () => { MON = $("moneda").value||"$"; informe(calcular()); };
 $("abrirBloque").onclick = () => $("bloqueBox").classList.toggle("hide");
 $("cerrarBloque").onclick = () => $("bloqueBox").classList.add("hide");
@@ -2743,7 +2805,7 @@ $("limpiar").onclick = () => {
   CONCEPTOS.forEach(c=>D[c.k]=new Array(N).fill(null));
   ["ticker","nombre","precio"].forEach(i=>$(i).value="");
   Object.keys(VAL).forEach(k=>VAL[k]=null); VAL.obj=15;
-  $("idinfo").innerHTML=""; $("informe").innerHTML=""; pintarEnlaces(); pintarMatriz();
+  $("idinfo").innerHTML=""; $("informe").innerHTML=""; pintarEnlaces(); pintarFuentes(); pintarMatriz();
 };
 $("demoTop").onclick = () => $("demo").click();
 $("demoNav").onclick = () => $("demo").click();
@@ -2761,7 +2823,7 @@ $("demoMsftNav").onclick = () => $("demoMsft").click();
 
 ANIO_FIN = new Date().getFullYear()-1;
 $("anioFin").value = ANIO_FIN;
-pintarTabs(); pintarEnlaces(); pintarMatriz();
+pintarTabs(); pintarEnlaces(); pintarFuentes(); pintarMatriz();
 pintarSonido();
 $("btnSonido").onclick = () => { SND.on = !SND.on;
   localStorage.setItem("sonido", SND.on ? "1" : "0"); pintarSonido(); if(SND.on) SND.toca(); };
