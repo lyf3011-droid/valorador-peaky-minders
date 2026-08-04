@@ -671,6 +671,8 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
     <div class="pegagrid" id="pegagrid"></div>
   </div>
 
+  <div id="preciosBox" class="pegagrid hide" style="margin-bottom:.9rem"></div>
+
   <div id="fuentes"></div>
   <div class="tabs" id="tabs"></div>
   <div class="srcbar" id="srcbar"></div>
@@ -1237,10 +1239,11 @@ reciente, con punto decimal y sin símbolo de moneda. Ejemplo para diez años:
 115.05 176.46 131.09 205.25 273.16 336.35 120.34 353.96 585.51 660.09
 
 Después de esa línea, añade la tabla año-precio para que yo pueda revisarla.`;
-  $("bloqueBox").classList.remove("hide");
-  $("pegagrid").innerHTML =
+  $("preciosBox").classList.remove("hide");
+  $("preciosBox").innerHTML =
     `<div class="pegabox" style="grid-column:1/-1">
-      <div class="pt"><span class="pn">Precios de cierre · pedírselos a una IA</span></div>
+      <div class="pt"><span class="pn">Precios de cierre · pedírselos a una IA</span>
+        <button type="button" id="cerrarPrecios" style="font-size:.75rem;padding:.2rem .5rem">Cerrar</button></div>
       <div style="font-size:.8rem;color:var(--soft);margin-bottom:.6rem">
         Copia este texto, pégalo en ChatGPT, Gemini o Claude, y trae la línea de números.</div>
       <textarea id="promptPreciosTxt" readonly style="min-height:150px">${esc(p)}</textarea>
@@ -1255,6 +1258,7 @@ Después de esa línea, añade la tabla año-precio para que yo pueda revisarla.
       <div class="pb"><button type="button" class="pri" id="aplicarPrecios">Rellenar los ${N} años</button></div>
       <div class="pr" id="resPrecios"></div>
     </div>`;
+  $("cerrarPrecios").onclick = () => { $("preciosBox").classList.add("hide"); $("preciosBox").innerHTML=""; };
   $("copiarPrecios").onclick = async () => {
     const b=$("copiarPrecios");
     try{ await navigator.clipboard.writeText(p); b.textContent="✓ Copiado"; }
@@ -1278,7 +1282,7 @@ Después de esa línea, añade la tabla año-precio para que yo pueda revisarla.
     r.innerHTML = `<span class="bien">✓ ${arr.filter(v=>v!==null).length} precios puestos.</span>
       ${arr.length<N?` Faltan ${N-arr.length}: revísalos en la tabla.`:""}`;
   };
-  $("bloqueBox").scrollIntoView({behavior:modoScroll(),block:"center"});
+  $("preciosBox").scrollIntoView({behavior:modoScroll(),block:"center"});
 }
 
 /* ── traer precios de cierre de cada año desde Yahoo ── */
@@ -2464,8 +2468,11 @@ function cadenaValoracion(R){
      nf(v.fcf5,0)+" M", "El crecimiento se frena cada año. Es tu primera decisión."],
     ["7","× lo que el mercado paga", `múltiplo EV/FCF ${mu(v.multObj)}`,
      nf(v.multObj*v.fcf5,0)+" M", "Salido de lo que ha pagado estos años. Es tu segunda decisión."],
-    ["8","− deuda, ÷ acciones", `deuda ${nf(v.dn5,0)} M · ${nf(v.acc5,0)} M acciones`,
-     mo(R.P.evFcf), "Lo que valdría una acción dentro de cinco años."],
+    ["8", v.dn5<0 ? "+ caja neta, ÷ acciones" : "− deuda, ÷ acciones",
+     (v.dn5<0 ? `caja neta ${nf(-v.dn5,0)} M` : `deuda ${nf(v.dn5,0)} M`) + ` · ${nf(v.acc5,0)} M acciones`,
+     mo(R.P.evFcf), v.dn5<0
+       ? "Le sobra dinero en el banco, así que suma. Y se reparte entre las acciones que habrá dentro de cinco años."
+       : "La deuda resta: es dinero que ya tiene dueño. Y se reparte entre las acciones que habrá dentro de cinco años."],
     ["9","÷ tu rentabilidad exigida", `(1 + ${nf(v.obj*100,0)}%)⁵ = ${nf(v.factor,3)}`,
      mo(v.idc), "Traído a hoy. Éste es el precio máximo que puedes pagar."]
   ];
