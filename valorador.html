@@ -140,13 +140,14 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
 #fuentes .red b{color:var(--amber)}
 
 /* ═══ UN CUADRO DE PEGADO POR CUENTA ═══ */
-.pegagrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:.8rem}
-.pegabox{border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:.85rem .9rem}
+.pegagrid{display:grid;grid-template-columns:1fr;gap:1rem}
+.pegabox{border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:1.1rem 1.2rem}
 .pegabox.ok{border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.05)}
 .pegabox .pt{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
-.pegabox .pn{font-family:var(--font-h);font-weight:800;font-size:.9rem}
-.pegabox .pe{font-family:var(--font-m);font-size:.6rem;letter-spacing:.08em;color:var(--muted-txt)}
-.pegabox textarea{min-height:88px;font-size:.72rem}
+.pegabox .pn{font-family:var(--font-h);font-weight:800;font-size:1.15rem}
+.pegabox .pe{font-family:var(--font-m);font-size:.72rem;letter-spacing:.08em;color:var(--muted-txt)}
+.pegabox textarea{min-height:190px;font-size:.8rem;line-height:1.5}
+.pegabox textarea:focus{border-color:var(--amber-line)}
 .pegabox .pb{display:flex;gap:.45rem;margin-top:.5rem;flex-wrap:wrap}
 .pegabox .pb button{font-family:var(--font-m);font-size:.66rem;padding:.35rem .65rem;border-radius:6px;
   border:1px solid var(--line-strong);background:transparent;color:var(--soft);cursor:pointer}
@@ -842,30 +843,58 @@ const BLOQUEA = {
   da       : "el CapEx de mantenimiento y, con él, el flujo de caja libre"
 };
 
-/* sinónimos para el reconocedor de bloques */
+/* Sinónimos para el reconocedor de bloques.
+   Los nombres en español están copiados literalmente de es.investing.com — verificados
+   en las tres cuentas de MSFT el 4-ago-2026 — no traducidos a ojo. Así la tabla se
+   reconoce tanto si Investing está en inglés como si está en español.
+   Cuidado con dos traducciones que Investing hace mal y que aquí quedan bien atadas:
+   «Margen neto» es en realidad Operating Income (EBIT), y «Beneficios netos para la
+   empresa» es el beneficio neto contable, que este método NO usa. */
 const SIN = {
- ventas:["total revenues","total revenue","revenue","revenues","ingresos","ventas"],
- ebitda:["ebitda"], ebit:["operating income","ebit","beneficio operativo"],
- interes:["net interest expenses","net interest expense"],
- impuestos:["income tax expense","income tax","provision for income taxes"],
- acciones:["diluted weighted average shares outstanding","diluted shares outstanding"],
- caja:["cash and equivalents","cash & equivalents","cash and cash equivalents"],
- inversion:["short term investments","short-term investments"],
- deudaCP:["short-term borrowings","short term borrowings"],
- deudaLP:["long-term debt","long term debt"],
- leaseCP:["current portion of leases"], leaseLP:["long-term leases","long term leases"],
- equity:["total equity","total shareholders' equity","total shareholders equity"],
- cobrar:["accounts receivable, total","accounts receivable"],
- pagar:["accounts payable, total","accounts payable"],
- inventar:["inventory","inventories"],
- unearned:["unearned revenue current, total","unearned revenue current","deferred revenue"],
- da:["depreciation & amortization, total","depreciation and amortization","depreciation & amortization"],
- capexMant:["capex mantenimiento","capex de mantenimiento","maintenance capex","depreciation"],
- capex:["capital expenditure","capital expenditures","capex"],
- adquisi:["cash acquisitions","acquisitions"],
- recompra:["repurchase of common stock"],
- dividendo:["common & preferred stock dividends paid","dividends paid"],
- sbc:["stock-based compensation","stock based compensation","share-based compensation"]
+ ventas:["total revenues","total revenue","revenue","revenues","ingresos","ventas",
+         "ingresos totales"],
+ ebitda:["ebitda"],
+ ebit:["operating income","ebit","beneficio operativo","ingreso operativo",
+       "resultado de explotación","margen neto"],
+ interes:["net interest expenses","net interest expense",
+          "gastos netos por intereses","gastos por intereses netos"],
+ impuestos:["income tax expense","income tax","provision for income taxes",
+            "impuesto sobre la renta","impuesto sobre beneficios","impuesto de sociedades"],
+ acciones:["diluted weighted average shares outstanding","diluted shares outstanding",
+           "promedio ponderado diluido de acciones en circulación"],
+ caja:["cash and equivalents","cash & equivalents","cash and cash equivalents",
+       "efectivo y equivalentes","efectivo y equivalentes de efectivo"],
+ inversion:["short term investments","short-term investments",
+            "inversiones a corto plazo"],
+ deudaCP:["short-term borrowings","short term borrowings",
+          "préstamos a corto plazo"],
+ deudaLP:["long-term debt","long term debt","deuda a largo plazo"],
+ leaseCP:["current portion of leases","parte actual de arrendamientos"],
+ leaseLP:["long-term leases","long term leases","arrendamientos a largo plazo"],
+ equity:["total equity","total shareholders' equity","total shareholders equity",
+         "patrimonio neto","patrimonio neto total"],
+ cobrar:["accounts receivable, total","accounts receivable",
+         "total de cuentas por cobrar","cuentas por cobrar"],
+ pagar:["accounts payable, total","accounts payable",
+        "total de cuentas por pagar","cuentas por pagar"],
+ inventar:["inventory","inventories","inventario","inventarios","existencias"],
+ unearned:["unearned revenue current, total","unearned revenue current","deferred revenue",
+           "total de ingresos corrientes no devengados","ingresos no devengados",
+           "ingresos diferidos"],
+ da:["depreciation & amortization, total","depreciation and amortization",
+     "depreciation & amortization",
+     "total de la depreciación y amortización","depreciación y amortización"],
+ capexMant:["capex mantenimiento","capex de mantenimiento","maintenance capex","depreciation",
+            "depreciación"],
+ capex:["capital expenditure","capital expenditures","capex",
+        "gastos de capital","inversiones de capital"],
+ adquisi:["cash acquisitions","acquisitions",
+          "adquisiciones en efectivo","adquisiciones"],
+ recompra:["repurchase of common stock","recompra de acciones ordinarias"],
+ dividendo:["common & preferred stock dividends paid","dividends paid",
+            "dividendos pagados de acciones ordinarias y preferentes","dividendos pagados"],
+ sbc:["stock-based compensation","stock based compensation","share-based compensation",
+      "compensación basada en acciones","remuneración basada en acciones"]
 };
 
 /* ══════════════════ ESTADO ══════════════════ */
@@ -1378,11 +1407,34 @@ function progreso(){
 let HTML_PEGADO = null;
 
 function esCifra(s){ return /^[+\-(]?[\d.,]+[)%]?$/.test(String(s).trim()) && /\d/.test(s); }
+
+/* Convierte una cifra escrita a la inglesa (96,571 · 14,658.13) o a la española
+   (96.571 · 14.658,13). Investing usa una u otra según el idioma de la sesión, y
+   confundirlas cambia el número por mil: es la diferencia entre 96.571 millones
+   de ventas y 96 millones. La regla:
+     · si aparecen los dos separadores, el ÚLTIMO es el decimal
+     · si solo aparece uno y está repetido, es separador de miles
+     · si solo aparece uno y le siguen exactamente 3 dígitos, es de miles
+     · en cualquier otro caso, es el decimal                                    */
 function aNumero(s){
-  const t = String(s).replace(/,/g,"").replace(/[()]/g,"").trim();
+  let t = String(s).replace(/[()\s%+]/g,"").trim();
+  const neg = /^-/.test(t) || String(s).includes("(");
+  t = t.replace(/^-/,"");
   if(!t || t==="-" || t==="—" || t==="–") return null;
-  const v = parseFloat(t);
-  return isFinite(v) ? (String(s).includes("(") ? -v : v) : null;
+
+  const iP = t.lastIndexOf("."), iC = t.lastIndexOf(",");
+  let dec = null;                                  /* posición del separador decimal */
+  if(iP>=0 && iC>=0)            dec = Math.max(iP,iC);
+  else if(iP>=0 || iC>=0){
+    const i = Math.max(iP,iC), ch = t[i];
+    const repetido = t.split(ch).length > 2;
+    const tras = t.length - i - 1;
+    dec = (repetido || tras===3) ? null : i;       /* null = todos son de miles */
+  }
+  const ent = (dec===null ? t : t.slice(0,dec)).replace(/[.,]/g,"");
+  const frac = dec===null ? "" : t.slice(dec+1).replace(/[.,]/g,"");
+  const v = parseFloat(ent + (frac ? "."+frac : ""));
+  return isFinite(v) ? (neg ? -v : v) : null;
 }
 function leerHTMLInvesting(html){
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -1430,18 +1482,30 @@ const HTML_CAJA = {};                       /* HTML pegado en cada cuadro */
 function pintarPegaGrid(){
   const T = ($("ticker").value||"").trim().toUpperCase();
   const slug = slugDe(T);
-  $("pegagrid").innerHTML = ["IS","BS","CF"].map(g=>{
+  $("pegagrid").innerHTML = ["IS","BS","CF","MK"].map(g=>{
     const f = FUENTE[g];
     const url = !T ? null
+      : g==="MK" ? (slug ? `https://www.investing.com/equities/${slug}-historical-data`
+                         : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`)
       : slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
              : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
     const total = CONCEPTOS.filter(c=>c.g===g).length;
     const hechos = CONCEPTOS.filter(c=>c.g===g && D[c.k].some(v=>v!==null)).length;
+    const ayuda = g==="MK"
+      ? `Pega los <b>${N} precios de cierre</b>, del más antiguo al más nuevo. Vale una línea,
+         una columna o la tabla de datos históricos.`
+      : `Copia la tabla entera desde <b>«Period Ending»</b> hasta el final y pégala aquí.
+         Se recomienda <b>Investing en inglés</b>; si lo tienes en español también lo reconoce.`
+        + (g==="CF" ? `<br><b style="color:var(--amber-strong)">Estas dos no las publica Investing</b>
+           en esta tabla, así que se quedarán vacías y no es un fallo: <b>CapEx de mantenimiento</b>
+           —que el método aproxima solo con la depreciación— y <b>pagos en acciones (SBC)</b>.
+           Si los quieres exactos, salen del informe anual.` : "");
     return `<div class="pegabox${hechos===total?" ok":""}" data-g="${g}">
       <div class="pt"><span class="pn">${esc(G[g])}</span>
-        <span class="pe">${hechos}/${total} partidas</span></div>
+        <span class="pe">${hechos}/${total} ${total===1?"partida":"partidas"}</span></div>
+      <div style="font-size:.8rem;color:var(--soft);margin:.1rem 0 .6rem">${ayuda}</div>
       ${url?`<a class="th-link" href="${url}" target="_blank" rel="noopener">abrir en InvestingPro ↗</a>`:""}
-      <textarea data-pega="${g}" placeholder="Pega aquí la tabla de ${esc(G[g].toLowerCase())}…"></textarea>
+      <textarea data-pega="${g}" placeholder="${g==="MK"?"85.19 101.95 156.79 220.97 …":"Pega aquí la tabla de "+esc(G[g].toLowerCase())+"…"}"></textarea>
       <div class="pb">
         <button type="button" class="pri" data-leer="${g}">Reconocer</button>
         <button type="button" data-limpiar="${g}">Limpiar</button>
@@ -1469,6 +1533,7 @@ function pintarPegaGrid(){
 function leerCaja(g){
   const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
   const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
+  if(g==="MK"){ leerPrecios(ta, caja); return; }
   const soloDe = CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
   let filas = [];
   if(HTML_CAJA[g]){ try{ filas = leerHTMLInvesting(HTML_CAJA[g]); }catch(e){} }
@@ -1507,6 +1572,38 @@ function leerCaja(g){
   pintarPegaGrid();
   $("pegagrid").querySelector(`textarea[data-pega="${g}"]`).value = ta.value;
   $("pegagrid").querySelector(`[data-res="${g}"]`).innerHTML = caja.innerHTML;
+}
+
+/* el cuadro de mercado: una lista de cierres, o la tabla de datos históricos entera */
+function leerPrecios(ta, caja){
+  const txt = ta.value.trim();
+  if(!txt){ caja.innerHTML = `<span class="mal">Pega aquí los precios.</span>`; return; }
+  let nums = tokensNum(txt);
+  /* si vienen muchos más números que años, es la tabla histórica completa
+     (fecha · último · apertura · máximo · mínimo · volumen · % var):
+     de cada fila nos quedamos con el primer número, que es el cierre */
+  if(nums.length > N * 1.6){
+    nums = txt.split(/\n/).map(l=>tokensNum(l)).filter(a=>a.length>=2).map(a=>a[0]);
+  }
+  if(nums.length < 2){
+    caja.innerHTML = `<span class="mal">No he encontrado precios.</span> Pega ${N} números,
+      uno por ejercicio.`; return;
+  }
+  let arr = nums.slice();
+  if($("invertir").checked) arr.reverse();
+  if(arr.length > N) arr = arr.slice(-N);
+  D.precioAno = new Array(N).fill(null);
+  arr.forEach((v,x)=>{ const p = N-arr.length+x; if(p>=0) D.precioAno[p]=v; });
+  pintarMatriz();
+  const A = anios();
+  caja.innerHTML = `<span class="bien">✓ ${arr.length} precios puestos.</span>
+    <ul><li>${A[0]}: ${D.precioAno[0]===null?"—":nf(D.precioAno[0],2)}</li>
+        <li>${A[N-1]}: ${D.precioAno[N-1]===null?"—":nf(D.precioAno[N-1],2)}</li></ul>
+    ${arr.length<N?`<div style="margin-top:.4rem;color:var(--amber)">Faltan ${N-arr.length}: repásalos en la tabla.</div>`
+      :`<div style="margin-top:.4rem;color:var(--soft)">Comprueba el primero y el último antes de seguir.</div>`}`;
+  pintarPegaGrid();
+  $("pegagrid").querySelector(`textarea[data-pega="MK"]`).value = txt;
+  $("pegagrid").querySelector(`[data-res="MK"]`).innerHTML = caja.innerHTML;
 }
 
 /* respaldo cuando el portapapeles no trajo HTML */
@@ -2987,11 +3084,18 @@ $("copiarAnalisis").onclick = async () => {
   setTimeout(()=>b.textContent="Copiar el texto del informe", 2500);
 };
 $("irClaudeAnalisis").onclick = async () => {
+  const b = $("irClaudeAnalisis");
   const T = ($("ticker").value||"").trim().toUpperCase();
   const t = PROMPT_ANALISIS + (T ? `\n\nEmpieza con el ticker: ${T}` : "");
-  try{ await navigator.clipboard.writeText(t); }catch(e){}
+  let copiado = true;
+  try{ await navigator.clipboard.writeText(t); }catch(e){ copiado = false; }
   window.open("https://claude.ai/new", "_blank", "noopener");
   $("promptAnalisisVista").value = t; $("analisisBox").classList.remove("hide");
+  /* el texto va por el portapapeles, no por la URL: son 4.600 caracteres y
+     una dirección de navegador los recortaría a la mitad */
+  b.textContent = copiado ? "✓ Copiado · pégalo con Ctrl+V" : "Cópialo del cuadro de abajo";
+  if(!copiado) $("promptAnalisisVista").select();
+  setTimeout(()=>b.textContent="Abrir en Claude →", 6000);
 };
 
 $("irClaude").onclick  = () => abrirIA("claude");
