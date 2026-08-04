@@ -264,7 +264,7 @@ table.rs td.l{color:var(--soft)}
 .brow{display:grid;grid-template-columns:110px 1fr 40px;align-items:center;gap:.6rem;font-size:.74rem}
 .brow .lb{color:var(--soft)}
 .brow .tr{height:7px;background:var(--surface);border-radius:4px;overflow:hidden}
-.brow .fl{height:100%;background:var(--d1-hi);border-radius:4px;transition:width .5s}
+.brow .fl{display:block;height:100%;background:var(--d1-hi);border-radius:4px;transition:width .5s}
 .kid{background:var(--raised);border:1px solid var(--line);border-radius:10px;padding:1.3rem;font-size:.96rem;line-height:1.75}
 .kid p{margin-bottom:.9rem}.kid p:last-child{margin-bottom:0}
 .kid b{color:var(--amber-strong)}
@@ -441,8 +441,12 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
     color:#111!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{background:#fff!important;padding:0;font-size:10.5pt}
   .wrap{padding:0;max-width:100%}
-  .step,.panel,figure,.kpi,.kid,.negocio-doc,.veredicto,.expl,.note,.warn,.ok,pre,blockquote{
-    background:#fff!important;border-color:#ccc!important;break-inside:avoid}
+  .step,.panel,figure,.kpi,.kid,.negocio-doc,.veredicto,.expl,.note,.warn,.ok,pre,blockquote,
+  details,summary{background:#fff!important;border-color:#ccc!important}
+  figure,.kpi,.veredicto,.note,.warn,.ok,table.rs tr{break-inside:avoid}
+  /* los bloques largos de texto SÍ pueden partirse: si no, dejan media página en blanco */
+  .kid,.negocio-doc,.expl,.panel{break-inside:auto;orphans:3;widows:3}
+  h2,h3,figcaption,.step-q{break-after:avoid}
   .step{overflow:visible!important;page-break-inside:auto;padding:0 0 1.2rem;border:none;
     border-top:1px solid #ddd;border-radius:0;margin-bottom:1rem}
   .step::before{display:none!important}
@@ -461,12 +465,15 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   .sub,.step-w,.kpi .d,.kpi .k,.fsub,.d,.marca-pie,.brow .lb,
   table.rs th,.negocio-doc i,code{color:#555!important}
 
-  /* 5 · las gráficas: su tinta era blanca translúcida y desaparecía en papel */
+  /* 5 · las gráficas: su tinta era blanca translúcida y desaparecía en papel.
+        Las dos series NO se aplastan a un solo color: se cambia el par
+        categórico por su equivalente de papel, que sigue siendo distinguible
+        en dorado / azul petróleo también para daltonismo. */
+  :root{--d1:#8a5a00!important;--d1-hi:#8a5a00!important;
+        --d2:#0b5a78!important;--d2-hi:#0b5a78!important}
   svg.ch text{fill:#444!important}
   svg.ch line{stroke:#bbb!important}
-  svg.ch rect{fill:#8a5a00!important}
-  svg.ch polyline{stroke:#8a5a00!important}
-  svg.ch circle{fill:#8a5a00!important;stroke:#fff!important}
+  svg.ch circle{stroke:#fff!important}
 
   /* 6 · tablas y semáforo */
   table.rs td,table.rs th{border-color:#ddd!important}
@@ -482,7 +489,22 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   .escala .marca{background:#111!important}
   pre,code{background:#f6f6f6!important;border-color:#ddd!important;color:#333!important}
   a{color:#8a5a00!important;text-decoration:underline}
-  .marca-pie{display:block!important}
+  .marca-pie{display:block!important;break-before:avoid}
+
+  /* 7 · los desplegables: en papel no hay nada que desplegar, se abren solos */
+  details{border:1px solid #ccc!important;border-radius:0;padding:.5rem .7rem;margin-top:.8rem}
+  details>div,details>table{display:block!important;content-visibility:visible!important}
+  summary{list-style:none;font-weight:700;color:#8a5a00!important;margin-bottom:.5rem;
+    font-size:.95em;cursor:auto}
+  summary::marker,summary::-webkit-details-marker{content:"";display:none}
+  details.noimp{display:none!important}
+
+  /* 8 · los campos editables: en papel son cajas negras si no se les da tinta */
+  input,select,textarea{background:#fff!important;border:1px solid #ccc!important;
+    color:#111!important;-webkit-text-fill-color:#111!important;appearance:none;
+    padding:.2rem .4rem!important;height:auto!important;min-height:0!important;
+    font-size:.95em!important;border-radius:3px!important}
+  input[type=number]::-webkit-inner-spin-button{display:none}
   @page{margin:14mm 12mm}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}
@@ -2208,7 +2230,7 @@ function pasoValoracion(R){
        crecimiento se va frenando en vez de mantenerse plano — es lo que hace la plantilla original, y es
        la diferencia entre una proyección optimista y una prudente.</span>
      </div>
-     <details style="margin-top:.6rem"><summary>Ajustes finos · beneficios, retorno, deuda y dilución</summary>
+     <details class="noimp" style="margin-top:.6rem"><summary>Ajustes finos · beneficios, retorno, deuda y dilución</summary>
        <div class="dbody"><div class="vgrid" style="margin:0">
          <div><label>Crecim. beneficios · año 1 (%)</label><input class="vin" data-v="gb" type="number" step="any" value="${nf(v.gB,1).replace(",",".")}"></div>
          <div><label>Crecim. beneficios · año 5 (%)</label><input class="vin" data-v="gb5" type="number" step="any" value="${nf(v.gB5,1).replace(",",".")}"></div>
@@ -2473,7 +2495,7 @@ function cadenaValoracion(R){
      mo(R.P.evFcf), v.dn5<0
        ? "Le sobra dinero en el banco, así que suma. Y se reparte entre las acciones que habrá dentro de cinco años."
        : "La deuda resta: es dinero que ya tiene dueño. Y se reparte entre las acciones que habrá dentro de cinco años."],
-    ["9","÷ tu rentabilidad exigida", `(1 + ${nf(v.obj*100,0)}%)⁵ = ${nf(v.factor,3)}`,
+    ["9","÷ tu rentabilidad exigida", `(1 + ${nf(v.obj*100,0)}%) cinco veces = ${nf(v.factor,3)}`,
      mo(v.idc), "Traído a hoy. Éste es el precio máximo que puedes pagar."]
   ];
   const barato = R.precio <= v.idc;
@@ -3134,6 +3156,17 @@ ANIO_FIN = new Date().getFullYear()-1;
 $("anioFin").value = ANIO_FIN;
 pintarTabs(); pintarEnlaces(); pintarFuentes(); pintarMatriz(); pintarPegaGrid();
 pintarSonido();
+
+/* en papel no hay nada que desplegar: los desplegables del informe se abren
+   solos al imprimir y vuelven a su sitio al terminar */
+let DETALLES_CERRADOS = [];
+window.addEventListener("beforeprint", () => {
+  DETALLES_CERRADOS = [...document.querySelectorAll("details:not(.noimp):not([open])")];
+  DETALLES_CERRADOS.forEach(d => d.open = true);
+});
+window.addEventListener("afterprint", () => {
+  DETALLES_CERRADOS.forEach(d => d.open = false); DETALLES_CERRADOS = [];
+});
 $("btnSonido").onclick = () => { SND.on = !SND.on;
   localStorage.setItem("sonido", SND.on ? "1" : "0"); pintarSonido(); if(SND.on) SND.toca(); };
 </script>
