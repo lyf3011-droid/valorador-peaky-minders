@@ -1516,26 +1516,34 @@ function pedirAnalistas(){
   const A = anios(), ult = A[A.length-1];
   const p =
 `Necesito el CONSENSO DE ANALISTAS para ${quien}, solo cifras, sin opiniones
-ni precios objetivo.
+ni precios objetivo ni recomendaciones.
 
 QUÉ NECESITO
-Para cada uno de los próximos 3 ejercicios (${ult+1}, ${ult+2} y ${ult+3}):
-· Ventas estimadas (consenso), en millones y en la moneda que reporta la empresa
-· Crecimiento interanual implícito de esas ventas, en %
-· Flujo de caja libre estimado si lo hay; si no, dilo
+Para cada uno de los próximos 5 ejercicios (${ult+1} a ${ult+5}); si el
+consenso solo llega a 2 o 3 años, dilo y dame los que haya:
+
+  1. VENTAS estimadas (consenso), en millones y en la moneda que reporta
+  2. MARGEN OPERATIVO (EBIT) estimado, en % sobre esas ventas.
+     Si solo publican el EBIT en euros o dólares, dame el importe y yo divido.
+  3. TIPO IMPOSITIVO efectivo estimado, en %. Si no lo estiman, dime el
+     de los tres últimos años reales.
 
 REGLAS
 - Consenso de varios analistas, no la opinión de uno. Di cuántos lo forman.
 - Di la FECHA del consenso: uno de hace seis meses ya no sirve.
 - Si la empresa cierra su ejercicio fuera de diciembre, avísame y usa SU ejercicio.
-- No inventes. Si no tienes el dato de un año, escribe "no disponible".
-- Cita la fuente de cada cifra.
+- No inventes. Si no tienes un dato, escribe "no disponible" en su sitio.
+- Cita la fuente de cada bloque de cifras.
 
 FORMATO DE RESPUESTA
-Primero UNA SOLA LÍNEA con los tres crecimientos de ventas en %, del más
-cercano al más lejano, con punto decimal y sin el símbolo de porcentaje.
-Ejemplo:  14.9 12.4 10.1
-Después la tabla año · ventas · crecimiento, y las fuentes.`;
+Empieza con TRES LÍNEAS, en este orden exacto, con punto decimal, sin el
+símbolo de porcentaje y separando los años con espacios:
+
+CRECIMIENTO 14.9 12.4 10.1 9.0 8.0
+MARGEN 44.6 44.8 45.0 45.0 45.0
+IMPUESTO 19.0 19.0 19.0 19.0 19.0
+
+Después, la tabla año por año con ventas, EBIT, margen y tipo, y las fuentes.`;
 
   $("analistasBox").classList.remove("hide");
   $("analistasBox").innerHTML =
@@ -1569,8 +1577,39 @@ Después la tabla año · ventas · crecimiento, y las fuentes.`;
     window.open("https://claude.ai/new","_blank","noopener");
   };
   $("aplicarAnalistas").onclick = () => {
-    const nums = tokensNum($("pegaAnalistas").value);
+    const texto0 = $("pegaAnalistas").value;
     const r = $("resAnalistas");
+
+    /* Si vienen las tres líneas —crecimiento, margen e impuesto— se rellena la
+       proyección por partidas entera, que es como trabaja la plantilla. Es lo
+       que más acerca el resultado al Excel de clase. */
+    const linea = etiqueta => {
+      const m = texto0.match(new RegExp(etiqueta + "[^\\n]*", "i"));
+      return m ? tokensNum(m[0].replace(new RegExp(etiqueta, "i"), "")) : [];
+    };
+    const lc = linea("CRECIMIENTO"), lm = linea("MARGEN"), li = linea("IMPUESTO");
+    if(lc.length >= 2 && lm.length >= 2){
+      const cinco = (a, ult) => Array.from({length:5},(_,i)=> a[i]!==undefined ? a[i] : (a[a.length-1] ?? ult));
+      VAL.modo = "partidas";
+      VAL.pg = cinco(lc);
+      VAL.pm = cinco(lm);
+      if(li.length) VAL.pt = cinco(li);
+      const msg = `<span class="bien">✓ Proyección por partidas rellenada con el consenso.</span>
+        <ul><li>Crecimiento de ventas: <b>${VAL.pg.map(x=>nf(x,1)+"%").join(" → ")}</b></li>
+            <li>Margen EBIT: <b>${VAL.pm.map(x=>nf(x,1)+"%").join(" → ")}</b></li>
+            ${li.length?`<li>Tipo impositivo: <b>${VAL.pt.map(x=>nf(x,1)+"%").join(" → ")}</b></li>`:""}</ul>
+        <div style="margin-top:.4rem;color:var(--muted-txt)">Esto es exactamente lo que se mete a mano
+        en las celdas naranjas de la plantilla. Míralo abajo y cámbialo si no te convence: el
+        consenso se equivoca a menudo, y se equivoca en grupo.</div>`;
+      informe(calcular()); guardarTrabajo();
+      pedirAnalistas();
+      $("pegaAnalistas").value = texto0;
+      $("resAnalistas").innerHTML = msg;
+      return;
+    }
+
+    /* si solo pegas una línea de números, se usa como escalera del modo rápido */
+    const nums = tokensNum(texto0);
     if(!nums.length){ r.innerHTML = `<span class="mal">No he encontrado números.</span>`; return; }
     const g1 = nums[0];
     /* el año 5 se desvanece desde el último año que te hayan dado: si te dan
