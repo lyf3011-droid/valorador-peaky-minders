@@ -1991,7 +1991,9 @@ function calcular(){
   const A = anios(), R = {A, aviso:[], veto:[]};
   const g = k => D[k].map(v => v===null ? null : v);
   const abs = a => a.map(v => v===null ? null : Math.abs(v));
-  const has = k => D[k].some(v=>v!==null);
+  /* a prueba de claves que no existen: antes, preguntar por una partida
+     inexistente reventaba el análisis entero y no se veía ni el aviso */
+  const has = k => Array.isArray(D[k]) && D[k].some(v=>v!==null);
   const at = (a,i) => (a[i]===null||a[i]===undefined) ? null : a[i];
   const z  = (a,i) => (a[i]===null||a[i]===undefined) ? 0 : a[i];
 
@@ -2005,8 +2007,8 @@ function calcular(){
     const c = CONCEPTOS.find(x=>x.k===k);
     return {lab:c.lab, src:c.src, tab:G[c.g], impide:BLOQUEA[k]||"parte del análisis"};
   });
-  if(!has("ventas") && !has("ebitda") && !has("fcf"))
-    return {error:"Todavía no hay datos suficientes para empezar. Rellena al menos las ventas o el EBITDA de algún año, o pulsa «Ejemplo META» para ver cómo funciona."};
+  if(!has("ventas") && !has("ebitda") && !has("ebit"))
+    return {error:"Todavía no hay datos suficientes para empezar. Hace falta al menos las ventas, el EBITDA o el EBIT de algún año — son las tres primeras filas de la cuenta de resultados. Pega esa tabla arriba con el botón «Pegar la tabla entera de Investing», o pulsa «Ejemplo META» para ver cómo funciona."};
 
   /* derivados por año */
   const der = {};
