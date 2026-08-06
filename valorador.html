@@ -543,6 +543,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   <span class="sep"></span>
   <a class="t" href="index.html">Guía</a>
   <a class="t on" href="valorador.html">Valorador</a>
+  <a class="t" href="legal.html" style="font-size:.72rem;opacity:.75">Legal</a>
   <button type="button" class="t" id="tourNav" style="cursor:pointer;background:transparent;color:var(--amber-strong);font-family:var(--font-m);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--amber-line);padding:.42rem .8rem;border-radius:6px">&#9654; C&oacute;mo funciona &middot; 3 min</button>
   <button type="button" class="t" id="demoNav" style="cursor:pointer;background:var(--amber);color:#0a0a0a;font-family:var(--font-h);font-weight:800;font-size:.72rem;letter-spacing:.02em;text-transform:none;border:none;padding:.45rem .9rem;border-radius:6px">&#9654; Ejemplo META</button>
   <button type="button" class="t" id="demoMsftNav" style="cursor:pointer;background:transparent;color:var(--amber-strong);font-family:var(--font-h);font-weight:700;font-size:.7rem;text-transform:none;border:1px solid var(--amber-line);padding:.42rem .8rem;border-radius:6px">&#9654; MSFT</button>
@@ -816,7 +817,7 @@ ENTENDER UNA EMPRESA · Valoración Peaky Minders v2.0 · 2026-08-03<br>
 Sistema de valoración propio, desarrollado a partir de metodología de inversión en calidad.<br>
 Funciona sin conexión salvo el botón «Buscar». Ningún dato tuyo sale de este navegador.<br>
 Paleta de datos validada para daltonismo y contraste sobre fondo oscuro.<br><br>
-⚠️ Material formativo. No constituye asesoramiento financiero ni recomendación de compra o venta.
+⚠️ Material formativo. No constituye asesoramiento financiero ni recomendación de compra o venta.<br><a href="legal.html" style="color:var(--amber-strong)">Aviso legal completo →</a>
 </div>
 </div>
 
@@ -1485,6 +1486,101 @@ Después de esa línea, añade la tabla año-precio para que yo pueda revisarla.
       ${arr.length<N?` Faltan ${N-arr.length}: revísalos en la tabla.`:""}`;
   };
   $("preciosBox").scrollIntoView({behavior:modoScroll(),block:"center"});
+}
+
+/* ══════════════════ ESTIMACIONES DE LOS ANALISTAS ══════════════════
+   El método extrapola el pasado. Los analistas incorporan lo que el pasado
+   no puede saber: contratos firmados, capacidad en construcción, productos
+   que aún no se venden. La plantilla original deja esas celdas en naranja
+   para que el alumno las sobrescriba, y esto es lo mismo: no sustituye tu
+   juicio, te trae el dato para que decidas.
+   No hay API gratuita fiable de consenso, así que se pide por texto y se
+   pega — igual que los precios.                                          */
+function pedirAnalistas(){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const nom = $("nombre").value.trim();
+  const quien = nom ? `${nom}${T?" ("+T+")":""}` : (T || "[TICKER]");
+  const A = anios(), ult = A[A.length-1];
+  const p =
+`Necesito el CONSENSO DE ANALISTAS para ${quien}, solo cifras, sin opiniones
+ni precios objetivo.
+
+QUÉ NECESITO
+Para cada uno de los próximos 3 ejercicios (${ult+1}, ${ult+2} y ${ult+3}):
+· Ventas estimadas (consenso), en millones y en la moneda que reporta la empresa
+· Crecimiento interanual implícito de esas ventas, en %
+· Flujo de caja libre estimado si lo hay; si no, dilo
+
+REGLAS
+- Consenso de varios analistas, no la opinión de uno. Di cuántos lo forman.
+- Di la FECHA del consenso: uno de hace seis meses ya no sirve.
+- Si la empresa cierra su ejercicio fuera de diciembre, avísame y usa SU ejercicio.
+- No inventes. Si no tienes el dato de un año, escribe "no disponible".
+- Cita la fuente de cada cifra.
+
+FORMATO DE RESPUESTA
+Primero UNA SOLA LÍNEA con los tres crecimientos de ventas en %, del más
+cercano al más lejano, con punto decimal y sin el símbolo de porcentaje.
+Ejemplo:  14.9 12.4 10.1
+Después la tabla año · ventas · crecimiento, y las fuentes.`;
+
+  $("analistasBox").classList.remove("hide");
+  $("analistasBox").innerHTML =
+    `<div class="pegabox">
+      <div class="pt"><span class="pn">Estimaciones de los analistas</span>
+        <button type="button" id="cerrarAnalistas" style="font-size:.75rem;padding:.2rem .5rem">Cerrar</button></div>
+      <div style="font-size:.8rem;color:var(--soft);margin-bottom:.6rem">
+        En <b>InvestingPro</b> están en la pestaña <b>Forecast</b>, y en <b>TIKR</b> en <b>Estimates</b>.
+        Si no tienes acceso, copia este texto y pídeselo a una IA.</div>
+      <textarea id="promptAnalistasTxt" readonly style="min-height:150px">${esc(p)}</textarea>
+      <div class="pb">
+        <button type="button" class="pri" id="copiarAnalistas">Copiar el texto</button>
+        <button type="button" id="irClaudeAnalistas2">Abrir en Claude →</button>
+      </div>
+      <div style="font-size:.8rem;color:var(--soft);margin:.9rem 0 .4rem">
+        Pega aquí la línea de crecimientos (o escríbelos tú, separados por espacios):</div>
+      <textarea id="pegaAnalistas" placeholder="14.9 12.4 10.1" style="min-height:56px"></textarea>
+      <div class="pb"><button type="button" class="pri" id="aplicarAnalistas">Usar estos crecimientos</button></div>
+      <div class="pr" id="resAnalistas"></div>
+     </div>`;
+
+  $("cerrarAnalistas").onclick = () => { $("analistasBox").classList.add("hide"); $("analistasBox").innerHTML=""; };
+  $("copiarAnalistas").onclick = async () => {
+    const b = $("copiarAnalistas");
+    try{ await navigator.clipboard.writeText(p); b.textContent="✓ Copiado"; }
+    catch(e){ $("promptAnalistasTxt").select(); b.textContent="Selecciónalo y copia"; }
+    setTimeout(()=>b.textContent="Copiar el texto", 2400);
+  };
+  $("irClaudeAnalistas2").onclick = async () => {
+    try{ await navigator.clipboard.writeText(p); }catch(e){}
+    window.open("https://claude.ai/new","_blank","noopener");
+  };
+  $("aplicarAnalistas").onclick = () => {
+    const nums = tokensNum($("pegaAnalistas").value);
+    const r = $("resAnalistas");
+    if(!nums.length){ r.innerHTML = `<span class="mal">No he encontrado números.</span>`; return; }
+    const g1 = nums[0];
+    /* el año 5 se desvanece desde el último año que te hayan dado: si te dan
+       tres, el quinto es la mitad del tercero; es el mismo criterio prudente
+       de la plantilla, pero partiendo de lo que dicen los analistas */
+    const ultimo = nums[Math.min(nums.length,3)-1];
+    const g5 = Math.round(ultimo/2*10)/10;
+    VAL.g = g1; VAL.g5 = g5;
+    const texto = $("pegaAnalistas").value;
+    const msg = `<span class="bien">✓ Escalera actualizada.</span> Año 1: <b>${nf(g1,1)}%</b> ·
+      año 5: <b>${nf(g5,1)}%</b> (la mitad del último que me has dado, para no dar por hecho que el
+      empujón dura para siempre). Los años de en medio se interpolan.
+      <div style="margin-top:.4rem;color:var(--muted-txt)">Puedes afinar los dos extremos a mano en
+      las casillas de arriba. Y recuerda: <b>el consenso se equivoca a menudo</b> — te da el punto de
+      partida del mercado, no la verdad.</div>`;
+    /* recalcular repinta el informe entero y se lleva por delante este cuadro,
+       así que se vuelve a abrir con lo que había dentro */
+    informe(calcular()); guardarTrabajo();
+    pedirAnalistas();
+    $("pegaAnalistas").value = texto;
+    $("resAnalistas").innerHTML = msg;
+  };
+  $("analistasBox").scrollIntoView({behavior:modoScroll(),block:"center"});
 }
 
 /* ── traer precios de cierre de cada año desde Yahoo ── */
@@ -2517,10 +2613,17 @@ function pasoValoracion(R){
      <div class="note" style="margin-top:.2rem">
        <b>La escalera:</b> ${v.pasosF.map(g=>nf(g,1)+"%").join(" → ")}
        &nbsp;·&nbsp; equivale a un <b>${pc(v.cagrEquivF)}</b> anual compuesto.
+       &nbsp;·&nbsp; <b style="color:${VAL.g!==null?"var(--green)":"var(--amber-strong)"}">${
+         VAL.g!==null ? "supuesto tuyo" : "extrapolado del pasado"}</b>
        <span style="color:var(--muted-txt)">Ningún negocio crece al mismo ritmo cinco años seguidos. Por eso el
        crecimiento se va frenando en vez de mantenerse plano — es lo que hace la plantilla original, y es
        la diferencia entre una proyección optimista y una prudente.</span>
      </div>
+
+     <div class="bar-actions" style="margin-top:.8rem">
+       <button type="button" class="b2" id="promptAnalistas">📊 Traer las estimaciones de los analistas</button>
+     </div>
+     <div id="analistasBox" class="pegagrid hide" style="margin-top:.8rem"></div>
      <details class="noimp" style="margin-top:.6rem"><summary>Ajustes finos · beneficios, retorno, deuda y dilución</summary>
        <div class="dbody"><div class="vgrid" style="margin:0">
          <div><label>Crecim. beneficios · año 1 (%)</label><input class="vin" data-v="gb" type="number" step="any" value="${nf(v.gB,1).replace(",",".")}"></div>
@@ -2644,10 +2747,16 @@ function resumen(R){
       incorporan cosas que el histórico no puede saber — contratos firmados, capacidad en
       construcción, productos que aún no se venden.
       <br><br>
-      <b>Cómo se usarían:</b> en la pestaña <em>Forecast</em> de InvestingPro tienes el consenso de
-      analistas. Esas cifras sustituirían la escalera de crecimiento de los primeros años, y el
-      desvanecimiento se aplicaría solo a partir de ahí. El resultado sería una valoración más
-      pegada a lo que el mercado espera de verdad.
+      <b>Cómo se usan:</b> en la pestaña <em>Forecast</em> de InvestingPro —o en <em>Estimates</em> de
+      TIKR— tienes el consenso. Esas cifras sustituyen la escalera de los primeros años, y el
+      desvanecimiento se aplica solo a partir de ahí. En la pregunta 6 tienes el botón
+      <b>«📊 Traer las estimaciones de los analistas»</b>: te da el texto para pedirlas y las mete en
+      la escalera. El resultado es una valoración más pegada a lo que el mercado espera de verdad.
+      <br><br>
+      <b>Y una advertencia que no conviene saltarse:</b> el consenso se equivoca a menudo, y se
+      equivoca <em>en grupo</em> — suele ir por detrás de los cambios y raramente ve venir un mal año.
+      Usarlo no es delegar la decisión: es saber de qué punto de partida viene el precio de hoy, para
+      poder discutirlo.
       <br><br>
       <b>Y aquí está el valor real de tener esto:</b> InvestingPro te da su propio <em>Fair Value</em>,
       un número que sale de un modelo cuyos supuestos no controlas. Con este informe tienes
@@ -2917,6 +3026,7 @@ function enlazarValoracion(){
   document.querySelectorAll(".vin").forEach(inp=>{
     inp.onchange = () => { VAL[inp.dataset.v] = parseNum(inp.value); informe(calcular()); guardarTrabajo(); };
   });
+  if($("promptAnalistas")) $("promptAnalistas").onclick = pedirAnalistas;
 }
 
 /* ══════════════════ RECORRIDO GUIADO ══════════════════
