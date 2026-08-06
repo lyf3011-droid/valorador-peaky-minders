@@ -721,6 +721,14 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
       <input type="checkbox" id="invertir" style="width:auto"> los años vienen del más nuevo al más viejo</label>
   </div>
 
+  <div class="bar-actions" style="margin-bottom:.6rem">
+    <button class="b2" id="btnSECtop" style="border-color:var(--amber-line);color:var(--amber-strong)">
+      🏛 Rellenar desde la SEC (empresas de EE. UU.)</button>
+    <span style="font-size:.8rem;color:var(--soft);align-self:center">
+      Trae las 24 partidas de los informes oficiales. Solo rellena lo que esté vacío.</span>
+  </div>
+  <div class="pr" id="resSECtop" style="margin-bottom:.8rem"></div>
+
   <div id="bloqueBox" class="hide">
     <div class="note" style="margin-bottom:.9rem">Un cuadro por cuenta. Copia cada tabla de
       InvestingPro y pégala en el suyo con <kbd>Ctrl</kbd>+<kbd>V</kbd>: se reconoce sola.
@@ -1584,10 +1592,13 @@ Después la tabla año · ventas · crecimiento, y las fuentes.`;
 }
 
 /* ── traer precios de cierre de cada año desde Yahoo ── */
+let PRECIOS_TRAIDOS = 0;
 async function traerPrecios(){
   const T = ($("ticker").value||"").trim().toUpperCase();
   if(!T){ $("progFalta").textContent = "Escribe primero el ticker arriba"; return; }
-  const btn = $("traerPrecios"); btn.textContent = "Buscando…"; btn.disabled = true;
+  /* el botón vive en la pestaña Mercado: si estás en otra, no existe */
+  const btn = $("traerPrecios");
+  if(btn){ btn.textContent = "Buscando…"; btn.disabled = true; }
   try{
     const j = await yahoo(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(T)}?range=10y&interval=1mo`);
     const res = j.chart?.result?.[0];
@@ -1598,13 +1609,14 @@ async function traerPrecios(){
       const d = new Date(t*1000); porAnio[d.getUTCFullYear()] = cl[i]; });
     const A = anios(); let n = 0;
     A.forEach((a,i)=>{ if(porAnio[a]!=null){ D.precioAno[i] = Math.round(porAnio[a]*100)/100; n++; } });
-    pintarMatriz();
+    pintarMatriz(); PRECIOS_TRAIDOS = n;
     $("progFalta").textContent = n ? `✓ ${n} precios de cierre traídos de Yahoo Finance`
       : "Yahoo no tiene histórico para esos años";
   }catch(e){
     $("progFalta").textContent = "No se han podido traer los precios. Mételos a mano.";
   }
-  btn.textContent = "📈 Traer precios de Yahoo"; btn.disabled = false;
+  if(btn){ btn.textContent = "📈 Traer precios de Yahoo"; btn.disabled = false; }
+  guardarTrabajo();
 }
 
 /* ── verificación con IA ── */
@@ -1773,7 +1785,7 @@ function pintarPegaGrid(){
     });
   });
   $("pegagrid").querySelectorAll("[data-leer]").forEach(b=>b.onclick=()=>leerCaja(b.dataset.leer));
-  if($("btnSEC")) $("btnSEC").onclick = traerSEC;
+  if($("btnSEC")) $("btnSEC").onclick = () => traerSEC("cf");
   $("pegagrid").querySelectorAll("[data-limpiar]").forEach(b=>b.onclick=()=>{
     const g=b.dataset.limpiar;
     CONCEPTOS.filter(c=>c.g===g).forEach(c=>D[c.k]=new Array(N).fill(null));
@@ -2077,13 +2089,23 @@ function calcular(){
   let L = N-1; while(L>0 && guia[L]===null) L--;
   R.L = L;
 
-  /* crecimiento */
+  /* Crecimiento. Cada serie arranca donde tiene su primer dato, no donde
+     arrancan las ventas: hay empresas que publican unas partidas desde hace
+     diez años y otras desde hace cuatro. Antes, si al flujo de caja le
+     faltaba el primer año, su crecimiento salía nulo y con él se caía la
+     valoración entera, aunque hubiera cinco años buenos. */
+  const desdeSuPrimero = arr => {
+    let i = 0; while(i < L && (arr[i] === null || arr[i] === undefined)) i++;
+    return {i, n: L - i};
+  };
   let p0=0; while(p0<L && (guia[p0]===null)) p0++;
   const span = L-p0;
   R.span = span;
   R.cagrV = cagr(ventas[L],ventas[p0],span);
-  R.cagrB = cagr(der.bpa[L],der.bpa[p0],span);
-  R.cagrF = cagr(der.fcf[L],der.fcf[p0],span);
+  const bp = desdeSuPrimero(der.bpa), fp = desdeSuPrimero(der.fcf);
+  R.cagrB = cagr(der.bpa[L],der.bpa[bp.i],bp.n);
+  R.cagrF = cagr(der.fcf[L],der.fcf[fp.i],fp.n);
+  R.spanB = bp.n; R.spanF = fp.n;
 
   /* conservadores */
   R.c = {};
@@ -3192,19 +3214,43 @@ async function yahoo(url){
    Solo funciona con empresas que reportan a la SEC: las de Wall Street.
    Las del IBEX o el DAX no están, y se dice claramente.               */
 const SEC_TAGS = {
-  capexMant: ["Depreciation"],
-  sbc:       ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"],
-  dividendo: ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends"],
-  da:        ["DepreciationDepletionAndAmortization", "DepreciationAmortizationAndAccretionNet",
-              "DepreciationAndAmortization"],
-  capex:     ["PaymentsToAcquirePropertyPlantAndEquipment"],
-  recompra:  ["PaymentsForRepurchaseOfCommonStock"],
-  adquisi:   ["PaymentsToAcquireBusinessesNetOfCashAcquired"],
-  inventar:  ["InventoryNet"],
+  /* cuenta de resultados */
+  ventas:    ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet",
+              "RevenueFromContractWithCustomerIncludingAssessedTax"],
+  ebit:      ["OperatingIncomeLoss"],
+  impuestos: ["IncomeTaxExpenseBenefit"],
+  acciones:  ["WeightedAverageNumberOfDilutedSharesOutstanding"],
+  /* balance */
+  caja:      ["CashAndCashEquivalentsAtCarryingValue",
+              "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"],
+  inversion: ["ShortTermInvestments", "AvailableForSaleSecuritiesDebtSecuritiesCurrent",
+              "MarketableSecuritiesCurrent"],
+  deudaCP:   ["LongTermDebtCurrent", "DebtCurrent"],
+  deudaLP:   ["LongTermDebtNoncurrent"],
+  leaseCP:   ["OperatingLeaseLiabilityCurrent", "FinanceLeaseLiabilityCurrent"],
+  leaseLP:   ["OperatingLeaseLiabilityNoncurrent", "FinanceLeaseLiabilityNoncurrent"],
+  equity:    ["StockholdersEquity"],
   cobrar:    ["AccountsReceivableNetCurrent"],
   pagar:     ["AccountsPayableCurrent"],
+  inventar:  ["InventoryNet"],
+  unearned:  ["ContractWithCustomerLiabilityCurrent", "DeferredRevenueCurrent"],
+  /* flujo de caja */
+  da:        ["DepreciationDepletionAndAmortization", "DepreciationAmortizationAndAccretionNet",
+              "DepreciationAndAmortization"],
+  capexMant: ["Depreciation"],
+  capex:     ["PaymentsToAcquirePropertyPlantAndEquipment",
+              "PaymentsToAcquireProductiveAssets"],
+  adquisi:   ["PaymentsToAcquireBusinessesNetOfCashAcquired"],
+  recompra:  ["PaymentsForRepurchaseOfCommonStock"],
+  dividendo: ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends"],
+  sbc:       ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"],
 };
-const SEC_INSTANTE = new Set(["inventar","cobrar","pagar"]);   /* saldos, no flujos */
+/* saldos de balance: son fotos a una fecha, no flujos de un periodo */
+const SEC_INSTANTE = new Set(["caja","inversion","deudaCP","deudaLP","leaseCP","leaseLP",
+                              "equity","cobrar","pagar","inventar","unearned"]);
+/* estas dos no existen como etiqueta: se construyen al final */
+const SEC_INTERES = {ingreso:["InvestmentIncomeInterest","InterestIncomeOther"],
+                     gasto:["InterestExpense","InterestExpenseNonoperating","InterestExpenseDebt"]};
 
 /* La SEC no permite que la llame una página web directamente, así que se pasa
    por un reenviador. Se prueban varios porque son servicios gratuitos y
@@ -3254,8 +3300,8 @@ async function secCIK(ticker){
 }
 
 /* de la respuesta XBRL saca {año: valor en millones} usando solo los 10-K */
-function secAnual(datos, instante){
-  const u = (datos.units && datos.units.USD) || [];
+function secAnual(datos, instante, unidad){
+  const u = (datos.units && datos.units[unidad || "USD"]) || [];
   const out = {};
   for(const x of u){
     if(x.form !== "10-K") continue;
@@ -3273,16 +3319,21 @@ function secAnual(datos, instante){
   return r;
 }
 
-async function traerSEC(){
+async function traerSEC(desde){
   const T = ($("ticker").value||"").trim().toUpperCase();
-  const caja = $("resSEC");
+  /* hay dos botones —uno arriba y otro en el cuadro de flujo de caja— y el
+     mensaje tiene que salir junto al que se ha pulsado */
+  const arriba = !!(desde === "top");
+  const idCaja = arriba ? "resSECtop" : "resSEC";
+  const idBtn  = arriba ? "btnSECtop" : "btnSEC";
+  const caja = $(idCaja);
   if(!T){ caja.innerHTML = `<span class="mal">Escribe primero el ticker arriba.</span>`; return; }
   if(/\.(MC|DE|PA|L|MI|PA)$/i.test(T)){
     caja.innerHTML = `<div class="warn"><b>La SEC solo tiene empresas que cotizan en EE. UU.</b>
       ${esc(T)} no deposita ahí sus cuentas. Estas partidas tendrás que sacarlas de su informe
       anual y escribirlas a mano.</div>`; return;
   }
-  const btn = $("btnSEC"); const txt0 = btn.textContent;
+  const btn = $(idBtn); const txt0 = btn.textContent;
   btn.disabled = true; btn.textContent = "Buscando en la SEC…";
   caja.innerHTML = `<span style="color:var(--muted-txt)">Consultando los informes anuales de ${esc(T)}…</span>`;
   try{
@@ -3301,16 +3352,26 @@ async function traerSEC(){
     caja.innerHTML = `<span style="color:var(--muted-txt)">Buscando ${pendientes.length} partidas en
       los informes anuales de ${esc(T)}…</span>`;
     /* en paralelo: en serie son diez viajes y se hace eterno */
-    const resultados = await Promise.all(pendientes.map(async ([k, tags]) => {
+    /* Se combinan TODAS las etiquetas, no solo la primera que responda: las
+       empresas cambian de etiqueta con los años. Alphabet, por ejemplo, dejó
+       de usar la suya habitual para las ventas en el último ejercicio, y
+       quedarse con la primera dejaba 2025 en blanco. Manda el orden: la
+       primera etiqueta rellena, y las siguientes solo tapan huecos. */
+    const pedir = async (tags, instante, unidad) => {
+      let acum = null;
       for(const tag of tags){
         try{
           const j = await secJSON(`https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`);
-          const s = secAnual(j, SEC_INSTANTE.has(k));
-          if(Object.keys(s).length) return [k, s];
-        }catch(e){ /* ese concepto no existe para esta empresa: se prueba el siguiente */ }
+          const s = secAnual(j, instante, unidad);
+          if(!Object.keys(s).length) continue;
+          if(!acum) acum = s;
+          else Object.entries(s).forEach(([y,v]) => { if(acum[y] === undefined) acum[y] = v; });
+        }catch(e){ /* esa etiqueta no la usa esta empresa: se prueba la siguiente */ }
       }
-      return [k, null];
-    }));
+      return acum;
+    };
+    const resultados = await Promise.all(pendientes.map(async ([k, tags]) =>
+      [k, await pedir(tags, SEC_INSTANTE.has(k), k === "acciones" ? "shares" : "USD")]));
     for(const [k, serie] of resultados){
       if(!serie){ vacias.push(k); continue; }
       const con = CONCEPTOS.find(c => c.k === k);
@@ -3319,10 +3380,57 @@ async function traerSEC(){
         D[k][i] = con && con.pos ? Math.abs(Math.round(serie[a])) : Math.round(serie[a]); n++; } });
       if(n) puestas.push({k, lab: con ? con.lab : k, n}); else vacias.push(k);
     }
+
+    /* Hay empresas —Alphabet entre ellas— que no publican una D&A conjunta:
+       solo la depreciación. Es lo mismo que enseña Investing en esa fila, así
+       que si falta la una se usa la otra. */
+    if(!D.da.some(v=>v!==null) && D.capexMant.some(v=>v!==null)){
+      let n = 0;
+      A.forEach((a,i) => { if(D.capexMant[i]!==null){ D.da[i] = D.capexMant[i]; n++; } });
+      if(n){ puestas.push({k:"da", lab:"Depreciación y amortización (solo publican la depreciación)", n});
+        const j = vacias.indexOf("da"); if(j>=0) vacias.splice(j,1); }
+    }
+
+    /* Dos partidas que la contabilidad oficial no publica con ese nombre y que
+       hay que construir, igual que hace la plantilla:
+         EBITDA  = EBIT + depreciación y amortización
+         Interés = lo que cobra por su caja − lo que paga por su deuda        */
+    if(!D.ebitda.some(v=>v!==null) && D.ebit.some(v=>v!==null) && D.da.some(v=>v!==null)){
+      let n = 0;
+      A.forEach((a,i) => { if(D.ebit[i]!==null && D.da[i]!==null){
+        D.ebitda[i] = Math.round(D.ebit[i] + Math.abs(D.da[i])); n++; } });
+      if(n) puestas.push({k:"ebitda", lab:"EBITDA (calculado: EBIT + D&A)", n});
+    }
+    if(!D.interes.some(v=>v!==null)){
+      const [ing, gas] = await Promise.all([
+        pedir(SEC_INTERES.ingreso, false, "USD"), pedir(SEC_INTERES.gasto, false, "USD")]);
+      if(ing || gas){
+        let n = 0;
+        A.forEach((a,i) => {
+          const x = ing && ing[a] !== undefined ? ing[a] : null;
+          const y = gas && gas[a] !== undefined ? gas[a] : null;
+          if(x === null && y === null) return;
+          D.interes[i] = Math.round((x||0) - Math.abs(y||0)); n++;
+        });
+        if(n) puestas.push({k:"interes", lab:"Intereses netos (ingresos − gastos)", n});
+        else vacias.push("interes");
+      } else vacias.push("interes");
+    }
+
+    /* Los precios no están en la contabilidad: son de mercado. Se traen de
+       Yahoo en el mismo viaje para que la empresa quede entera de una vez —
+       sin los diez cierres no hay múltiplos históricos y no hay valoración. */
+    let precios = 0;
+    if(!D.precioAno.some(v=>v!==null)){
+      PRECIOS_TRAIDOS = 0;
+      try{ await traerPrecios(); precios = PRECIOS_TRAIDOS; }catch(e){}
+      if(precios) puestas.push({k:"precioAno", lab:"Precio al cierre del año (Yahoo Finance)", n:precios});
+    }
+
     pintarMatriz(); pintarPegaGrid(); guardarTrabajo();
     const nom = k => (CONCEPTOS.find(c=>c.k===k)||{}).lab || k;
     /* repintar la rejilla ha recreado el cuadro, así que el mensaje va al nuevo */
-    const salida = $("resSEC") || caja;
+    const salida = $(idCaja) || caja;
     salida.innerHTML = puestas.length
       ? `<span class="bien">✓ ${puestas.length} partidas traídas de la SEC.</span>
          <ul>${puestas.map(p=>`<li>${esc(p.lab)} · ${p.n} años</li>`).join("")}</ul>
@@ -3807,6 +3915,7 @@ $("ticker").onblur = () => setTimeout(cerrarSugerencias, 120);
 $("ticker").onfocus = () => { if($("ticker").value.trim()) pintarSugerencias($("ticker").value); };
 $("analizar").onclick = () => { MON = $("moneda").value||"$"; informe(calcular()); };
 $("abrirBloque").onclick = () => { $("bloqueBox").classList.toggle("hide"); pintarPegaGrid(); };
+$("btnSECtop").onclick = () => traerSEC("top");
 
 
 
