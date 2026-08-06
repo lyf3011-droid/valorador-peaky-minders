@@ -1743,10 +1743,10 @@ function pintarPegaGrid(){
          una columna o la tabla de datos históricos.`
       : `Copia la tabla entera desde <b>«Period Ending»</b> hasta el final y pégala aquí.
          Se recomienda <b>Investing en inglés</b>; si lo tienes en español también lo reconoce.`
-        + (g==="CF" ? `<br><b style="color:var(--amber-strong)">Estas dos no las publica Investing</b>
-           en esta tabla, así que se quedarán vacías y no es un fallo: <b>CapEx de mantenimiento</b>
-           —que el método aproxima solo con la depreciación— y <b>pagos en acciones (SBC)</b>.
-           Si los quieres exactos, salen del informe anual.` : "");
+        + (g==="CF" ? `<br><b style="color:var(--amber-strong)">Dos no las publica Investing</b> en
+           esta tabla y se quedarán vacías: <b>CapEx de mantenimiento</b> —la <i>Depreciation</i>
+           sola— y <b>pagos en acciones (SBC)</b>. No es un fallo de nada:
+           <b>púlsalo abajo y las traigo de la SEC</b>, que es donde sí están.` : "");
     return `<div class="pegabox${hechos===total?" ok":""}" data-g="${g}">
       <div class="pt"><span class="pn">${esc(G[g])}</span>
         <span class="pe">${hechos}/${total} ${total===1?"partida":"partidas"}</span></div>
@@ -1756,8 +1756,11 @@ function pintarPegaGrid(){
       <div class="pb">
         <button type="button" class="pri" data-leer="${g}">Reconocer</button>
         <button type="button" data-limpiar="${g}">Limpiar</button>
+        ${g==="CF" ? `<button type="button" id="btnSEC" style="border-color:var(--amber-line);
+          color:var(--amber-strong)">🏛 Traer de la SEC lo que falte</button>` : ""}
       </div>
       <div class="pr" data-res="${g}"></div>
+      ${g==="CF" ? `<div class="pr" id="resSEC"></div>` : ""}
     </div>`;
   }).join("");
 
@@ -1770,6 +1773,7 @@ function pintarPegaGrid(){
     });
   });
   $("pegagrid").querySelectorAll("[data-leer]").forEach(b=>b.onclick=()=>leerCaja(b.dataset.leer));
+  if($("btnSEC")) $("btnSEC").onclick = traerSEC;
   $("pegagrid").querySelectorAll("[data-limpiar]").forEach(b=>b.onclick=()=>{
     const g=b.dataset.limpiar;
     CONCEPTOS.filter(c=>c.g===g).forEach(c=>D[c.k]=new Array(N).fill(null));
@@ -3174,6 +3178,166 @@ async function yahoo(url){
   const r2 = await fetch("https://corsproxy.io/?url=" + encodeURIComponent(url), {signal:c2.signal});
   if(!r2.ok) throw new Error("sin respuesta");
   return await r2.json();
+}
+
+/* ══════════════════ RESCATE DESDE LA SEC ══════════════════
+   Hay tres partidas que InvestingPro no publica en sus tablas y que por
+   tanto nunca entran al pegar: la Depreciation sola (la que manda el
+   método para el CapEx de mantenimiento), los pagos en acciones y, si el
+   grupo viene plegado, los dividendos. Todas están en los informes
+   anuales que las empresas de EE. UU. depositan en la SEC, que publica
+   los datos en abierto y sin clave. Esto los va a buscar allí.
+   Solo funciona con empresas que reportan a la SEC: las de Wall Street.
+   Las del IBEX o el DAX no están, y se dice claramente.               */
+const SEC_TAGS = {
+  capexMant: ["Depreciation"],
+  sbc:       ["ShareBasedCompensation", "AllocatedShareBasedCompensationExpense"],
+  dividendo: ["PaymentsOfDividendsCommonStock", "PaymentsOfDividends"],
+  da:        ["DepreciationDepletionAndAmortization", "DepreciationAmortizationAndAccretionNet",
+              "DepreciationAndAmortization"],
+  capex:     ["PaymentsToAcquirePropertyPlantAndEquipment"],
+  recompra:  ["PaymentsForRepurchaseOfCommonStock"],
+  adquisi:   ["PaymentsToAcquireBusinessesNetOfCashAcquired"],
+  inventar:  ["InventoryNet"],
+  cobrar:    ["AccountsReceivableNetCurrent"],
+  pagar:     ["AccountsPayableCurrent"],
+};
+const SEC_INSTANTE = new Set(["inventar","cobrar","pagar"]);   /* saldos, no flujos */
+
+/* La SEC no permite que la llame una página web directamente, así que se pasa
+   por un reenviador. Se prueban varios porque son servicios gratuitos y
+   cualquiera puede estar caído: si fallan todos, se dice y se sigue a mano. */
+const SEC_PUENTES = [
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+];
+let SEC_PUENTE_OK = null;                 /* el primero que funcione se reutiliza */
+
+async function secJSON(url){
+  const orden = SEC_PUENTE_OK !== null
+    ? [SEC_PUENTES[SEC_PUENTE_OK], ...SEC_PUENTES.filter((_,i)=>i!==SEC_PUENTE_OK)]
+    : SEC_PUENTES;
+  let ultimo = "";
+  for(const puente of orden){
+    try{
+      const c = new AbortController(); setTimeout(()=>c.abort(), 9000);
+      const r = await fetch(puente(url), {signal:c.signal});
+      /* 404 = el puente funciona, es la SEC la que no tiene ese concepto para
+         esta empresa. No sirve de nada preguntárselo a otro puente. */
+      if(r.status === 404){ SEC_PUENTE_OK = SEC_PUENTES.indexOf(puente);
+        const e = new Error("no existe"); e.noExiste = true; throw e; }
+      if(!r.ok){ ultimo = "código " + r.status; continue; }
+      const j = await r.json();
+      SEC_PUENTE_OK = SEC_PUENTES.indexOf(puente);
+      return j;
+    }catch(e){
+      if(e.noExiste) throw e;
+      ultimo = e.name === "AbortError" ? "tardó demasiado" : "sin conexión";
+    }
+  }
+  throw new Error("no he podido llegar a la SEC · " + ultimo);
+}
+
+async function secCIK(ticker){
+  let mapa = null;
+  try{ mapa = JSON.parse(localStorage.getItem("secCIK") || "null"); }catch(e){}
+  if(!mapa){
+    const j = await secJSON("https://www.sec.gov/files/company_tickers.json");
+    mapa = {};
+    Object.values(j).forEach(e => { mapa[String(e.ticker).toUpperCase()] = String(e.cik_str).padStart(10,"0"); });
+    try{ localStorage.setItem("secCIK", JSON.stringify(mapa)); }catch(e){}
+  }
+  return mapa[ticker.toUpperCase()] || null;
+}
+
+/* de la respuesta XBRL saca {año: valor en millones} usando solo los 10-K */
+function secAnual(datos, instante){
+  const u = (datos.units && datos.units.USD) || [];
+  const out = {};
+  for(const x of u){
+    if(x.form !== "10-K") continue;
+    if(!instante){
+      if(!x.start || x.fp !== "FY") continue;
+      const a = new Date(x.start), b = new Date(x.end);
+      const dias = (b - a) / 86400000;
+      if(dias < 350 || dias > 380) continue;          /* fuera trimestres y periodos raros */
+    }
+    const y = +x.end.slice(0,4) - (+x.end.slice(5,7) <= 1 ? 1 : 0);
+    /* los 10-K repiten años anteriores: se queda el dato más reciente */
+    if(!out[y] || x.end >= out[y].end) out[y] = {v: x.val/1e6, end: x.end};
+  }
+  const r = {}; Object.entries(out).forEach(([y,o]) => r[+y] = o.v);
+  return r;
+}
+
+async function traerSEC(){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const caja = $("resSEC");
+  if(!T){ caja.innerHTML = `<span class="mal">Escribe primero el ticker arriba.</span>`; return; }
+  if(/\.(MC|DE|PA|L|MI|PA)$/i.test(T)){
+    caja.innerHTML = `<div class="warn"><b>La SEC solo tiene empresas que cotizan en EE. UU.</b>
+      ${esc(T)} no deposita ahí sus cuentas. Estas partidas tendrás que sacarlas de su informe
+      anual y escribirlas a mano.</div>`; return;
+  }
+  const btn = $("btnSEC"); const txt0 = btn.textContent;
+  btn.disabled = true; btn.textContent = "Buscando en la SEC…";
+  caja.innerHTML = `<span style="color:var(--muted-txt)">Consultando los informes anuales de ${esc(T)}…</span>`;
+  try{
+    const cik = await secCIK(T);
+    if(!cik) throw new Error(`la SEC no conoce el ticker ${T}`);
+    const A = anios(), puestas = [], vacias = [], yaEstaban = [];
+    const pendientes = Object.entries(SEC_TAGS).filter(([k]) => {
+      if(D[k].some(v => v !== null)){ yaEstaban.push(k); return false; }  /* nunca pisa lo tuyo */
+      return true;
+    });
+    if(!pendientes.length){
+      caja.innerHTML = `<div class="note">Todas las partidas que sé buscar ya tienen datos. Si quieres
+        que las traiga de la SEC, vacíalas antes.</div>`;
+      btn.disabled = false; btn.textContent = txt0; return;
+    }
+    caja.innerHTML = `<span style="color:var(--muted-txt)">Buscando ${pendientes.length} partidas en
+      los informes anuales de ${esc(T)}…</span>`;
+    /* en paralelo: en serie son diez viajes y se hace eterno */
+    const resultados = await Promise.all(pendientes.map(async ([k, tags]) => {
+      for(const tag of tags){
+        try{
+          const j = await secJSON(`https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`);
+          const s = secAnual(j, SEC_INSTANTE.has(k));
+          if(Object.keys(s).length) return [k, s];
+        }catch(e){ /* ese concepto no existe para esta empresa: se prueba el siguiente */ }
+      }
+      return [k, null];
+    }));
+    for(const [k, serie] of resultados){
+      if(!serie){ vacias.push(k); continue; }
+      const con = CONCEPTOS.find(c => c.k === k);
+      let n = 0;
+      A.forEach((a,i) => { if(serie[a] !== undefined){
+        D[k][i] = con && con.pos ? Math.abs(Math.round(serie[a])) : Math.round(serie[a]); n++; } });
+      if(n) puestas.push({k, lab: con ? con.lab : k, n}); else vacias.push(k);
+    }
+    pintarMatriz(); pintarPegaGrid(); guardarTrabajo();
+    const nom = k => (CONCEPTOS.find(c=>c.k===k)||{}).lab || k;
+    /* repintar la rejilla ha recreado el cuadro, así que el mensaje va al nuevo */
+    const salida = $("resSEC") || caja;
+    salida.innerHTML = puestas.length
+      ? `<span class="bien">✓ ${puestas.length} partidas traídas de la SEC.</span>
+         <ul>${puestas.map(p=>`<li>${esc(p.lab)} · ${p.n} años</li>`).join("")}</ul>
+         ${vacias.length?`<div style="margin-top:.4rem;color:var(--muted-txt)">No publican con esa
+           etiqueta: ${esc(vacias.map(nom).join(", "))}. Es normal — no todas usan las mismas.</div>`:""}
+         ${yaEstaban.length?`<div style="color:var(--muted-txt)">Intactas porque ya tenían datos:
+           ${esc(yaEstaban.map(nom).join(", "))}.</div>`:""}
+         <div style="margin-top:.5rem">Datos de los <b>10-K</b> depositados en la SEC. Es la fuente
+         oficial: si no cuadran con Investing, manda esta.</div>`
+      : `<div class="warn"><b>No he podido traer nada.</b> ${yaEstaban.length
+           ? "Todas las partidas que busco ya tenían datos."
+           : "Puede que esta empresa use otras etiquetas contables."}</div>`;
+  }catch(e){
+    caja.innerHTML = `<div class="warn"><b>No he podido consultar la SEC</b> (${esc(e.message)}).
+      Escribe esas partidas a mano desde el informe anual: el resto funciona igual.</div>`;
+  }
+  btn.disabled = false; btn.textContent = txt0;
 }
 
 /* ══════════════════ MODELO DE NEGOCIO ══════════════════ */
