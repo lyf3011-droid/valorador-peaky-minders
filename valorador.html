@@ -818,7 +818,7 @@ const CONCEPTOS = [
 
  {k:"da",       g:"CF", lab:"Depreciación y amortización",src:"Depreciation & Amortization, Total", req:1,
    calc:{op:"−", a:"EBITDA", b:"Operating Income"}},
- {k:"capexMant",g:"CF", lab:"CapEx de mantenimiento",     src:"Depreciation del cash flow · si no está, la de la cuenta de resultados · vacío = se usa la D&A", pos:1,
+ {k:"capexMant",g:"CF", lab:"CapEx de mantenimiento",     src:"la Depreciation sola · TIKR la publica, Investing no · si la dejas vacía se usa la D&A total y el resultado sale más prudente", pos:1,
    calc:{op:"−", a:"Depreciation & Amortization, Total", b:"Amortization (si solo aparece la amortización)"}},
  {k:"capex",    g:"CF", lab:"CapEx total",                src:"Capital Expenditure", pos:1},
  {k:"adquisi",  g:"CF", lab:"Adquisiciones",              src:"Cash Acquisitions", pos:1},
@@ -1766,10 +1766,26 @@ function calcular(){
   der.cwc = mk(i => (i===0||der.wc[i]===null||der.wc[i-1]===null) ? 0 : der.wc[i]-der.wc[i-1]);
   if(!has("cobrar")) R.aviso.push("Sin cuentas a cobrar/pagar no se descuenta la variación de circulante: el FCF sale algo <b>optimista</b>.");
 
-  /* CapEx de mantenimiento: el dato explícito si existe; si no, la D&A como proxy */
+  /* CapEx de mantenimiento — regla de la plantilla (TIKR_Cálculos!C7):
+       SI( |CapEx neto| < Depreciación ; CapEx neto ; Depreciación )
+     Es decir, la depreciación es el TECHO, no el valor. Una empresa no puede
+     estar gastando en mantenerse más de lo que gasta en total: si invierte
+     menos que lo que se le desgasta, el mantenimiento es lo que de verdad
+     gastó. Sin este tope el FCF salía demasiado bajo en las empresas que
+     invierten poco — justo las que el método debería mirar con más cuidado. */
   const capexMantIn = abs(g("capexMant"));
-  der.capexMant = mk(i => capexMantIn[i]!==null ? capexMantIn[i] : at(da,i));
+  const topeAplicado = [];
+  der.capexMant = mk(i => {
+    const base = capexMantIn[i]!==null ? capexMantIn[i] : at(da,i);
+    if(base===null) return null;
+    if(capex[i]===null) return base;
+    if(capex[i] < base){ topeAplicado.push(A[i]); return capex[i]; }
+    return base;
+  });
   if(!has("capexMant")) R.aviso.push("Sin CapEx de mantenimiento explícito se usa la <b>D&amp;A total</b> como aproximación. Si tienes la <em>Depreciation</em> sola (sin amortización de intangibles), métela en su fila: el FCF será más fiel.");
+  if(topeAplicado.length) R.aviso.push(`En ${topeAplicado.length===1?"el año":"los años"} <b>${topeAplicado.join(", ")}</b> la empresa
+    invirtió menos de lo que se le desgastó, así que el CapEx de mantenimiento se ha limitado al
+    <b>CapEx realmente gastado</b>. Es la regla de la plantilla: la depreciación es el techo, no el importe.`);
   der.fcf = mk(i => at(ebitda,i)===null ? null
      : ebitda[i] - z(der.capexMant,i) - z(impuestos,i) + z(interes,i) - z(der.cwc,i));
   der.neto = mk(i => at(ebit,i)===null ? null : ebit[i] + z(interes,i) - z(impuestos,i));

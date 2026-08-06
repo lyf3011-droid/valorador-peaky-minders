@@ -340,13 +340,24 @@ button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:3px}
   <p class="sub">Son 25 filas por 10 años: 250 cifras. Teclearlas a mano es la forma más segura
   de equivocarse y de abandonar. Nunca hace falta: siempre se copia y se pega.</p>
 
-  <div class="note" style="margin-bottom:1.6rem"><b>El camino rápido — empieza por aquí.</b>
+  <div class="note" style="margin-bottom:1.2rem"><b>El camino rápido — empieza por aquí.</b>
   En el valorador, el botón <b>«📋 Pegar la tabla entera de Investing»</b> abre <b>un cuadro por
-  cuenta</b>: resultados, balance y flujo de caja. Copias la tabla completa de InvestingPro,
+  cuenta</b>: resultados, balance, flujo de caja y mercado. Copias la tabla completa de InvestingPro,
   la sueltas en el cuadro de su cuenta y las filas se reconocen solas — te dice cuáles ha
   encontrado y cuáles faltan. Puedes pegarlas en cualquier orden, y cada cuadro solo escribe
   en las partidas de su cuenta. <b>Los tres pasos de abajo son para completar lo que falte</b>,
   fila a fila.</div>
+
+  <div class="warn" style="margin-bottom:1.6rem"><b>Ponlo en inglés. No es una manía: es el método.</b>
+  Las instrucciones de la plantilla original lo dicen con estas palabras — <i>«Solo es válido para
+  TIKR en INGLÉS»</i> — y avisan de que el separador decimal es la causa número uno de que los datos
+  entren mal. Es exactamente el mismo problema en cualquier herramienta: en inglés los miles se
+  separan con coma (<code>96,571</code>) y en español con punto (<code>96.571</code>), y confundirlos
+  cambia el número <b>por mil</b>.<br><br>
+  El valorador reconoce los dos formatos y los dos idiomas, así que si lo pegas en español también
+  funciona. Pero <b>trabaja en inglés</b>: es como está escrito el método, como se llaman las filas
+  en la plantilla de clase, y como podrás comparar tu resultado con el de cualquier compañero.
+  En Investing el idioma se cambia en el pie de la página.</div>
 
   <div class="pasos">
     <div class="paso"><div class="p">1</div><div class="h">Selecciona la fila entera</div>
@@ -513,15 +524,126 @@ Partida en 100 participaciones (+5 prometidas al panadero jefe)</div>
   <div class="warn"><b>Y aquí está el peligro, que también hay que decirlo:</b> este método es más
   generoso con las empresas que invierten mucho en crecer. Si una compañía clasifica como
   «expansión» un gasto que en realidad es de mantenimiento, su caja libre parece mayor de lo que es.
-  Por eso el método usa <b>la depreciación</b> como suelo del mantenimiento: es un número que la
-  empresa no elige a conveniencia. Y por eso conviene revisar que el CapEx de expansión de verdad
-  se traduzca en más ventas años después. Si crece el gasto y no crecen las ventas, algo no cuadra.</div>
+  Por eso el método se ancla en <b>la depreciación</b>: es un número que la empresa no elige a
+  conveniencia. Y por eso conviene revisar que el CapEx de expansión de verdad se traduzca en más
+  ventas años después. Si crece el gasto y no crecen las ventas, algo no cuadra.</div>
+
+  <h3>La cuenta exacta, sin misterio</h3>
+  <p class="sub">La plantilla no se limita a coger la depreciación: la usa como <b>techo</b>.
+  Esta es la fórmula, tal cual:</p>
+
+  <div class="form" style="margin-top:1rem">
+    <div class="h">📐 Cómo sale el CapEx de mantenimiento</div>
+    <div class="w" style="margin-top:.6rem">
+      <code>CapEx de mantenimiento = el MENOR de estos dos:<br>
+      &nbsp;&nbsp;· lo que la empresa se ha gastado de verdad en inversiones<br>
+      &nbsp;&nbsp;· lo que se le ha desgastado este año (la depreciación)</code><br><br>
+      <b>¿Por qué el menor?</b> Porque nadie puede gastar en mantenerse más de lo que gasta en total.
+      Si a Marta se le desgastan 5.000 € de horno al año pero este año solo se gastó 3.000 €, su
+      mantenimiento fue 3.000 €, no 5.000 €. Que se esté quedando corta es otra conversación —
+      y una señal de aviso, porque el horno se le va a morir igual.<br><br>
+      <b>Y lo de arriba:</b> si gastó 40.000 € y solo se le desgastaron 5.000 €, el mantenimiento
+      son 5.000 €. Los otros 35.000 € son la amasadora: expansión.
+    </div>
+  </div>
+
+  <p class="sub" style="margin-top:1rem">De ahí sale el otro número, por resta:
+  <code>CapEx de expansión = lo gastado − lo de mantenimiento</code>. No es una estimación aparte:
+  es lo que sobra.</p>
+
+  <h3>Esto no lo hemos inventado nosotros</h3>
+  <p class="sub">Cuando alguien te diga que estás inflando el flujo de caja, esta es la respuesta.
+  El concepto tiene nombre, autor y fecha: <b>owner earnings</b>, Warren Buffett, carta a los
+  accionistas de Berkshire Hathaway de <b>1986</b>, en el apéndice donde explica la compra de
+  Scott Fetzer.</p>
+
+  <div class="form" style="margin-top:1rem">
+    <div class="h">🎩 Lo que dijo Buffett, y por qué importa</div>
+    <div class="w" style="margin-top:.6rem">
+      Buffett define las ganancias del propietario como el beneficio declarado, <b>más</b> la
+      depreciación y demás cargos que no son salidas de dinero, <b>menos</b> la inversión media
+      anual que el negocio necesita para —en sus palabras—
+      <i>«fully maintain its long-term competitive position and its unit volume»</i>.<br><br>
+      Las tres palabras que lo deciden todo son <b>maintain</b>, <b>position</b> y <b>volume</b>:
+      lo que hace falta para <b>seguir donde estás vendiendo lo mismo</b>. Todo lo que se gaste por
+      encima de eso es para llegar más lejos, y por definición no es un coste de estar donde estás.
+      <br><br>
+      Buffett añade dos cosas que conviene no saltarse. La primera: ese número <b>es una
+      estimación</b>, y a veces difícil de hacer. No pretende la falsa precisión de la contabilidad
+      oficial. La segunda, y es la que explica por qué ninguna web te da este dato: el contador
+      registra lo que ya pasó; <b>decidir cuánto hace falta para mantenerse es trabajo del
+      inversor</b>. Por eso lo estimas tú, y por eso esa casilla es editable.
+    </div>
+  </div>
+
+  <div class="note"><b>Cómo encaja con el método que estás aprendiendo.</b> Buffett llega al valor
+  descontando flujos de caja futuros; este método llega por <b>múltiplos</b>: cuántas veces su caja
+  ha pagado el mercado por esta empresa históricamente. Son dos caminos distintos hacia el mismo
+  sitio, y se puede discutir cuál es mejor. Pero <b>el paso previo — cómo se lee la contabilidad y
+  qué se considera dinero de verdad — es idéntico en los dos</b>. Da igual qué hagas después con el
+  flujo de caja: primero hay que calcularlo bien, y calcularlo bien significa separar mantener de
+  crecer.</div>
 
   <div class="note"><b>Caso real, META 2025:</b> gastó <b>69.691 M$</b> en inversiones, de los cuales
   unos <b>18.000 M$</b> son mantenimiento y más de <b>51.000 M$</b> son centros de datos para
   inteligencia artificial que hoy no producen nada. Con el criterio de las webs, META cotiza a
   61 veces su caja. Con este método, a 24,8 veces. La misma empresa, el mismo día, dos conclusiones
   opuestas — y la diferencia es enteramente esta decisión.</div>
+
+  <div class="warn"><b>El punto flaco, dilo tú antes de que lo diga otro.</b> Si quitas del flujo de
+  caja el gasto en crecer pero luego proyectas el crecimiento que ese gasto produce, te estás
+  quedando con el premio sin pagar la entrada. Por eso el valorador <b>no proyecta un crecimiento
+  plano</b>: usa una escalera que se frena cada año. Ese frenazo es, precisamente, reconocer que
+  crecer no sale gratis.</div>
+</div></section>
+
+<!-- ══════════ EL PRECIO ══════════ -->
+<section><div class="wrap">
+  <div class="snum">El dato que no está en las cuentas</div>
+  <h2>El precio, explicado de una vez</h2>
+  <p class="sub">De los 25 datos, 24 salen de las cuentas de la empresa. El 25 no: es lo que el
+  mercado ha ido pagando. Es el que más confusión genera, así que aquí va entero.</p>
+
+  <div class="pasos" style="margin-top:1.6rem">
+    <div class="paso"><div class="p">1</div><div class="h">Diez precios, uno por ejercicio</div>
+      <div class="t">Lo que costaba la acción al cerrar cada uno de los diez años.
+      <b>No sirven para saber si está cara hoy.</b> Sirven para calcular a cuántas veces su caja ha
+      cotizado esta empresa históricamente — y de ahí sale el múltiplo objetivo.</div></div>
+    <div class="paso"><div class="p">2</div><div class="h">Un precio de hoy</div>
+      <div class="t">El de la cotización actual. Este es el único que compara con tu resultado, y
+      <b>se mira al final</b>. Va en su casilla propia, arriba, junto al ticker.</div></div>
+    <div class="paso"><div class="p">⚠</div><div class="h">El mes tiene que coincidir</div>
+      <div class="t">Si la empresa cierra en junio, el precio es el de junio. Poner el de diciembre
+      es dividir el precio de un momento entre las cuentas de otro: los múltiplos salen mal
+      y con ellos toda la valoración.</div></div>
+  </div>
+
+  <h3>Para qué sirve cada uno, en una frase</h3>
+  <div class="form" style="margin-top:1rem">
+    <div class="h">🧮 Los diez precios antiguos construyen la vara de medir</div>
+    <div class="w" style="margin-top:.6rem">
+      Precio × acciones = lo que valía la empresa entera ese año. Divides eso entre la caja que
+      generó, y sabes <b>cuántos años de caja pagaba el mercado</b>. Repites diez veces y tienes su
+      múltiplo normal: no el de una web, el de esta empresa concreta.<br><br>
+      El valorador se queda con <b>la mediana o la media, la que sea más baja</b>, y ese es el
+      múltiplo que usa para el futuro. Por eso los precios antiguos importan tanto: si los pones
+      mal, la vara de medir queda torcida y todo lo demás también.
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:1rem"><b>Tres formas de conseguirlos, por orden de comodidad.</b>
+  <br>① El botón <b>«Traer precios de Yahoo»</b>, que los rellena de golpe.
+  <br>② El botón <b>«Pedírselos a una IA»</b>, que te da un texto listo para ChatGPT, Gemini o Claude
+  — con las reglas para que no invente y avisando de si la empresa cierra fuera de diciembre.
+  <br>③ A mano, desde <b>datos históricos</b> en Investing, pegándolos en el cuadro de Mercado.
+  <br><br>Con cualquiera de los tres, <b>mira el primero y el último antes de seguir</b>. Un precio
+  descolocado se nota enseguida en la gráfica de múltiplos: aparece un pico que no encaja con nada.</div>
+
+  <div class="warn" style="margin-top:1rem"><b>Y por eso el precio se mira el último.</b> No es una
+  pose. Si ves el precio antes de haber hecho las cuentas, tu cabeza ya ha decidido, y el resto del
+  análisis solo sirve para darte la razón. Se llama anclaje y le pasa a todo el mundo, también a los
+  profesionales. El orden del método —crece, márgenes, caja, ROIC, banderas rojas y <b>después</b>
+  precio— existe exactamente para eso.</div>
 </div></section>
 
 <!-- ══════════ EJEMPLO COMPLETO ══════════ -->
@@ -889,10 +1011,10 @@ const D = [
   p:"Es un coste real que no sale de la caja, así que no aparece en el flujo de caja libre. Se vigila aparte.",
   t:"Si la empresa recompra justo el mismo importe que regala en participaciones, tú no eres dueño de más empresa: solo se tapa el agujero."},
 
- {g:"MK",n:"Precio al cierre del año",f:"Cotización a 31 de diciembre de cada año",clave:1,auto:1,
-  q:"Lo que costaba un trozo de la empresa al terminar cada año. Como si cada 31 de diciembre alguien tasara la panadería de Marta.",
-  p:"Con diez precios se ve cuánto ha pagado la gente históricamente por este negocio. Sin ese histórico, el precio razonable te lo tendrías que inventar.",
-  t:"No está en las pestañas de cuentas de ninguna web. En el valorador hay un botón que lo trae de Yahoo Finance para los diez años. Úsalo: es el único dato que no merece la pena buscar a mano."}
+ {g:"MK",n:"Precio al cierre del año",f:"Cotización al cierre de cada ejercicio (no siempre es el 31 de diciembre)",clave:1,auto:1,
+  q:"Lo que costaba un trozo de la empresa al terminar cada ejercicio. Como si al cerrar las cuentas alguien tasara la panadería de Marta.",
+  p:"Con diez precios se ve cuánto ha pagado la gente históricamente por este negocio. De ahí sale el múltiplo objetivo. Sin ese histórico, el precio razonable te lo tendrías que inventar.",
+  t:"<b>Ojo con el mes.</b> El precio tiene que ser del mismo día en que la empresa cierra su ejercicio. Microsoft cierra en <b>junio</b>: si le pones el precio de diciembre, estás dividiendo el precio de un momento entre las cuentas de otro y los múltiplos salen mal. Lo ves en la cabecera de la tabla de Investing, en «Period Ending». No está en ninguna pestaña de cuentas: en el valorador hay un botón que lo trae de Yahoo, un texto para pedírselo a una IA, y su propio cuadro para pegarlo."}
 ];
 
 function pintarDatos(){
