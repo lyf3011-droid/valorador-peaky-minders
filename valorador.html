@@ -573,9 +573,13 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
         ▶ Ejemplo META</button>
       <button type="button" class="b2" id="demoMsft" style="font-size:1rem;padding:.9rem 1.6rem">
         ▶ Ejemplo MSFT</button>
+      <button type="button" class="b2" id="demoIntc" style="font-size:1rem;padding:.9rem 1.6rem;
+        border-color:rgba(248,113,113,.5);color:#f87171">
+        ▶ Y una que sale mal</button>
       <div style="flex:1;min-width:220px;font-size:.87rem;color:var(--soft)">
-        Rellenan las 250 casillas con las cuentas reales de <b>Meta</b> o de <b>Microsoft</b> y generan el
-        informe entero. Es la forma más rápida de ver qué hace esto antes de meter tu empresa.</div>
+        Rellenan las 250 casillas con cuentas reales y generan el informe entero. Los dos primeros
+        son buenos negocios; <b>el tercero es Intel</b>, y está ahí a propósito: una herramienta que
+        solo sabe decir que sí no sirve para nada.</div>
     </div>
   </div>
 
@@ -2005,6 +2009,19 @@ function calcular(){
   if(der.dnEbitda[L]>3.5) R.veto.push("<b>Deuda neta superior a 3,5 años de beneficio operativo.</b> Riesgo de pérdida permanente.");
   if(R.c.dil.v>0.03)  R.veto.push("<b>Dilución sostenida por encima del 3% anual.</b> Tu trozo de la empresa se encoge cada año.");
 
+  /* El semáforo del NEGOCIO no depende del precio, así que se calcula antes de
+     los cortes de abajo: aunque no se pueda valorar —FCF negativo, sin precio—
+     el diagnóstico sigue existiendo, y en una empresa mala es lo único que hay
+     que leer. Los tres indicadores de valoración quedan a null hasta que se
+     puedan calcular, y se rellenan más abajo si procede. */
+  R.V = Object.assign({}, R.rf, {
+    cagrV:R.cagrV, cagrB:R.cagrB, cagrF:R.cagrF,
+    mEbitda:R.c.mEbitda.v, mEbit:R.c.mEbit.v, mNeto:R.c.mNeto.v, mFcf:R.c.mFcf.v,
+    conv:R.c.conv.v, roic:R.c.roic.v, roe:R.c.roe.v, capexV:R.c.capexV.v, wcV:R.c.wcV.v,
+    deuda:R.c.deuda.v, dil:R.c.dil.v, sbcV:R.c.sbcV.v,
+    relMul:null, margSeg:null, retorno:null
+  });
+
   /* ── VALORACIÓN ── */
   const precio = parseNum($("precio").value);
   R.precio = precio;
@@ -2073,15 +2090,10 @@ function calcular(){
     : precio<=R.v.idc*1.50 ? {n:"CARO",c:"r",m:"Fuera de rango. Revisión semestral."}
     : {n:"REVISAR IDC",c:"r",m:"Más de un 50% por encima del IDC: probablemente la valoración está desfasada."};
 
-  /* score */
-  const V = Object.assign({}, R.rf, {
-    cagrV:R.cagrV, cagrB:R.cagrB, cagrF:R.cagrF,
-    mEbitda:R.c.mEbitda.v, mEbit:R.c.mEbit.v, mNeto:R.c.mNeto.v, mFcf:R.c.mFcf.v,
-    conv:R.c.conv.v, roic:R.c.roic.v, roe:R.c.roe.v, capexV:R.c.capexV.v, wcV:R.c.wcV.v,
-    deuda:R.c.deuda.v, dil:R.c.dil.v, sbcV:R.c.sbcV.v,
+  /* score · ya con los tres indicadores de valoración, que antes iban en null */
+  const V = Object.assign(R.V, {
     relMul:R.v.relMul, margSeg:R.v.margSeg, retorno:R.v.retorno
   });
-  R.V = V;
   const BL = [
     {lab:"Calidad del negocio", p:.35, ks:["mEbitda","mEbit","mNeto","mFcf","conv","roic","roe"]},
     {lab:"Crecimiento",         p:.20, ks:["cagrV","cagrB","cagrF"]},
@@ -2434,7 +2446,8 @@ function pasoValoracion(R){
   const A=R.A, d=R.der, L=R.L;
   if(R.sinPrecio) return paso("Pregunta 6","¿Cuánto cuesta?",
     "Aquí es donde por fin miramos el precio — el último, nunca el primero.",
-    `<div class="warn"><b>Falta el precio de hoy.</b> Escríbelo arriba (o pulsa «Buscar» con el ticker) y vuelve a analizar.</div>`);
+    `<div class="warn"><b>Falta el precio de hoy.</b> Escríbelo arriba (o pulsa «Buscar» con el ticker) y vuelve a analizar.</div>`,
+    "p6","Precio");
 
   const cm = R.cMult.evFcf;
   const multBox = cm.v===null
@@ -2448,9 +2461,27 @@ function pasoValoracion(R){
     .map(([l,c])=>`<tr><td class="l">${l}</td><td class="n">${mu(c.media)}</td><td class="n">${mu(c.mediana)}</td>
       <td class="n" style="color:var(--amber-strong)"><b>${mu(c.v)}</b></td></tr>`).join("");
 
-  if(R.sinVal) return paso("Pregunta 6","¿Cuánto cuesta?",
-    "Aquí es donde por fin miramos el precio — el último, nunca el primero.",
-    multBox + `<div class="warn">Faltan el múltiplo objetivo o el crecimiento esperado para poder calcular el precio.</div>`);
+  if(R.sinVal){
+    const fcfNeg = !(d.fcf[L] > 0);
+    const nom = ($("nombre").value || $("ticker").value || "la empresa").trim();
+    return paso("Pregunta 6","¿Cuánto cuesta?",
+      "Aquí es donde por fin miramos el precio — el último, nunca el primero.",
+      multBox + (fcfNeg
+        ? `<div class="warn"><b>No hay valoración, y no es un fallo: es el resultado.</b><br>
+           El método valora multiplicando el dinero real que genera la empresa. En el último ejercicio
+           ${nom} <b>no generó dinero: consumió ${nf(Math.abs(d.fcf[L]),0)} millones</b>. Multiplicar un
+           número negativo no da un precio, da un sinsentido.<br><br>
+           Que no se pueda poner precio <b>es la conclusión</b>. Una empresa que quema caja puede ser
+           una gran inversión —si te crees la recuperación— pero entonces no la estás comprando por
+           lo que gana, sino por lo que crees que ganará. Eso es otra decisión, con otro riesgo, y
+           esta herramienta no la cubre.</div>
+           <div class="note">Qué haría falta para valorarla con este método: que <b>vuelva a generar
+           caja de forma sostenida</b>. Hasta entonces, el número que importa no es el precio: es si
+           el negocio se arregla.</div>`
+        : `<div class="warn"><b>No se puede calcular el precio.</b> Falta el múltiplo objetivo o el
+           crecimiento esperado — revisa que haya suficientes años con datos.</div>`),
+      "p6","Precio");
+  }
 
   const v=R.v, P=R.P;
   const objetivos = [["EV / FCF (el principal)",P.evFcf,v.multObj],["PER ex Cash",P.per,v.mPer],
@@ -2535,8 +2566,42 @@ function pasoValoracion(R){
      "p6","Precio");
 }
 
+/* Resumen cuando no hay precio objetivo: el semáforo del negocio sí se puede
+   dar, y con un veto activo es justo lo que hay que leer. */
+function resumenSinPrecio(R){
+  const nom = ($("nombre").value||$("ticker").value||"la empresa").trim();
+  const filas = Object.keys(ESC).filter(k=>R.V[k]!==null && R.V[k]!==undefined && isFinite(R.V[k]))
+    .map(k=>{const s=sem(k,R.V[k]);
+      return `<tr><td class="l"><span class="dot ${s}"></span> ${esc(ESC[k].lab)}</td>
+        <td class="n">${ESC[k].f(R.V[k])}</td><td class="n">${semTag(s)}</td></tr>`;}).join("");
+  const rojos = Object.keys(ESC).filter(k=>R.V[k]!==null && isFinite(R.V[k]) && sem(k,R.V[k])==="r").length;
+  return paso("Resumen","Todo junto",
+    "No hay precio objetivo, pero sí hay diagnóstico. De hecho es el que importa.",
+    `<div class="warn" style="margin-bottom:1.2rem"><b>Aquí no hay número final, y ese es el mensaje.</b>
+      ${R.veto.length ? `El método ha parado el análisis por <b>${R.veto.length}
+      ${R.veto.length===1?"regla":"reglas"}</b>: ` : ""}
+      ${esc(nom)} tiene <b>${rojos} ${rojos===1?"indicador":"indicadores"} en rojo</b>.
+      Un buen precio no arregla un mal negocio: solo hace que tardes más en darte cuenta.</div>
+     <h3>Semáforo completo</h3>
+     <p class="step-w" style="margin:-.4rem 0 .8rem">Ojo al leerlo: estos números son la
+     <b>media o la mediana de los diez años</b>, no la foto de hoy. Una empresa que fue muy buena y
+     lleva cuatro años deteriorándose <b>sale mejor de lo que está</b>, porque arrastra su pasado.
+     Mira la gráfica de cada pregunta: lo que importa es hacia dónde va la línea.</p>
+     <div class="tw"><table class="rs"><tbody>${filas}</tbody></table></div>
+     <div class="note" style="margin-top:1.2rem">Lo que este informe <b>sí</b> te ha dicho: si crece,
+      si gana dinero al crecer, si ese beneficio llega a la caja, cuánto le rinde lo que invierte y
+      cuánto debe. Eso es el 80% del trabajo. El precio es el último paso, y aquí no hace falta
+      llegar a él.</div>
+     <div class="note">⚠️ Material formativo. Esto no es una recomendación de venta ni un juicio sobre
+      el futuro de la empresa: es la foto de diez años de cuentas. Una compañía en pérdidas puede
+      recuperarse, pero entonces la estarías comprando por lo que crees que pasará, no por lo que
+      ha hecho — y eso es otra decisión, con otro riesgo.</div>`,
+    "res","Resumen");
+}
+
 function resumen(R){
-  if(R.sinPrecio||R.sinVal||R.score===null) return "";
+  if(R.sinVal || R.sinPrecio) return R.V ? resumenSinPrecio(R) : "";
+  if(R.score===null) return "";
   const filas = Object.keys(ESC).filter(k=>R.V[k]!==null && R.V[k]!==undefined && isFinite(R.V[k]))
     .map(k=>{const s=sem(k,R.V[k]);
       return `<tr><td class="l"><span class="dot ${s}"></span> ${esc(ESC[k].lab)}</td>
@@ -3351,6 +3416,42 @@ const EJEMPLO = {
 
 /* Microsoft · datos del ejercicio fiscal (cierra en junio), tomados de InvestingPro.
    El precio de cada año es el implícito de la capitalización a cierre de ejercicio. */
+/* Intel · datos oficiales de la SEC (XBRL de los 10-K), ejercicios 2016-2025.
+   Está aquí a propósito: es el contraejemplo. Empresa enorme, conocida y que
+   parece barata, con el negocio deteriorándose durante cuatro años seguidos.
+   El método la señala sin ambigüedad, que es lo que tiene que hacer.
+   Depreciación = us-gaap/Depreciation · D&A = esa más la amortización de
+   intangibles · precios de cierre del 31 de diciembre de cada año.
+   Los alquileres quedan vacíos: Intel no los publica con esas etiquetas. */
+const EJEMPLO_INTC = {
+  _id:{ticker:"INTC", nombre:"Intel", moneda:"$", precio:43.31, anioFin:2025},
+  ventas    :[59387,62761,70848,71965,77867,79024,63054,54228,53101,52853],
+  ebitda    :[20923,26179,32401,32861,35917,31248,15369,9695,-299,9492],
+  ebit      :[13133,18050,23316,22035,23678,19456,2334,93,-11678,-2214],
+  interes   :[-511,-205,-30,-6,-357,-453,93,457,211,-84],
+  impuestos :[2620,10751,2264,3010,4179,1835,-249,-913,8023,1531],
+  acciones  :[4875,4835,4701,4473,4232,4090,4123,4212,4280,4530],
+  caja      :[5560,3433,3019,4194,5865,4827,11144,7079,8249,14712],
+  inversion :[3225,1814,2788,1082,2292,24426,17194,17955,13813,23151],
+  deudaCP   :[4609,1739,761,3695,2504,4591,423,2288,3729,2499],
+  deudaLP   :[20649,25037,25098,25308,33897,33510,37684,46978,46282,44086],
+  leaseCP   :[null,null,null,null,null,null,null,null,null,null],
+  leaseLP   :[null,null,null,null,null,null,null,null,null,null],
+  equity    :[66226,69653,74563,77504,81038,95391,101423,105590,99270,114281],
+  cobrar    :[4690,5607,6722,7659,6782,9457,4133,3402,3478,3839],
+  pagar     :[2475,2928,3824,4128,5581,5747,9595,8578,12556,9882],
+  inventar  :[5553,6983,7253,8744,8427,10776,13224,11127,12198,11618],
+  unearned  :[null,null,null,null,null,null,null,null,null,null],
+  da        :[7790,8129,9085,10826,12239,11792,13035,9602,11379,11706],
+  capexMant :[6266,6752,7520,9204,10482,9953,11128,7847,9951,10757],
+  capex     :[9625,11778,15181,16213,14259,18733,24844,25750,23944,14646],
+  adquisi   :[15470,14499,190,1958,837,209,681,13,82,null],
+  recompra  :[2587,3615,10730,13576,14229,2415,0,0,null,null],
+  dividendo :[4925,5072,5541,5576,5568,5644,5997,3088,1599,0],
+  sbc       :[1444,1358,1546,1705,1854,2036,3128,3229,3410,2434],
+  precioAno :[36.27,46.16,46.93,59.85,49.82,51.5,26.43,50.25,20.05,43.31],
+};
+
 const EJEMPLO_MSFT = {
   _id:{ticker:"MSFT",nombre:"Microsoft",moneda:"$",precio:417,anioFin:2025},
   ventas   :[91154,96571,110360,125843,143015,168088,198270,211915,245122,281724],
@@ -3531,6 +3632,8 @@ $("tourAdelante").onclick = () => tourIr(tIdx+1);
 $("tourSalir").onclick = tourFin;
 $("demo").onclick = () => cargarEjemplo(EJEMPLO,
   "Ejercicios 2016-2025. Los precios de cierre son aproximados, así que los múltiplos históricos salen con ±3% frente a la plantilla original. El resto son cifras exactas del informe anual.");
+$("demoIntc").onclick = () => cargarEjemplo(EJEMPLO_INTC,
+  "Datos oficiales de la SEC. Mira el margen, el ROIC y la caja: el método no necesita que le expliquen nada.");
 $("demoMsft").onclick = () => cargarEjemplo(EJEMPLO_MSFT,
   "Ejercicios fiscales 2016-2025 (Microsoft cierra en junio, no en diciembre). Los precios son los implícitos de la capitalización a cierre de cada ejercicio, así que los múltiplos coinciden con la plantilla.");
 $("demoMsftNav").onclick = () => $("demoMsft").click();
