@@ -140,6 +140,19 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
 #fuentes .red b{color:var(--amber)}
 
 /* ═══ UN CUADRO DE PEGADO POR CUENTA ═══ */
+/* buscador de empresas del S&P 500 y el IBEX 35 */
+.sug{position:absolute;z-index:60;left:0;top:100%;margin:.25rem 0 0;padding:.25rem;
+  min-width:100%;width:max-content;max-width:min(32rem,88vw);
+  list-style:none;max-height:16rem;overflow-y:auto;background:var(--raised);
+  border:1px solid var(--amber-line);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.6)}
+.sug li{display:flex;align-items:baseline;gap:.55rem;padding:.45rem .6rem;border-radius:5px;cursor:pointer}
+.sug li[aria-selected="true"],.sug li:hover{background:rgba(245,158,11,.14)}
+.sug .st{font-family:var(--font-m);font-size:.76rem;color:var(--amber-strong);min-width:4.6rem}
+.sug .sn{font-size:.82rem;color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sug .sx{margin-left:auto;font-family:var(--font-m);font-size:.6rem;letter-spacing:.06em;
+  color:var(--muted-txt);white-space:nowrap}
+.sug li.no{cursor:default;color:var(--muted-txt);font-size:.8rem}
+
 .pegagrid{display:grid;grid-template-columns:1fr;gap:1rem}
 .pegabox{border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:1.1rem 1.2rem}
 .pegabox.ok{border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.05)}
@@ -557,13 +570,17 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
   <div class="sec-num">Paso 1 de 3</div>
   <h2>Identifica la empresa</h2>
-  <p class="sub">Escribe el ticker y se cargan solos el nombre, el precio y la moneda desde Yahoo Finance
-  y la base de datos oficial de la SEC. Es lo único automático: los datos financieros los metes tú,
-  porque mirarlos uno a uno <em>es</em> el ejercicio.</p>
+  <p class="sub">Empieza a escribir el ticker <b>o el nombre</b>: las <b>538 empresas del S&amp;P 500 y
+  del IBEX 35</b> están guardadas aquí dentro, así que el nombre y la moneda se ponen solos y sin
+  internet. El botón <b>Buscar</b> añade además el precio de hoy desde Yahoo Finance. Es lo único
+  automático: los datos financieros los metes tú, porque mirarlos uno a uno <em>es</em> el ejercicio.</p>
 
   <div class="idgrid">
-    <div><label>Ticker</label>
-      <input id="ticker" placeholder="META" style="text-transform:uppercase"></div>
+    <div style="position:relative"><label>Ticker</label>
+      <input id="ticker" placeholder="META o «meta»" style="text-transform:uppercase"
+        autocomplete="off" role="combobox" aria-expanded="false" aria-autocomplete="list"
+        aria-controls="sugerencias">
+      <ul id="sugerencias" class="sug hide" role="listbox" aria-label="Empresas"></ul></div>
     <div style="display:flex;align-items:flex-end;gap:.5rem">
       <button class="b1" id="buscar" style="flex:1">Buscar</button></div>
     <div><label>Nº de años</label>
@@ -896,6 +913,121 @@ const SIN = {
  sbc:["stock-based compensation","stock based compensation","share-based compensation",
       "compensación basada en acciones","remuneración basada en acciones"]
 };
+
+
+/* ══════════════════ EMPRESAS CONOCIDAS ══════════════════
+   S&P 500 (503) + IBEX 35, con su sector. Sirve para tres cosas:
+   escribir el ticker sin acordarse de él, rellenar el nombre sin
+   depender de internet, y avisar cuando la empresa es un banco, una
+   aseguradora o una inmobiliaria patrimonialista — casos en los que
+   este método NO es válido. Formato: "TICKER|Nombre|sector".
+   Sectores GICS: F financieras · R inmobiliarias · T tecnología ·
+   H salud · I industria · U utilities · M materiales ·
+   D consumo discrecional · C comunicación · S consumo básico · E energía */
+const IDX_RAW = ["MMM|3M|I","AOS|A. O. Smith|I","ABT|Abbott Laboratories|H","ABBV|AbbVie|H","ACN|Accenture|T","ADBE|Adobe Inc.|T","AMD|Advanced Micro Devices|T","AES|AES Corporation|U","AFL|Aflac|F","A|Agilent Technologies|H","APD|Air Products|M","ABNB|Airbnb|D","AKAM|Akamai Technologies|T","ALB|Albemarle Corporation|M","ARE|Alexandria Real Estate Equities|R","ALGN|Align Technology|H","ALLE|Allegion|I","LNT|Alliant Energy|U","ALL|Allstate|F","GOOGL|Alphabet Inc. (Class A)|C","GOOG|Alphabet Inc. (Class C)|C","MO|Altria|S","AMZN|Amazon|D","AMCR|Amcor|M","AEE|Ameren|U","AEP|American Electric Power|U","AXP|American Express|F","AIG|American International Group|F","AMT|American Tower|R","AWK|American Water Works|U","AMP|Ameriprise Financial|F","AME|Ametek|I","AMGN|Amgen|H","APH|Amphenol|T","ADI|Analog Devices|T","AON|Aon plc|F","APA|APA Corporation|E","APO|Apollo Global Management|F","AAPL|Apple Inc.|T","AMAT|Applied Materials|T","APP|AppLovin|T","APTV|Aptiv|D","ACGL|Arch Capital Group|F","ADM|Archer Daniels Midland|S","ARES|Ares Management|F","ANET|Arista Networks|T","AJG|Arthur J. Gallagher & Co.|F","AIZ|Assurant|F","T|AT&T|C","ATO|Atmos Energy|U","ADSK|Autodesk|T","ADP|Automatic Data Processing|I","AZO|AutoZone|D","AVB|AvalonBay Communities|R","AVY|Avery Dennison|M","AXON|Axon Enterprise|I","BKR|Baker Hughes|E","BALL|Ball Corporation|M","BAC|Bank of America|F","BAX|Baxter International|H","BDX|Becton Dickinson|H","BRK-B|Berkshire Hathaway|F","BBY|Best Buy|D","TECH|Bio-Techne|H","BIIB|Biogen|H","BLK|BlackRock|F","BX|Blackstone Inc.|F","XYZ|Block, Inc.|F","BNY|BNY Mellon|F","BA|Boeing|I","BKNG|Booking Holdings|D","BSX|Boston Scientific|H","BMY|Bristol Myers Squibb|H","AVGO|Broadcom|T","BR|Broadridge Financial Solutions|I","BRO|Brown & Brown|F","BF-B|Brown–Forman|S","BLDR|Builders FirstSource|I","BG|Bunge Global|S","BXP|BXP, Inc.|R","CHRW|C.H. Robinson|I","CDNS|Cadence Design Systems|T","CPT|Camden Property Trust|R","COF|Capital One|F","CAH|Cardinal Health|H","CCL|Carnival Corporation|D","CARR|Carrier Global|I","CVNA|Carvana|D","CASY|Casey's|S","CAT|Caterpillar Inc.|I","CBOE|Cboe Global Markets|F","CBRE|CBRE Group|R","CDW|CDW Corporation|T","COR|Cencora|H","CNC|Centene Corporation|H","CNP|CenterPoint Energy|U","CF|CF Industries|M","CRL|Charles River Laboratories|H","SCHW|Charles Schwab Corporation|F","CHTR|Charter Communications|C","CVX|Chevron Corporation|E","CMG|Chipotle Mexican Grill|D","CB|Chubb Limited|F","CHD|Church & Dwight|S","CIEN|Ciena|T","CI|Cigna|H","CINF|Cincinnati Financial|F","CTAS|Cintas|I","CSCO|Cisco|T","C|Citigroup|F","CFG|Citizens Financial Group|F","CLX|Clorox|S","CME|CME Group|F","CMS|CMS Energy|U","KO|Coca-Cola Company (The)|S","CTSH|Cognizant|T","COHR|Coherent Corp.|T","COIN|Coinbase|F","CL|Colgate-Palmolive|S","CMCSA|Comcast|C","FIX|Comfort Systems USA|I","COP|ConocoPhillips|E","ED|Consolidated Edison|U","STZ|Constellation Brands|S","CEG|Constellation Energy|U","COO|Cooper Companies (The)|H","CPRT|Copart|I","GLW|Corning Inc.|T","CPAY|Corpay|F","CTVA|Corteva|M","CSGP|CoStar Group|R","COST|Costco|S","CRH|CRH plc|M","CRWD|CrowdStrike|T","CCI|Crown Castle|R","CSX|CSX Corporation|I","CMI|Cummins|I","CVS|CVS Health|H","DHR|Danaher Corporation|H","DRI|Darden Restaurants|D","DDOG|Datadog|T","DVA|DaVita|H","DECK|Deckers Brands|D","DE|Deere & Company|I","DELL|Dell Technologies|T","DAL|Delta Air Lines|I","DVN|Devon Energy|E","DXCM|Dexcom|H","FANG|Diamondback Energy|E","DLR|Digital Realty|R","DG|Dollar General|S","DLTR|Dollar Tree|S","D|Dominion Energy|U","DPZ|Domino's|D","DASH|DoorDash|D","DOV|Dover Corporation|I","DOW|Dow Inc.|M","DHI|D. R. Horton|D","DTE|DTE Energy|U","DUK|Duke Energy|U","DD|DuPont|M","ETN|Eaton Corporation|I","EBAY|eBay Inc.|D","ECHO|EchoStar|C","ECL|Ecolab|M","EIX|Edison International|U","EW|Edwards Lifesciences|H","ELV|Elevance Health|H","EME|Emcor|I","EMR|Emerson Electric|I","ETR|Entergy|U","EOG|EOG Resources|E","EQT|EQT Corporation|E","EFX|Equifax|I","EQIX|Equinix|R","EQR|Equity Residential|R","ERIE|Erie Indemnity|F","ESS|Essex Property Trust|R","EL|Estée Lauder Companies (The)|S","EG|Everest Group|F","EVRG|Evergy|U","ES|Eversource Energy|U","EXC|Exelon|U","EXE|Expand Energy|E","EXPE|Expedia Group|D","EXPD|Expeditors International|I","EXR|Extra Space Storage|R","XOM|ExxonMobil|E","FFIV|F5, Inc.|T","FDS|FactSet|F","FICO|Fair Isaac|T","FAST|Fastenal|I","FRT|Federal Realty Investment Trust|R","FDX|FedEx|I","FDXF|FedEx Freight|I","FERG|Ferguson Enterprises|I","FIS|Fidelity National Information Services|F","FITB|Fifth Third Bancorp|F","FSLR|First Solar|T","FE|FirstEnergy|U","FISV|Fiserv|F","FLEX|Flex Ltd.|T","F|Ford Motor Company|D","FTNT|Fortinet|T","FTV|Fortive|I","FOXA|Fox Corporation (Class A)|C","FOX|Fox Corporation (Class B)|C","BEN|Franklin Resources|F","FCX|Freeport-McMoRan|M","GRMN|Garmin|D","IT|Gartner|T","GE|GE Aerospace|I","GEHC|GE HealthCare|H","GEV|GE Vernova|I","GEN|Gen Digital|T","GNRC|Generac|I","GD|General Dynamics|I","GIS|General Mills|S","GM|General Motors|D","GPC|Genuine Parts Company|D","GILD|Gilead Sciences|H","GPN|Global Payments|F","GL|Globe Life|F","GDDY|GoDaddy|T","GS|Goldman Sachs|F","HAL|Halliburton|E","HIG|Hartford (The)|F","HAS|Hasbro|D","HCA|HCA Healthcare|H","DOC|Healthpeak Properties|R","HSIC|Henry Schein|H","HSY|Hershey Company (The)|S","HPE|Hewlett Packard Enterprise|T","HLT|Hilton Worldwide|D","HD|Home Depot (The)|D","HONA|Honeywell Aerospace|I","HON|Honeywell Technologies|I","HRL|Hormel Foods|S","HST|Host Hotels & Resorts|R","HWM|Howmet Aerospace|I","HPQ|HP Inc.|T","HUBB|Hubbell Incorporated|I","HUM|Humana|H","HBAN|Huntington Bancshares|F","HII|Huntington Ingalls Industries|I","IBM|IBM|T","IEX|IDEX Corporation|I","IDXX|Idexx Laboratories|H","ITW|Illinois Tool Works|I","INCY|Incyte|H","IR|Ingersoll Rand|I","PODD|Insulet Corporation|H","INTC|Intel|T","IBKR|Interactive Brokers|F","ICE|Intercontinental Exchange|F","IFF|International Flavors & Fragrances|M","IP|International Paper|M","INTU|Intuit|T","ISRG|Intuitive Surgical|H","IVZ|Invesco|F","INVH|Invitation Homes|R","IQV|IQVIA|H","IRM|Iron Mountain|R","JBHT|J.B. Hunt|I","JBL|Jabil|T","JKHY|Jack Henry & Associates|F","J|Jacobs Solutions|I","JNJ|Johnson & Johnson|H","JCI|Johnson Controls|I","JPM|JPMorgan Chase|F","KVUE|Kenvue|S","KDP|Keurig Dr Pepper|S","KEY|KeyCorp|F","KEYS|Keysight Technologies|T","KMB|Kimberly-Clark|S","KIM|Kimco Realty|R","KMI|Kinder Morgan|E","KKR|KKR & Co.|F","KLAC|KLA Corporation|T","KHC|Kraft Heinz|S","KR|Kroger|S","LHX|L3Harris|I","LH|Labcorp|H","LRCX|Lam Research|T","LVS|Las Vegas Sands|D","LDOS|Leidos|I","LEN|Lennar|D","LII|Lennox International|I","LLY|Lilly (Eli)|H","LIN|Linde plc|M","LYV|Live Nation Entertainment|C","LMT|Lockheed Martin|I","L|Loews Corporation|F","LOW|Lowe's|D","LULU|Lululemon Athletica|D","LITE|Lumentum|T","LYB|LyondellBasell|M","MTB|M&T Bank|F","MPC|Marathon Petroleum|E","MAR|Marriott International|D","MRSH|Marsh McLennan|F","MLM|Martin Marietta Materials|M","MRVL|Marvell Technology|T","MAS|Masco|I","MA|Mastercard|F","MKC|McCormick & Company|S","MCD|McDonald's|D","MCK|McKesson Corporation|H","MDT|Medtronic|H","MRK|Merck & Co.|H","META|Meta Platforms|C","MET|MetLife|F","MTD|Mettler Toledo|H","MGM|MGM Resorts|D","MCHP|Microchip Technology|T","MU|Micron Technology|T","MSFT|Microsoft|T","MAA|Mid-America Apartment Communities|R","MRNA|Moderna|H","TAP|Molson Coors Beverage Company|S","MDLZ|Mondelez International|S","MPWR|Monolithic Power Systems|T","MNST|Monster Beverage|S","MCO|Moody's Corporation|F","MS|Morgan Stanley|F","MOS|Mosaic Company (The)|M","MSI|Motorola Solutions|T","MSCI|MSCI Inc.|F","NDAQ|Nasdaq, Inc.|F","NTAP|NetApp|T","NFLX|Netflix|C","NEM|Newmont|M","NWSA|News Corp (Class A)|C","NWS|News Corp (Class B)|C","NEE|NextEra Energy|U","NKE|Nike, Inc.|D","NI|NiSource|U","NDSN|Nordson Corporation|I","NSC|Norfolk Southern|I","NTRS|Northern Trust|F","NOC|Northrop Grumman|I","NCLH|Norwegian Cruise Line Holdings|D","NRG|NRG Energy|U","NUE|Nucor|M","NVDA|Nvidia|T","NVR|NVR, Inc.|D","NXPI|NXP Semiconductors|T","ORLY|O’Reilly Automotive|D","OXY|Occidental Petroleum|E","ODFL|Old Dominion|I","OMC|Omnicom Group|C","ON|ON Semiconductor|T","OKE|Oneok|E","ORCL|Oracle Corporation|T","OTIS|Otis Worldwide|I","PCAR|Paccar|I","PKG|Packaging Corporation of America|M","PLTR|Palantir Technologies|T","PANW|Palo Alto Networks|T","PSKY|Paramount Skydance Corporation|C","PH|Parker Hannifin|I","PAYX|Paychex|I","PYPL|PayPal|F","PNR|Pentair|I","PEP|PepsiCo|S","PFE|Pfizer|H","PCG|PG&E Corporation|U","PM|Philip Morris International|S","PSX|Phillips 66|E","PNW|Pinnacle West Capital|U","PNC|PNC Financial Services|F","PPG|PPG Industries|M","PPL|PPL Corporation|U","PFG|Principal Financial Group|F","PG|Procter & Gamble|S","PGR|Progressive Corporation|F","PLD|Prologis|R","PRU|Prudential Financial|F","PEG|Public Service Enterprise Group|U","PTC|PTC Inc.|T","PSA|Public Storage|R","PHM|PulteGroup|D","PWR|Quanta Services|I","QCOM|Qualcomm|T","DGX|Quest Diagnostics|H","Q|Qnity Electronics|T","RL|Ralph Lauren Corporation|D","RJF|Raymond James Financial|F","RTX|RTX Corporation|I","O|Realty Income|R","REG|Regency Centers|R","REGN|Regeneron Pharmaceuticals|H","RF|Regions Financial Corporation|F","RSG|Republic Services|I","RMD|ResMed|H","RVTY|Revvity|H","HOOD|Robinhood Markets|F","ROK|Rockwell Automation|I","ROL|Rollins, Inc.|I","ROP|Roper Technologies|T","ROST|Ross Stores|D","RCL|Royal Caribbean Group|D","SPGI|S&P Global|F","CRM|Salesforce|T","SNDK|Sandisk|T","SBAC|SBA Communications|R","SLB|Schlumberger|E","STX|Seagate Technology|T","SRE|Sempra|U","NOW|ServiceNow|T","SHW|Sherwin-Williams|M","SPG|Simon Property Group|R","SWKS|Skyworks Solutions|T","SJM|J.M. Smucker Company (The)|S","SW|Smurfit Westrock|M","SNA|Snap-on|I","SOLV|Solventum|H","SO|Southern Company|U","LUV|Southwest Airlines|I","SWK|Stanley Black & Decker|I","SBUX|Starbucks|D","STT|State Street Corporation|F","STLD|Steel Dynamics|M","STE|Steris|H","SYK|Stryker Corporation|H","SMCI|Supermicro|T","SYF|Synchrony Financial|F","SNPS|Synopsys|T","SYY|Sysco|S","TMUS|T-Mobile US|C","TROW|T. Rowe Price|F","TTWO|Take-Two Interactive|C","TPR|Tapestry, Inc.|D","TRGP|Targa Resources|E","TGT|Target Corporation|S","TEL|TE Connectivity|T","TDY|Teledyne Technologies|T","TER|Teradyne|T","TSLA|Tesla, Inc.|D","TXN|Texas Instruments|T","TPL|Texas Pacific Land Corporation|E","TXT|Textron|I","TMO|Thermo Fisher Scientific|H","TJX|TJX Companies|D","TKO|TKO Group Holdings|C","TTD|Trade Desk (The)|C","TSCO|Tractor Supply|D","TT|Trane Technologies|I","TDG|TransDigm Group|I","TRV|Travelers Companies (The)|F","TRMB|Trimble Inc.|T","TFC|Truist Financial|F","TYL|Tyler Technologies|T","TSN|Tyson Foods|S","USB|U.S. Bancorp|F","UBER|Uber|I","UDR|UDR, Inc.|R","ULTA|Ulta Beauty|D","UNP|Union Pacific Corporation|I","UAL|United Airlines Holdings|I","UPS|United Parcel Service|I","URI|United Rentals|I","UNH|UnitedHealth Group|H","UHS|Universal Health Services|H","VLO|Valero Energy|E","VEEV|Veeva Systems|H","VTR|Ventas|R","VLTO|Veralto|I","VRSN|Verisign|T","VRSK|Verisk Analytics|I","VZ|Verizon|C","VRTX|Vertex Pharmaceuticals|H","VRT|Vertiv|I","VTRS|Viatris|H","VICI|Vici Properties|R","V|Visa Inc.|F","VST|Vistra Corp.|U","VMC|Vulcan Materials Company|M","WRB|W. R. Berkley Corporation|F","GWW|W. W. Grainger|I","WAB|Wabtec|I","WMT|Walmart|S","DIS|Walt Disney Company (The)|C","WBD|Warner Bros. Discovery|C","WM|Waste Management|I","WAT|Waters Corporation|H","WEC|WEC Energy Group|U","WFC|Wells Fargo|F","WELL|Welltower|R","WST|West Pharmaceutical Services|H","WDC|Western Digital|T","WY|Weyerhaeuser|R","WSM|Williams-Sonoma, Inc.|D","WMB|Williams Companies|E","WTW|Willis Towers Watson|F","WDAY|Workday, Inc.|T","WYNN|Wynn Resorts|D","XEL|Xcel Energy|U","XYL|Xylem Inc.|I","YUM|Yum! Brands|D","ZBRA|Zebra Technologies|T","ZBH|Zimmer Biomet|H","ZTS|Zoetis|H","ANA.MC|Acciona|I","ANE.MC|Acciona Energía|U","ACX.MC|Acerinox|M","ACS.MC|ACS|I","AENA.MC|Aena|I","AMS.MC|Amadeus IT Group|T","MTS.MC|ArcelorMittal|M","SAB.MC|Banco Sabadell|F","BKT.MC|Bankinter|F","BBVA.MC|BBVA|F","CABK.MC|CaixaBank|F","CLNX.MC|Cellnex Telecom|C","ENG.MC|Enagás|U","ELE.MC|Endesa|U","FER.MC|Ferrovial|I","FDR.MC|Fluidra|I","GRF.MC|Grifols|H","IAG.MC|International Airlines Group|I","IBE.MC|Iberdrola|U","ITX.MC|Inditex|D","IDR.MC|Indra|T","COL.MC|Inmobiliaria Colonial|R","LOG.MC|Logista|I","MAP.MC|MAPFRE|F","MEL.MC|Meliá Hotels International|D","MRL.MC|Merlin Properties|R","NTGY.MC|Naturgy|U","RED.MC|Redeia (Red Eléctrica)|U","REP.MC|Repsol|E","ROVI.MC|Laboratorios Rovi|H","SCYR.MC|Sacyr|I","SAN.MC|Banco Santander|F","SLR.MC|Solaria|U","TEF.MC|Telefónica|C","UNI.MC|Unicaja|F"];
+const SECTOR_NOMBRE = {F:"Financiera", R:"Inmobiliaria", T:"Tecnología", H:"Salud",
+  I:"Industria", U:"Servicios públicos", M:"Materiales", D:"Consumo discrecional",
+  C:"Comunicación", S:"Consumo básico", E:"Energía"};
+const IDX = IDX_RAW.map(s => { const p = s.split("|");
+  return {t:p[0], n:p[1], s:p[2], b:p[0].endsWith(".MC") ? "IBEX 35" : "S&P 500"}; });
+const IDX_POR_TICKER = {}; IDX.forEach(e => IDX_POR_TICKER[e.t] = e);
+
+/* quita acentos para que «telefonica» encuentre «Telefónica» */
+const sinTildes = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+function buscarEmpresas(q){
+  const b = sinTildes(q.trim());
+  if(!b) return [];
+  const porTicker = [], porNombre = [];
+  for(const e of IDX){
+    const t = sinTildes(e.t), n = sinTildes(e.n);
+    if(t.startsWith(b)) porTicker.push(e);
+    else if(n.startsWith(b)) porNombre.push(e);
+    else if(n.includes(b)) porNombre.push(e);
+    if(porTicker.length + porNombre.length > 40) break;
+  }
+  return porTicker.concat(porNombre).slice(0, 8);
+}
+
+let SUG = [], SUG_SEL = -1;
+function pintarSugerencias(q){
+  SUG = buscarEmpresas(q); SUG_SEL = -1;
+  const ul = $("sugerencias");
+  if(!SUG.length){ cerrarSugerencias(); return; }
+  ul.innerHTML = SUG.map((e,i) => `<li role="option" id="sug${i}" aria-selected="false" data-i="${i}">
+    <span class="st">${esc(e.t)}</span><span class="sn">${esc(e.n)}</span>
+    <span class="sx">${e.s==="F"||e.s==="R" ? "⛔ " : ""}${esc(e.b)}</span></li>`).join("");
+  ul.classList.remove("hide");
+  $("ticker").setAttribute("aria-expanded", "true");
+  ul.querySelectorAll("li").forEach(li =>
+    li.addEventListener("mousedown", ev => { ev.preventDefault(); elegirEmpresa(+li.dataset.i); }));
+}
+function cerrarSugerencias(){
+  $("sugerencias").classList.add("hide"); $("sugerencias").innerHTML = "";
+  $("ticker").setAttribute("aria-expanded", "false");
+  $("ticker").removeAttribute("aria-activedescendant");
+  SUG = []; SUG_SEL = -1;
+}
+function moverSugerencia(d){
+  if(!SUG.length) return;
+  SUG_SEL = (SUG_SEL + d + SUG.length) % SUG.length;
+  $("sugerencias").querySelectorAll("li").forEach((li,i) => {
+    const on = i === SUG_SEL;
+    li.setAttribute("aria-selected", on ? "true" : "false");
+    if(on){ li.scrollIntoView({block:"nearest"}); $("ticker").setAttribute("aria-activedescendant", li.id); }
+  });
+}
+function elegirEmpresa(i){
+  const e = SUG[i]; if(!e) return;
+  $("ticker").value = e.t;
+  $("nombre").value = e.n;
+  $("moneda").value = e.t.endsWith(".MC") ? "€" : "$";
+  MON = $("moneda").value;
+  cerrarSugerencias();
+  avisarSector(e);
+  pintarEnlaces(); pintarFuentes(); pintarPegaGrid(); pintarMatriz();
+}
+
+/* Si el ticker escrito es de una financiera o una inmobiliaria conocida,
+   el informe lo dice en grande en vez del recordatorio genérico. */
+function vetoSector(){
+  const e = IDX_POR_TICKER[($("ticker").value||"").trim().toUpperCase()];
+  if(!e || (e.s !== "F" && e.s !== "R")) return "";
+  const q = e.s === "F" ? "un banco, una aseguradora o similar" : "una inmobiliaria patrimonialista (REIT o SOCIMI)";
+  const p = e.s === "F"
+    ? "En una financiera la deuda no es una carga: es su materia prima. El flujo de caja libre y la deuda neta no significan aquí lo que significan en el resto de empresas."
+    : "En una patrimonialista el beneficio contable está distorsionado por la amortización de inmuebles que no pierden valor, y el CapEx de mantenimiento no se puede aproximar con la depreciación.";
+  return `<div class="warn" style="margin-top:1.2rem"><b>⛔ ${esc(e.n)} es ${q}. Este resultado no es válido.</b><br>
+    ${p} Se valoran de otra forma —valor contable y ROE en las financieras, FFO y valor de los activos en las
+    inmobiliarias—, y <b>este método no lo hace</b>. Los números de arriba están bien calculados, pero
+    responden a preguntas que en esta empresa no significan lo que parecen.</div>`;
+}
+
+/* Regla del método: no vale para bancos, aseguradoras ni inmobiliarias
+   patrimonialistas. Antes entraban y calculaban sin decir nada. */
+function avisarSector(e){
+  const caja = $("idinfo");
+  if(!e){ return; }
+  if(e.s === "F" || e.s === "R"){
+    const q = e.s === "F" ? "una <b>financiera</b> (banco, aseguradora o similar)"
+                          : "una <b>inmobiliaria patrimonialista</b> (tipo REIT o SOCIMI)";
+    const p = e.s === "F"
+      ? `Su negocio <b>es</b> el dinero: la deuda no es una carga, es su materia prima. El flujo de
+         caja libre y la deuda neta no significan aquí lo que significan en cualquier otra empresa,
+         así que el IDC que salga <b>no es válido</b>. Estas se valoran por valor contable y ROE.`
+      : `Su beneficio contable está distorsionado por la amortización de inmuebles que no pierden
+         valor, y el CapEx de mantenimiento no se puede aproximar con la depreciación. Se valoran
+         por FFO y valor de los activos. <b>El método de este valorador no aplica.</b>`;
+    caja.innerHTML = `<div class="warn"><b>⛔ ${esc(e.n)} es ${q}.</b><br>${p}<br>
+      <span style="color:var(--muted-txt)">Puedes seguir y ver los números — la herramienta no te
+      lo impide — pero <b>el resultado no sirve para decidir nada</b>.</span></div>`;
+  } else {
+    caja.innerHTML = `<div class="idcard"><div class="n">${esc(e.n)}</div>
+      <div class="m">${esc(e.b)} · ${esc(SECTOR_NOMBRE[e.s]||"")} · ${esc(e.t)}</div>
+      <div class="m" style="margin-top:.5rem;color:var(--muted)">Nombre y moneda puestos desde la
+      lista de empresas, sin internet. Pulsa <b>Buscar</b> si quieres además el precio de hoy.</div></div>`;
+  }
+}
 
 /* ══════════════════ ESTADO ══════════════════ */
 let N = 10, ANIO_FIN = 2025, TAB = "IS", MON = "$";
@@ -2444,9 +2576,9 @@ function resumen(R){
       que yo no</em>. Ahí es donde se aprende.
     </div>
 
-    <div class="note" style="margin-top:1.2rem">⛔ Recuerda: este método <b>no sirve para bancos,
-      aseguradoras ni REITs</b>. Si la empresa analizada es financiera o inmobiliaria patrimonialista,
-      este resultado no es válido.</div>
+    ${vetoSector() || `<div class="note" style="margin-top:1.2rem">⛔ Recuerda: este método <b>no sirve
+      para bancos, aseguradoras ni REITs</b>. Si la empresa analizada es financiera o inmobiliaria
+      patrimonialista, este resultado no es válido.</div>`}
     <div class="note">Esta calculadora proyecta con <b>una sola tasa de crecimiento</b> y aproxima el
       CapEx de mantenimiento con la depreciación. Sirve para entender y para cribar; para decidir hace
       falta la plantilla completa, que proyecta cada partida por separado.</div>
@@ -3140,6 +3272,7 @@ async function buscar(){
     else err.push("Yahoo no reconoce ese ticker");
   }catch(e){ err.push("no hay conexión con Yahoo Finance"); }
 
+  const conocida = IDX_POR_TICKER[t];
   if(info.nombre){
     if(!$("nombre").value) $("nombre").value = info.nombre;
     $("precio").value = info.precio ?? "";
@@ -3150,6 +3283,19 @@ async function buscar(){
       ${pos!==null?` · en el ${nf(pos*100,0)}% de su rango de 52 semanas (${nf(info.lo,0)} – ${nf(info.hi,0)})`:""}</div>
       <div class="m" style="margin-top:.5rem;color:var(--muted)">Fuente: Yahoo Finance. Los datos
       financieros los metes tú abajo — mirarlos uno a uno <em>es</em> el ejercicio.</div></div>`;
+    /* el precio de Yahoo no quita el aviso de sector: se añade encima */
+    if(conocida && (conocida.s==="F" || conocida.s==="R")){
+      const antes = $("idinfo").innerHTML;
+      avisarSector(conocida);
+      $("idinfo").innerHTML += antes;
+    }
+  } else if(conocida){
+    /* sin conexión con Yahoo, la lista interna todavía sirve para lo importante */
+    if(!$("nombre").value) $("nombre").value = conocida.n;
+    $("moneda").value = conocida.t.endsWith(".MC") ? "€" : "$"; MON = $("moneda").value;
+    avisarSector(conocida);
+    $("idinfo").innerHTML += `<div class="note">Nombre y moneda puestos desde la lista interna.
+      <b>El precio de hoy escríbelo a mano</b>: no he podido conectar con Yahoo (${esc(err.join("; "))}).</div>`;
   } else {
     $("idinfo").innerHTML = `<div class="warn"><b>No he podido cargarlo</b> (${esc(err.join("; "))}).
       Escribe el nombre y el precio a mano: el resto funciona igual.</div>`;
@@ -3245,8 +3391,27 @@ $("nAnios").onchange = cambiarN;
 $("anioFin").onchange = e => { const v=parseInt(e.target.value,10); if(v>1900&&v<2200){ANIO_FIN=v;pintarMatriz();} };
 $("moneda").oninput = e => { MON = e.target.value || "$"; };
 $("buscar").onclick = buscar;
-$("ticker").onkeydown = e => { if(e.key==="Enter"){ e.preventDefault(); buscar(); } };
-$("ticker").oninput = () => { pintarEnlaces(); pintarFuentes(); };
+$("ticker").onkeydown = e => {
+  if(e.key === "ArrowDown"){ e.preventDefault(); moverSugerencia(1); return; }
+  if(e.key === "ArrowUp"){   e.preventDefault(); moverSugerencia(-1); return; }
+  if(e.key === "Escape"){    cerrarSugerencias(); return; }
+  if(e.key === "Enter"){
+    e.preventDefault();
+    /* si hay una sugerencia marcada se elige; si no, se busca en Yahoo */
+    if(SUG_SEL >= 0){ elegirEmpresa(SUG_SEL); return; }
+    if(SUG.length === 1){ elegirEmpresa(0); return; }
+    cerrarSugerencias(); buscar();
+  }
+};
+$("ticker").oninput = () => {
+  pintarEnlaces(); pintarFuentes();
+  pintarSugerencias($("ticker").value);
+  /* si lo que hay escrito es exactamente una empresa conocida, avisa del sector ya */
+  const e = IDX_POR_TICKER[$("ticker").value.trim().toUpperCase()];
+  if(e && !SUG.length) avisarSector(e);
+};
+$("ticker").onblur = () => setTimeout(cerrarSugerencias, 120);
+$("ticker").onfocus = () => { if($("ticker").value.trim()) pintarSugerencias($("ticker").value); };
 $("analizar").onclick = () => { MON = $("moneda").value||"$"; informe(calcular()); };
 $("abrirBloque").onclick = () => { $("bloqueBox").classList.toggle("hide"); pintarPegaGrid(); };
 
