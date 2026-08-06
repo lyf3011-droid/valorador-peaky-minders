@@ -140,6 +140,17 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
 #fuentes .red b{color:var(--amber)}
 
 /* ═══ UN CUADRO DE PEGADO POR CUENTA ═══ */
+/* aviso de trabajo recuperado */
+.recup{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1.2rem;
+  padding:.75rem 1rem;border:1px solid rgba(74,222,128,.4);background:rgba(74,222,128,.06);
+  border-radius:8px;font-size:.85rem;color:var(--soft)}
+.recup b{color:var(--green)}
+.recup button{margin-left:auto;font-family:var(--font-m);font-size:.68rem;letter-spacing:.06em;
+  padding:.35rem .7rem;border-radius:6px;border:1px solid var(--line-strong);
+  background:transparent;color:var(--soft);cursor:pointer}
+.recup button:hover{border-color:var(--amber-line);color:var(--amber-strong)}
+@media print{.recup{display:none!important}}
+
 /* buscador de empresas del S&P 500 y el IBEX 35 */
 .sug{position:absolute;z-index:60;left:0;top:100%;margin:.25rem 0 0;padding:.25rem;
   min-width:100%;width:max-content;max-width:min(32rem,88vw);
@@ -567,6 +578,8 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
         informe entero. Es la forma más rápida de ver qué hace esto antes de meter tu empresa.</div>
     </div>
   </div>
+
+  <div id="recuperado" class="recup hide" role="status"></div>
 
   <div class="sec-num">Paso 1 de 3</div>
   <h2>Identifica la empresa</h2>
@@ -1658,7 +1671,7 @@ function pintarPegaGrid(){
   $("pegagrid").querySelectorAll("[data-limpiar]").forEach(b=>b.onclick=()=>{
     const g=b.dataset.limpiar;
     CONCEPTOS.filter(c=>c.g===g).forEach(c=>D[c.k]=new Array(N).fill(null));
-    HTML_CAJA[g]=null; pintarMatriz(); pintarPegaGrid();
+    HTML_CAJA[g]=null; pintarMatriz(); pintarPegaGrid(); guardarTrabajo();
   });
 }
 
@@ -1693,7 +1706,7 @@ function leerCaja(g){
     const llenos = arr.filter(v=>v!==null);
     puestas.push({k:key, lab:con.lab, ult:llenos.length?llenos[llenos.length-1]:null});
   }
-  pintarMatriz();
+  pintarMatriz(); guardarTrabajo();
   const faltan = CONCEPTOS.filter(c=>c.g===g && c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
   caja.innerHTML = puestas.length
     ? `<span class="bien">✓ ${puestas.length} partidas leídas.</span>
@@ -1726,7 +1739,7 @@ function leerPrecios(ta, caja){
   if(arr.length > N) arr = arr.slice(-N);
   D.precioAno = new Array(N).fill(null);
   arr.forEach((v,x)=>{ const p = N-arr.length+x; if(p>=0) D.precioAno[p]=v; });
-  pintarMatriz();
+  pintarMatriz(); guardarTrabajo();
   const A = anios();
   caja.innerHTML = `<span class="bien">✓ ${arr.length} precios puestos.</span>
     <ul><li>${A[0]}: ${D.precioAno[0]===null?"—":nf(D.precioAno[0],2)}</li>
@@ -2052,7 +2065,7 @@ function calcular(){
   R.v.evFcfHoy= der.fcf[L]>0 ? R.v.evHoy/der.fcf[L] : null;
   R.v.relMul  = (R.v.evFcfHoy!==null && R.cMult.evFcf.v) ? R.v.evFcfHoy/R.cMult.evFcf.v : null;
 
-  R.estado = precio<=R.v.zona ? {n:"EN ZONA",c:"g",m:"El precio está en zona de compra. Toca análisis completo — nunca compra automática."}
+  R.estado = precio<=R.v.zona ? {n:"EN ZONA",c:"g",m:"El precio ha entrado en la zona de análisis. Ahora es cuando toca estudiar la empresa a fondo — el precio abre el trabajo, no lo cierra."}
     : precio<=R.v.idc      ? {n:"PRE-ALERTA",c:"g",m:"Por debajo del IDC. Es el momento de preparar el trabajo, no de actuar."}
     : precio<=R.v.idc*1.25 ? {n:"VIGILAR",c:"y",m:"Por encima del IDC pero cerca. Seguimiento normal."}
     : precio<=R.v.idc*1.50 ? {n:"CARO",c:"r",m:"Fuera de rango. Revisión semestral."}
@@ -2408,7 +2421,7 @@ function bandaVeredicto(R){
       <div class="rail"></div>
       <div class="marca" style="left:${pct(R.precio)}"></div>
       <div class="et" style="left:${pct(R.precio)}">hoy ${mo(R.precio,0)}</div>
-      <div class="lim izq" style="left:${pct(v.zona)}">zona de compra ${mo(v.zona,0)}</div>
+      <div class="lim izq" style="left:${pct(v.zona)}">zona de análisis ${mo(v.zona,0)}</div>
       <div class="lim der" style="left:${pct(v.idc)}">IDC ${mo(v.idc,0)}</div>
     </div>
     <div class="d" style="margin-top:1.1rem;font-size:.84rem">${esc(R.estado.m)}</div>
@@ -2489,7 +2502,7 @@ function pasoValoracion(R){
      ${bandaVeredicto(R)}
      <div class="kpis">
        ${kpi("Precio hoy", mo(R.precio), "Cotización que has introducido", null)}
-       ${kpi("Zona de compra", mo(v.zona), "El IDC menos un 15% de colchón", null)}
+       ${kpi("Zona de análisis", mo(v.zona), "El IDC menos un 15% de colchón. Aquí empieza el estudio, no la compra", null)}
        ${kpi("Margen de seguridad", pc(v.margSeg), "Colchón por si los cálculos fallan", sem("margSeg",v.margSeg))}
        ${kpi("Retorno anual esperado", pc(v.retorno), "Al precio de hoy, si se cumple lo previsto", sem("retorno",v.retorno))}
      </div>
@@ -2513,7 +2526,7 @@ function pasoValoracion(R){
         <tr><td class="l"><b>= Precio dentro de 5 años</b></td><td class="n"><b>${mo(R.P.evFcf)}</b></td></tr>
         <tr><td class="l">÷ (1 + ${nf(v.obj*100,0)}%)<sup>5</sup> = ${nf(v.factor,4)}</td><td class="n"></td></tr>
         <tr><td class="l"><b>= IDC</b></td><td class="n"><b style="color:var(--amber-strong)">${mo(v.idc)}</b></td></tr>
-        <tr><td class="l">× 0,85 = <b>zona de compra</b></td><td class="n"><b>${mo(v.zona)}</b></td></tr>
+        <tr><td class="l">× 0,85 = <b>zona de análisis</b></td><td class="n"><b>${mo(v.zona)}</b></td></tr>
        </tbody></table>
      </div></details>
      <div class="note">Un estado operativo <b>abre un análisis</b>. Nunca autoriza una compra por sí mismo.</div>`,
@@ -2835,7 +2848,7 @@ function veredicto(R){
 
 function enlazarValoracion(){
   document.querySelectorAll(".vin").forEach(inp=>{
-    inp.onchange = () => { VAL[inp.dataset.v] = parseNum(inp.value); informe(calcular()); };
+    inp.onchange = () => { VAL[inp.dataset.v] = parseNum(inp.value); informe(calcular()); guardarTrabajo(); };
   });
 }
 
@@ -2874,7 +2887,7 @@ const TOUR = [
  {sel:"#p4", t:"Pregunta 4 · ¿Rinde el capital?",
   d:"El ROIC es el ratio rey: cuánto te devuelven por cada 100 € invertidos. Por debajo del 10% la empresa gana menos de lo que le cuesta el dinero.", ms:11000},
  {sel:"#p6 .veredicto", t:"El IDC",
-  d:"El precio máximo que pagarías hoy para ganar un 15% anual durante cinco años. Debajo, la escala te sitúa el precio actual frente a la zona de compra.", ms:12000},
+  d:"El precio máximo que pagarías hoy para ganar un 15% anual durante cinco años. Debajo, la escala te sitúa el precio actual frente a la zona de análisis.", ms:12000},
  {sel:"#res .kid", t:"Y explicado para cualquiera",
   d:"El mismo análisis contado sin una sola palabra técnica, con la analogía de la tienda del barrio. Debajo tienes cada ratio traducido a una pizzería y las conclusiones leídas en conjunto.", ms:11000},
  {sel:null, t:"Eso es todo",
@@ -3375,7 +3388,8 @@ function cargarEjemplo(E, nota){
   $("idinfo").innerHTML = `<div class="idcard"><div class="n">${esc(E._id.nombre)}</div>
     <div class="m">Ejemplo con 10 ejercicios reales de InvestingPro.</div>
     <div class="m" style="margin-top:.5rem;color:var(--muted-txt)">${nota}</div></div>`;
-  pintarEnlaces(); pintarFuentes(); pintarMatriz(); informe(calcular());
+  pintarEnlaces(); pintarFuentes(); pintarMatriz(); pintarPegaGrid(); informe(calcular());
+  guardarTrabajo();
 }
 
 /* ══════════════════ ARRANQUE ══════════════════ */
@@ -3417,11 +3431,93 @@ $("abrirBloque").onclick = () => { $("bloqueBox").classList.toggle("hide"); pint
 
 
 
+/* ══════════════════ GUARDAR EL TRABAJO ══════════════════
+   Son 250 casillas. Perderlas por recargar sin querer, por un cierre de
+   pestaña o por quedarse sin batería no es aceptable, así que se guardan
+   solas en este navegador. No sale nada a ningún sitio: localStorage vive
+   en el disco del usuario y no viaja con ninguna petición.               */
+const CLAVE_TRABAJO = "invest-sos-trabajo-v1";
+let GUARDANDO = null;
+
+function hayTrabajo(){
+  if(CONCEPTOS.some(c => D[c.k].some(v => v !== null))) return true;
+  return !!(($("ticker").value||"").trim() || ($("nombre").value||"").trim()
+         || ($("negocio").value||"").trim());
+}
+
+function guardarTrabajo(){
+  clearTimeout(GUARDANDO);
+  GUARDANDO = setTimeout(() => {
+    try{
+      if(!hayTrabajo()){ olvidarTrabajo(); return; }
+      const datos = {};
+      CONCEPTOS.forEach(c => { if(D[c.k].some(v=>v!==null)) datos[c.k] = D[c.k]; });
+      localStorage.setItem(CLAVE_TRABAJO, JSON.stringify({
+        v: 1, cuando: Date.now(), N, anioFin: ANIO_FIN,
+        ticker: $("ticker").value, nombre: $("nombre").value,
+        precio: $("precio").value, moneda: $("moneda").value,
+        negocio: $("negocio").value, invertir: $("invertir").checked,
+        val: VAL, datos
+      }));
+    }catch(e){ /* modo incógnito o disco lleno: se sigue sin guardar */ }
+  }, 600);
+}
+
+function olvidarTrabajo(){
+  try{ localStorage.removeItem(CLAVE_TRABAJO); }catch(e){}
+  const b = $("recuperado"); if(b) b.classList.add("hide");
+}
+
+function cargarTrabajo(){
+  let g = null;
+  try{ g = JSON.parse(localStorage.getItem(CLAVE_TRABAJO) || "null"); }catch(e){}
+  if(!g || !g.datos) return false;
+
+  if(g.N && g.N !== N){ N = g.N; $("nAnios").value = String(N);
+    CONCEPTOS.forEach(c => D[c.k] = new Array(N).fill(null)); }
+  if(g.anioFin){ ANIO_FIN = g.anioFin; $("anioFin").value = g.anioFin; }
+  Object.entries(g.datos).forEach(([k, arr]) => {
+    if(!D[k] || !Array.isArray(arr)) return;
+    D[k] = new Array(N).fill(null);
+    arr.slice(0, N).forEach((v, i) => D[k][i] = (typeof v === "number" ? v : null));
+  });
+  ["ticker","nombre","precio","moneda","negocio"].forEach(id => { if(g[id]) $(id).value = g[id]; });
+  MON = $("moneda").value || "$";
+  $("invertir").checked = !!g.invertir;
+  if(g.val) Object.keys(VAL).forEach(k => { if(g.val[k] !== undefined) VAL[k] = g.val[k]; });
+
+  const cuando = g.cuando ? new Date(g.cuando) : null;
+  const cuandoTxt = cuando
+    ? cuando.toLocaleDateString("es-ES", {day:"numeric", month:"long"}) + " a las "
+      + cuando.toLocaleTimeString("es-ES", {hour:"2-digit", minute:"2-digit"})
+    : "antes";
+  const quien = ($("nombre").value || $("ticker").value || "tu empresa").trim();
+  const cuantas = Object.values(g.datos).reduce((s,a) => s + a.filter(v=>v!==null).length, 0);
+  $("recuperado").innerHTML = `<b>He recuperado tu trabajo</b> — ${esc(quien)}, ${cuantas} casillas,
+    guardado el ${cuandoTxt}. Se guarda solo en este navegador cada vez que escribes algo.
+    <button type="button" id="descartar">Empezar de cero</button>`;
+  $("recuperado").classList.remove("hide");
+  $("descartar").onclick = () => { olvidarTrabajo(); $("limpiar").click(); };
+  return true;
+}
+
+/* cualquier cambio del usuario en un campo dispara el guardado */
+document.addEventListener("input", e => {
+  if(e.target && e.target.closest && e.target.closest("#tourCaja")) return;
+  guardarTrabajo();
+}, true);
+document.addEventListener("change", guardarTrabajo, true);
+
 $("limpiar").onclick = () => {
+  if(hayTrabajo() && !confirm("Vas a borrar todos los datos que has metido. ¿Seguro?")) return;
   CONCEPTOS.forEach(c=>D[c.k]=new Array(N).fill(null));
   ["ticker","nombre","precio"].forEach(i=>$(i).value="");
   Object.keys(VAL).forEach(k=>VAL[k]=null); VAL.obj=15;
-  $("idinfo").innerHTML=""; $("informe").innerHTML=""; pintarEnlaces(); pintarFuentes(); pintarMatriz();
+  $("negocio").value = "";
+  $("negocioVista").classList.add("hide"); $("negocio").classList.remove("hide");
+  $("idinfo").innerHTML=""; $("informe").innerHTML="";   /* #res vive dentro de #informe */
+  olvidarTrabajo();
+  pintarEnlaces(); pintarFuentes(); pintarMatriz(); pintarPegaGrid();
 };
 $("demoTop").onclick = () => $("demo").click();
 $("demoNav").onclick = () => $("demo").click();
@@ -3439,7 +3535,9 @@ $("demoMsftNav").onclick = () => $("demoMsft").click();
 
 ANIO_FIN = new Date().getFullYear()-1;
 $("anioFin").value = ANIO_FIN;
+const RECUPERADO = cargarTrabajo();
 pintarTabs(); pintarEnlaces(); pintarFuentes(); pintarMatriz(); pintarPegaGrid();
+if(RECUPERADO && $("negocio").value.trim()) pintarNegocio();
 pintarSonido();
 
 /* en papel no hay nada que desplegar: los desplegables del informe se abren
