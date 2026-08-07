@@ -140,6 +140,43 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
 #fuentes .red b{color:var(--amber)}
 
 /* ═══ UN CUADRO DE PEGADO POR CUENTA ═══ */
+/* ── el índice de los cuatro pasos ──
+   El análisis tiene cuatro fases y hasta ahora solo se veía la segunda.
+   Esta barra las pone en orden y enseña en cuál estás. */
+#ruta{position:sticky;top:0;z-index:40;background:rgba(8,8,8,.94);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);margin-bottom:1.4rem}
+#ruta .in{max-width:var(--max,72rem);margin:0 auto;padding:.55rem clamp(1rem,3vw,2rem);
+  display:flex;gap:.4rem;overflow-x:auto;scrollbar-width:none}
+#ruta .in::-webkit-scrollbar{display:none}
+#ruta a{flex:1;min-width:9.5rem;display:flex;flex-direction:column;gap:.1rem;
+  text-decoration:none;padding:.5rem .7rem;border-radius:7px;border:1px solid transparent;
+  transition:all .15s}
+#ruta a .p{font-family:var(--font-m);font-size:.6rem;letter-spacing:.14em;color:var(--muted-txt)}
+#ruta a .t{font-size:.86rem;font-weight:700;color:var(--soft);letter-spacing:-.01em}
+#ruta a .s{font-size:.71rem;color:var(--muted-txt)}
+#ruta a:hover,#ruta a:focus-visible{border-color:var(--line-strong);background:var(--surface)}
+#ruta a.on{border-color:var(--amber-line);background:var(--amber-muted)}
+#ruta a.on .p{color:var(--amber)}
+#ruta a.on .t{color:var(--amber-strong)}
+@media(max-width:640px){#ruta a{min-width:8.2rem}#ruta a .s{display:none}}
+@media print{#ruta{display:none!important}}
+
+/* el bloque del precio, explicado para quien empieza */
+.pex{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1.4rem}
+.pexc{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:1.1rem 1.2rem}
+.pexc h4{margin:0 0 .5rem;font-family:var(--font-h);font-weight:800;font-size:1rem;color:var(--txt)}
+.pexc p{margin:.45rem 0;font-size:.87rem;color:var(--soft);line-height:1.6}
+.pexc .eti{font-family:var(--font-m);font-size:.62rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--amber);display:block;margin-bottom:.4rem}
+.pexc.ojo{border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.04)}
+.pexc.ojo .eti{color:#f87171}
+
+/* el gráfico de TradingView, solo si lo pides */
+#tvbox{margin-top:1.2rem;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;
+  background:var(--surface);min-height:0}
+#tvbox iframe{display:block;width:100%;height:min(60vh,460px);border:0}
+@media print{#tvbox{display:none!important}}
+
 /* el protocolo: InvestingPro manda, y en inglés */
 .protocolo{border:1px solid var(--amber-line);background:var(--amber-muted);border-radius:10px;
   padding:1rem 1.2rem;margin-bottom:1rem}
@@ -588,6 +625,18 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
 <div class="wrap">
 
+<!-- ═══════════ ÍNDICE DE LOS CUATRO PASOS ═══════════ -->
+<nav id="ruta" aria-label="Los cuatro pasos del análisis"><div class="in">
+  <a href="#f1" data-f="f1"><span class="p">Paso 1</span><span class="t">Cualitativo</span>
+    <span class="s">de qué vive la empresa</span></a>
+  <a href="#f2" data-f="f2"><span class="p">Paso 2</span><span class="t">Fundamental</span>
+    <span class="s">los números, diez años</span></a>
+  <a href="#f3" data-f="f3"><span class="p">Paso 3</span><span class="t">Precio</span>
+    <span class="s">¿cuánto vale y cuánto cuesta?</span></a>
+  <a href="#f4" data-f="f4"><span class="p">Paso 4</span><span class="t">Técnico</span>
+    <span class="s">¿cuándo entrar?</span></a>
+</div></nav>
+
 <!-- ═══════════ 1 · IDENTIFICACIÓN ═══════════ -->
 <section>
   <div class="veredicto" style="margin:0 0 1.8rem;padding:1.4rem clamp(1rem,3vw,1.8rem)">
@@ -609,7 +658,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
   <div id="recuperado" class="recup hide" role="status"></div>
 
-  <div class="sec-num">Paso 1 de 3</div>
+  <div class="sec-num">Antes de empezar</div>
   <h2>Identifica la empresa</h2>
   <p class="sub">Empieza a escribir el ticker <b>o el nombre</b>: las <b>578 empresas del S&amp;P 500, el IBEX 35 y el DAX 40</b> están guardadas aquí dentro, así que el nombre y la moneda se ponen solos y sin
   internet. El botón <b>Buscar</b> añade además el precio de hoy desde Yahoo Finance. Es lo único
@@ -644,9 +693,10 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 </section>
 
 <!-- ═══════════ 1b · MODELO DE NEGOCIO ═══════════ -->
-<section>
-  <div class="sec-num">Lo primero de todo</div>
+<section id="f1">
+  <div class="sec-num">Paso 1 de 4 · Cualitativo</div>
   <h2>¿A qué se dedica esta empresa?</h2>
+  <p class="sub" style="margin-bottom:1rem">Va primero por un motivo: <b>si no sabes de qué vive una empresa, sus números no significan nada</b>. Un margen del 40% es excelente en software y sospechoso en una constructora. Esto es lo que te dice cuál de las dos estás mirando.</p>
   <p class="sub">Antes de mirar un solo número hay que saber <b>de dónde sale cada euro de ventas</b>:
   qué segmentos, cuánto aporta cada uno, con qué margen y con qué concentración de clientes.
   El texto de abajo pide exactamente eso, con nivel de nota de análisis y obligando a citar la fuente
@@ -699,8 +749,8 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 </section>
 
 <!-- ═══════════ 2 · DATOS ═══════════ -->
-<section>
-  <div class="sec-num">Paso 2 de 3</div>
+<section id="f2">
+  <div class="sec-num">Paso 2 de 4 · Fundamental</div>
   <h2>Mete los datos de los últimos años</h2>
   <p class="sub">Todos salen de tres pestañas de la ficha de la empresa en <b>Investing.com</b>
   (o gratis en <b>stockanalysis.com</b>), siempre en modo <code>Annual</code>.
@@ -860,9 +910,82 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
   </div>
 </div>
 
+<!-- ═══════════ PASO 3 · EL PRECIO ═══════════ -->
+<section id="f3">
+  <div class="sec-num">Paso 3 de 4 · Precio</div>
+  <h2>¿Cuánto vale y cuánto cuesta?</h2>
+  <p class="sub">Son dos preguntas distintas y mucha gente las confunde. <b>Cuánto cuesta</b> lo dice
+  el mercado y lo sabe todo el mundo. <b>Cuánto vale</b> lo decides tú, y por eso hay que hacer los
+  pasos 1 y 2 antes. El informe de abajo responde a la segunda.</p>
+
+  <div class="pex">
+    <div class="pexc">
+      <span class="eti">Qué precios necesitas</span>
+      <h4>Dos, y sirven para cosas distintas</h4>
+      <p><b>Los diez cierres antiguos</b> no dicen si está cara hoy. Sirven para saber a cuántas
+      veces su caja ha cotizado esta empresa históricamente — su vara de medir.</p>
+      <p><b>El precio de hoy</b> es el único que se compara con tu resultado, y se mira al final.</p>
+      <p style="color:var(--muted-txt)">Ojo con el mes: si la empresa cierra su año en junio, el
+      precio tiene que ser de junio. Si no, divides el precio de un momento entre las cuentas de otro.</p>
+    </div>
+
+    <div class="pexc">
+      <span class="eti">El «Fair Value» de InvestingPro</span>
+      <h4>Un número que no has calculado tú</h4>
+      <p>InvestingPro te da su propia valoración. Está bien mirarla, pero entiende qué es:
+      <b>el resultado de un modelo cuyos supuestos no controlas</b> — no sabes qué crecimiento ha
+      metido ni qué múltiplo ha usado.</p>
+      <p>Tu IDC vale más justamente por eso: <b>sabes exactamente qué has supuesto</b>, y puedes
+      cambiarlo y ver qué pasa.</p>
+      <p style="color:var(--muted-txt)">Lo interesante no es quién acierta. Es <em>qué está
+      suponiendo el otro que yo no</em>.</p>
+    </div>
+
+    <div class="pexc ojo">
+      <span class="eti">El precio objetivo de los analistas</span>
+      <h4>Léelo sabiendo lo que es</h4>
+      <p>Es <b>la media de lo que creen unas cuantas personas</b> que cubren la empresa. Está en la
+      pestaña de previsiones, junto al número de analistas que lo forman — mira siempre cuántos son.</p>
+      <p>Y la parte incómoda: <b>suelen ir por detrás del mercado</b> y casi nunca ven venir un mal
+      año. Se equivocan a la vez, porque leen lo mismo y hablan entre ellos.</p>
+      <p style="color:var(--muted-txt)">Úsalo para saber de qué punto parte el precio de hoy, no
+      para decidir. Lo que sí vale de verdad son sus <b>estimaciones de ventas</b>, que están en el
+      paso 2.</p>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:1.2rem">Con el ticker escrito arriba, estos enlaces te llevan
+  a donde está cada cosa: <span id="enlacesPrecio"></span></div>
+</section>
+
 <!-- ═══════════ 3 · INFORME ═══════════ -->
 <nav id="railidx" aria-label="Índice del informe"></nav>
 <div id="informe"></div>
+
+<!-- ═══════════ PASO 4 · TÉCNICO ═══════════ -->
+<section id="f4">
+  <div class="sec-num">Paso 4 de 4 · Técnico</div>
+  <h2>¿Y cuándo entrar?</h2>
+  <p class="sub">Aquí es donde más gente se pierde, así que conviene decirlo claro:
+  <b>el análisis técnico no sirve para elegir empresa ni para saber si está barata.</b> Para eso
+  están los tres pasos anteriores. Sirve para una sola cosa — <b>afinar el momento de entrar</b>
+  cuando ya has decidido que quieres entrar. Si lo usas para lo primero, sobra.</p>
+
+  <div class="bar-actions" style="margin-top:1.2rem">
+    <button type="button" class="b2" id="verTV">📈 Ver el gráfico en tiempo real</button>
+    <a class="b2" id="abrirTV" href="https://www.tradingview.com/chart/" target="_blank"
+       rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center">
+       Abrir en TradingView ↗</a>
+    <span style="font-size:.8rem;color:var(--soft);align-self:center">
+      El gráfico se carga solo si lo pides: así el resto de la herramienta sigue funcionando sin internet.</span>
+  </div>
+  <div id="tvbox" class="hide"></div>
+
+  <div class="note" style="margin-top:1.2rem"><b>Lo único que yo miraría aquí</b>, y con el trabajo
+  ya hecho: si el precio está cerca de tu zona de análisis, si viene cayendo mucho tiempo —conviene
+  saber por qué antes de entrar— y dónde tiene soportes por si quieres repartir la compra en varias
+  veces. Nada de esto cambia si la empresa es buena o mala: eso ya lo has decidido arriba.</div>
+</section>
 
 <div class="foot">
 ENTENDER UNA EMPRESA · Valoración Peaky Minders v2.0 · 2026-08-03<br>
@@ -3474,6 +3597,73 @@ async function yahoo(url){
   return await r2.json();
 }
 
+/* ══════════════════ LOS CUATRO PASOS ══════════════════
+   El índice de arriba marca en qué fase estás según lo que tengas delante. */
+function marcarRuta(){
+  const secs = ["f1","f2","f3","f4"].map(id => $(id)).filter(Boolean);
+  if(!secs.length) return;
+  /* la fase activa es la última cuyo comienzo ya has pasado. Con un observador
+     de intersección, dos secciones seguidas y cortas se pisaban y marcaba la
+     que no era. Esto es más simple y no falla. */
+  let pendiente = false;
+  const actualiza = () => {
+    pendiente = false;
+    const linea = 140;                       /* un poco por debajo de la barra */
+    let activa = secs[0].id;
+    for(const s of secs) if(s.getBoundingClientRect().top <= linea) activa = s.id;
+    /* al final de la página ya no queda scroll para que la última sección suba
+       hasta la línea, así que se marca ella */
+    if(scrollY + innerHeight >= document.documentElement.scrollHeight - 12)
+      activa = secs[secs.length-1].id;
+    document.querySelectorAll("#ruta a").forEach(a =>
+      a.classList.toggle("on", a.dataset.f === activa));
+  };
+  addEventListener("scroll", () => { if(pendiente) return;
+    pendiente = true; requestAnimationFrame(actualiza); }, {passive:true});
+  addEventListener("resize", actualiza, {passive:true});
+  actualiza();
+  document.querySelectorAll("#ruta a").forEach(a => a.onclick = e => {
+    e.preventDefault();
+    const d = $(a.dataset.f);
+    if(d) d.scrollIntoView({behavior:modoScroll(), block:"start"});
+  });
+}
+
+/* enlaces del paso 3, apuntando a la empresa que tengas escrita */
+function pintarEnlacesPrecio(){
+  const c = $("enlacesPrecio"); if(!c) return;
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  if(!T){ c.innerHTML = `<span style="color:var(--muted-txt)">escribe el ticker arriba</span>`; return; }
+  const slug = slugDe(T);
+  const inv = slug ? `https://www.investing.com/equities/${slug}` : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
+  c.innerHTML = [
+    [`${inv}-earnings`, "previsiones y precio objetivo"],
+    [`${inv}-historical-data`, "cierres históricos"],
+    [`https://finance.yahoo.com/quote/${encodeURIComponent(T)}/analysis`, "consenso en Yahoo"],
+  ].map(([u,t]) => `<a href="${u}" target="_blank" rel="noopener"
+      style="color:var(--amber-strong)">${esc(t)} ↗</a>`).join(" &nbsp;·&nbsp; ");
+}
+
+/* El gráfico de TradingView solo se carga si lo pides: así la herramienta
+   sigue abriéndose con doble clic y sin conexión, que es como está pensada. */
+function verTradingView(){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  if(!T){ $("tvbox").classList.remove("hide");
+    $("tvbox").innerHTML = `<div class="note" style="margin:0">Escribe primero el ticker arriba.</div>`;
+    return; }
+  const e = IDX_POR_TICKER[T];
+  const simbolo = e && e.b === "IBEX 35" ? "BME:" + T.replace(".MC","")
+                : e && e.b === "DAX 40"  ? "XETR:" + T.replace(/\.(DE|PA)$/,"")
+                : T;
+  const url = "https://s.tradingview.com/widgetembed/?symbol=" + encodeURIComponent(simbolo) +
+    "&interval=W&theme=dark&style=1&locale=es&hide_side_toolbar=1&allow_symbol_change=0";
+  $("tvbox").classList.remove("hide");
+  $("tvbox").innerHTML = `<iframe src="${url}" title="Gráfico de ${esc(T)} en TradingView"
+    loading="lazy" referrerpolicy="no-referrer"></iframe>`;
+  $("abrirTV").href = "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(simbolo);
+  $("verTV").textContent = "📈 Actualizar el gráfico";
+}
+
 /* ══════════════════ RESCATE DESDE LA SEC ══════════════════
    Hay tres partidas que InvestingPro no publica en sus tablas y que por
    tanto nunca entran al pegar: la Depreciation sola (la que manda el
@@ -4237,7 +4427,7 @@ $("ticker").onkeydown = e => {
   }
 };
 $("ticker").oninput = () => {
-  pintarEnlaces(); pintarFuentes();
+  pintarEnlaces(); pintarFuentes(); pintarEnlacesPrecio();
   pintarSugerencias($("ticker").value);
   /* si lo que hay escrito es exactamente una empresa conocida, avisa del sector ya */
   const e = IDX_POR_TICKER[$("ticker").value.trim().toUpperCase()];
@@ -4249,6 +4439,8 @@ $("analizar").onclick = () => { MON = $("moneda").value||"$"; informe(calcular()
 $("abrirBloque").onclick = () => { $("bloqueBox").classList.toggle("hide"); pintarPegaGrid(); };
 $("btnSECtop").onclick = () => traerSEC("top");
 $("btn10K").onclick = traer10K;
+$("verTV").onclick = verTradingView;
+marcarRuta(); pintarEnlacesPrecio();
 
 
 
