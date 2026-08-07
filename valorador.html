@@ -1035,7 +1035,7 @@ const $ = id => document.getElementById(id);
 
 /* ══════════════════ CONCEPTOS ══════════════════ */
 const G = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja",
-           ER:"EBITDA Reconciliation", MK:"Mercado"};
+           ER:"Lo que falte", MK:"Mercado"};
 const CONCEPTOS = [
  {k:"ventas",   g:"IS", lab:"Ventas",                     src:"Total Revenues", req:1},
  {k:"ebitda",   g:"IS", lab:"EBITDA",                     src:"EBITDA", req:1,
@@ -2160,15 +2160,18 @@ function pintarPegaGrid(){
                          : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`)
       : slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
              : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
-    const suyas = g === "ER" ? ["capexMant","da","ebitda"]
-                             : CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
-    const total = suyas.length;
-    const hechos = suyas.filter(k => D[k].some(v=>v!==null)).length;
+    /* el cajón de sastre mide sobre TODAS las partidas; los demás, sobre las suyas */
+    const suyas = CONCEPTOS.filter(c => c.g===g).map(c=>c.k);
+    const todas = CONCEPTOS.filter(c => !c.auto).map(c=>c.k);
+    const lista = g === "ER" ? todas : suyas;
+    const total  = lista.length;
+    const hechos = lista.filter(k => D[k].some(v=>v!==null)).length;
     const ayuda = g==="ER"
-      ? `Aquí es donde está <b>la partida que falta casi siempre</b>: la
-         <code>Depreciation &amp; Amortization</code> de la pestaña <b>EBITDA Reconciliation</b>.
-         Cambia el desplegable de arriba en InvestingPro, copia la tabla y pégala aquí.
-         Solo se queda con lo que las otras no traen.`
+      ? `<b>El cajón de sastre.</b> Pega aquí <b>cualquier otra tabla</b> y me quedo solo con las
+         partidas que sigan vacías — nunca pisa lo que ya tienes.<br>
+         La más útil es <b>EBITDA Reconciliation</b>, donde está la
+         <code>Depreciation</code> que las otras no traen. Cambia el desplegable de arriba en
+         InvestingPro, copia y pega.`
       : g==="MK"
       ? `Pega los <b>${N} precios de cierre</b>, del más antiguo al más nuevo. Vale una línea,
          una columna o la tabla de datos históricos.`
@@ -2259,11 +2262,13 @@ function leerCaja(g){
   const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
   const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
   if(g==="MK"){ leerPrecios(ta, caja); return; }
-  /* El cuadro de EBITDA Reconciliation no tiene partidas propias: pesca las que
-     las tablas normales no traen —la Depreciation sola sobre todo— sin tocar
-     nada de lo que ya hayas metido por otro lado. */
-  const soloDe = g === "ER" ? ["capexMant","da","ebitda"]
-                            : CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
+  /* Este cuadro no tiene partidas propias: es el cajón de lo que falte. Acepta
+     cualquier tabla —EBITDA Reconciliation, un flujo de caja ampliado, lo que
+     sea— y se queda solo con las partidas que sigan VACÍAS, así que nunca pisa
+     nada de lo que ya hayas metido. */
+  const soloDe = g === "ER"
+    ? CONCEPTOS.filter(c => !c.auto && D[c.k].every(v => v === null)).map(c => c.k)
+    : CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
   let filas = [];
   if(HTML_CAJA[g]){ try{ filas = leerHTMLInvesting(HTML_CAJA[g]); }catch(e){} }
   if(!filas.length && ta.value.trim()) filas = leerTextoPlano(ta.value);
