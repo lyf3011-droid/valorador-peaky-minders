@@ -819,15 +819,23 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
     <div class="pr-o"><b>Lo obligatorio</b> son seis: <b>ventas · EBITDA · EBIT · impuestos ·
       acciones diluidas</b> de la cuenta de resultados, y <b>caja, deuda a largo y patrimonio neto</b>
       del balance. Con eso ya sale un análisis. Lo demás afina el resultado.</div>
-    <div class="pr-o"><b>Y si tu cuenta tiene más pestañas</b> —<i>EBITDA Reconciliation</i>,
-      <i>Forecasts</i>, <i>Valuation Ratios</i>— úsalas, porque ahí está justo lo que las tablas
-      normales no dan:
-      <span class="pr-x">
-      · <b>EBITDA Reconciliation</b> → suele traer la <b>Depreciation sola</b>, que es la que el
-        método quiere para el CapEx de mantenimiento. Pégala en el cuadro de flujo de caja y la coge.<br>
-      · <b>Forecasts</b> → las <b>estimaciones de los analistas</b>. Van en la proyección por
-        partidas del paso 3.<br>
-      · <b>Valuation Ratios</b> → los <b>múltiplos históricos</b> y la cotización de cada año.</span></div>
+    <div class="pr-o"><b>Y si tu cuenta tiene más pestañas</b>, no hace falta mirarlas enteras.
+      De cada una solo se usan estas filas:
+      <table class="rs" style="margin-top:.6rem;font-size:.82rem"><tbody>
+        <tr><td class="l"><b>EBITDA Reconciliation</b></td>
+          <td class="l">Solo <b>2 filas</b>: <code>Depreciation &amp; Amortization</code> —la que el
+            método quiere para el CapEx de mantenimiento— y <code>EBITDA</code>.
+            Pégala entera en el cuadro de flujo de caja: ya se queda con lo suyo.</td></tr>
+        <tr><td class="l"><b>Forecasts</b></td>
+          <td class="l">Solo <b>2 filas × 5 años</b>: <code>Revenue Forecast (InvestingPro)</code> y
+            <code>EBIT Forecast (InvestingPro)</code>. Con eso salen el crecimiento y el margen de
+            los cinco años que proyecta el método. <b>Trae diez columnas y sin fechas</b>, así que
+            el cuadro te pregunta cuál es el primer año — y ojo, del <b>FY+1 en adelante son
+            estimaciones</b>, no datos reales.</td></tr>
+        <tr><td class="l"><b>Valuation Ratios</b></td>
+          <td class="l">Los <b>múltiplos históricos</b> para contrastar el que vas a usar tú.
+            Mirar, no pegar.</td></tr>
+      </tbody></table></div>
   </div>
 
   <div class="bar-actions" style="margin-bottom:.6rem">
