@@ -359,6 +359,10 @@ table.rs td.l{color:var(--soft)}
 .kid p{margin-bottom:.9rem}.kid p:last-child{margin-bottom:0}
 .kid b{color:var(--amber-strong)}
 .kid .q{font-family:var(--font-m);font-size:.63rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.2rem}
+/* El nombre técnico acompaña siempre a la pregunta en cristiano. Quien empieza lee
+   la pregunta; quien va a defender esto delante de alguien necesita el término */
+.kid .tq{font-family:var(--font-m);font-size:.63rem;letter-spacing:.09em;font-style:normal;
+  color:var(--amber);display:block;margin:-.05rem 0 .3rem}
 .foot{margin-top:2.5rem;padding-top:1.4rem;border-top:1px solid var(--line);font-size:.75rem;color:var(--muted);
   font-family:var(--font-m);line-height:1.75}
 /* ═══ BARRA DE NAVEGACION ═══ */
@@ -855,6 +859,27 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   <div class="pr" id="res10K" style="margin-bottom:.8rem"></div>
 
   <div id="bloqueBox" class="hide">
+    <!-- El protocolo entero está arriba, pero cuando abres este bloque ya no lo ves y
+         parece que no existe. Aquí va lo imprescindible, a la vista, donde de verdad
+         se usa: los cuatro desplegables, la moneda y el idioma. -->
+    <div class="protocolo" style="margin:0 0 .9rem">
+      <div class="pr-t">Antes de pegar · comprueba estas cinco cosas en InvestingPro</div>
+      <ol class="pr-l" style="margin:0">
+        <li><b>Idioma: inglés.</b> El método está escrito con sus nombres de fila.
+          <span class="pr-x">En español también lo reconoce, pero en inglés tu trabajo es
+          comparable con el de cualquier compañero.</span></li>
+        <li><b>Los cuatro desplegables:</b> <b>Fiscal Years</b> · <b>Ascending</b> ·
+          <b>10 Years</b> · <b>Millions</b>.</li>
+        <li><b>Moneda: la que reporta la empresa</b>, no la tuya. En Alphabet, poner euros
+          desvía el resultado un 15%.</li>
+        <li><b>Despliega los grupos</b> antes de copiar: lo que esté plegado no se copia.</li>
+        <li><b>Copia desde «Period Ending» hasta el final</b>, y pega cada tabla en su cuadro.</li>
+      </ol>
+      <div class="pr-o">También puedes pegar aquí <b>EBITDA Reconciliation</b> y <b>Forecasts</b>:
+        el quinto cuadro —<b>Lo que falte</b>— acepta cualquier tabla y se queda solo con las
+        filas que aún estén vacías. Y si algo sigue sin salir, el botón de la <b>SEC</b> de arriba
+        lo busca en las cuentas oficiales.</div>
+    </div>
     <div class="note" style="margin-bottom:.9rem">Un cuadro por cuenta. Copia cada tabla de
       InvestingPro y pégala en el suyo con <kbd>Ctrl</kbd>+<kbd>V</kbd>: se reconoce sola.
       No hace falta que las pegues todas ni en orden.</div>
@@ -1044,6 +1069,13 @@ const CONCEPTOS = [
    calc:{op:"−", a:"EBITDA", b:"Depreciation & Amortization, Total"}},
  {k:"interes",  g:"IS", lab:"Intereses netos",            src:"Net Interest Expenses",
    calc:{op:"−", a:"Interest And Investment Income", b:"Interest Expense, Total (en positivo)"}},
+ /* Los dos lados del interés, por separado. La plantilla los proyecta cada uno
+    con su porcentaje: lo que cobra por su caja y lo que paga por su deuda. El
+    neto es la resta, y en una empresa que tiene caja Y deuda a la vez sale un
+    tipo engañosamente bajo. No son datos nuevos que buscar: vienen en la misma
+    tabla de la cuenta de resultados que el alumno ya pega. */
+ {k:"intIng",   g:"IS", lab:"Ingresos financieros",       src:"Interest And Investment Income"},
+ {k:"intGas",   g:"IS", lab:"Gastos financieros",         src:"Interest Expense, Total", pos:1},
  {k:"impuestos",g:"IS", lab:"Impuestos",                  src:"Income Tax Expense", pos:1, req:1},
  {k:"acciones", g:"IS", lab:"Acciones diluidas",          src:"Diluted Weighted Average Shares Outstanding", req:1},
 
@@ -1102,6 +1134,11 @@ const SIN = {
        "ingreso operativo","resultado de explotación","margen neto"],
  interes:["net interest expenses","net interest expense","net interest expense (income)",
           "gastos netos por intereses","gastos por intereses netos"],
+ intIng:["interest and investment income","interest & investment income",
+         "interest income","ingresos por intereses e inversiones",
+         "ingresos por intereses","ingresos financieros"],
+ intGas:["interest expense, total","interest expense total","interest expense",
+         "gastos por intereses, total","gastos por intereses","gastos financieros"],
  impuestos:["income tax expense","income tax","provision for income taxes",
             "impuesto sobre la renta","impuesto sobre beneficios","impuesto de sociedades"],
  acciones:["diluted weighted average shares outstanding","diluted shares outstanding",
@@ -2711,16 +2748,31 @@ function calcular(){
        que en una empresa con las dos cosas sale un tipo engañosamente bajo. La
        plantilla los proyecta por separado con sus propios porcentajes; aquí se
        deja editable, que es lo que más acerca el resultado. */
+    const caja0  = z(g("caja"),L) + z(g("inversion"),L);
+    const deuda0 = z(g("deudaCP"),L) + z(g("deudaLP"),L);
+    /* Si el alumno ha pegado las DOS filas de intereses —y vienen en la misma
+       tabla que ya pega—, cada lado se proyecta con su propio tipo, como en la
+       plantilla. Si solo hay el neto, se usa el modelo antiguo de un solo tipo
+       sobre la caja neta, que es lo que había hasta ahora. */
+    const ingL = at(g("intIng"), L), gasL = at(g("intGas"), L);
+    const dosLados = ingL !== null && gasL !== null && caja0 > 0 && deuda0 > 0;
+    const tipoIng = dosLados ? ingL/caja0  : null;
+    const tipoGas = dosLados ? Math.abs(gasL)/deuda0 : null;
+
     const tipoHist = (() => {
-      const c = z(g("caja"),L) + z(g("inversion"),L),
-            d = z(g("deudaCP"),L) + z(g("deudaLP"),L);
-      const base = c - d;
+      const base = caja0 - deuda0;
       return (base !== 0 && at(interes,L) !== null) ? at(interes,L)/base : 0.03;
     })();
-    const tipoCaja = VAL.ptc !== null && VAL.ptc !== undefined ? VAL.ptc/100 : tipoHist;
+    /* el campo editable manda siempre: es la vía de escape cuando el histórico
+       no representa lo que va a pasar (tipos que suben, deuda que vence…) */
+    const tipoCaja = VAL.ptc !== null && VAL.ptc !== undefined ? VAL.ptc/100
+                   : (dosLados ? tipoIng : tipoHist);
 
     const dn5Base = der.deudaNeta[L]!==null ? der.deudaNeta[L] : 0;
     let vt = ventas[L], dat = daRatio, dnT = dn5Base;
+    /* con los dos lados se sigue la caja de verdad: la deuda se refinancia y se
+       queda donde está, y lo que no se reparte engorda la caja */
+    let cajaT = caja0;
     const filas = [];
     for(let i=0;i<5;i++){
       const g = pg[i]/100;
@@ -2729,17 +2781,22 @@ function calcular(){
       const ebt   = vt * (pm[i]/100);
       const ebtda = ebt + Math.abs(dat);
       const cxm   = vt * capexRatio;
-      /* intereses del año: proporcionales a la caja neta con que se empieza */
-      const intAno = VAL.pint!==null && VAL.pint!==undefined ? +VAL.pint : (-dnT * tipoCaja);
+      /* intereses del año: lo que cobra por su caja menos lo que paga por su deuda */
+      const intAno = VAL.pint!==null && VAL.pint!==undefined ? +VAL.pint
+                   : dosLados ? (cajaT*tipoCaja - deuda0*tipoGas)
+                   : (-dnT * tipoCaja);
       const imp   = (ebt + intAno) * (pt[i]/100);
       const fcf   = ebtda - cxm + intAno - imp;
-      dnT = dnT - fcf * (1 - reparto);        /* lo que no se reparte baja la deuda neta */
+      const queda = fcf * (1 - reparto);      /* lo que no se reparte ni se reinvierte */
+      cajaT = cajaT + queda;
+      dnT   = dnT - queda;                    /* baja la deuda neta en lo mismo */
       filas.push({anio: A[L]+i+1, ventas:vt, ebit:ebt, da:Math.abs(dat), ebitda:ebtda,
                   capexMant:cxm, interes:intAno, impuesto:imp, fcf, dn:dnT});
     }
     const u = filas[4];
     R.v.repartoHist = repartoHist; R.v.reparto = reparto;
     R.v.tipoCaja = tipoCaja; R.v.tipoHist = tipoHist;
+    R.v.dosLados = dosLados; R.v.tipoIng = tipoIng; R.v.tipoGas = tipoGas;
     if(VAL.dn5 === null) R.v.dn5 = u.dn;      /* si no lo has fijado tú, se proyecta */
     R.v.partidas = filas;
     R.v.pg = pg; R.v.pm = pm; R.v.pt = pt; R.v.pint = pint;
@@ -2896,6 +2953,33 @@ function animarInforme(){
   }),{rootMargin:"0px 0px -8% 0px"});
   document.querySelectorAll("#informe .step").forEach(s=>{s.classList.add("rv");obsStep.observe(s);});
 }
+/* ══════════════════ GUARDIÁN DE COHERENCIA ══════════════════
+   El IDC se imprime en nueve sitios del informe. Todos salen del mismo
+   R.v.idc, así que en un dibujado normal es imposible que discrepen — pero
+   si alguna vez un bloque se queda sin repintar, el usuario ve dos cifras
+   distintas para lo mismo y deja de fiarse de TODO el informe, con razón.
+   Esto lo detecta y lo dice en voz alta en lugar de dejarlo pasar. */
+function comprobarCoherencia(R){
+  const av = $("coherencia"); if(!av) return;
+  av.className = ""; av.innerHTML = "";
+  if(!R || !R.v || !isFinite(R.v.idc)) return;
+  const ref = R.v.idc, malos = [];
+  document.querySelectorAll("#informe [data-idc]").forEach(el=>{
+    /* se compara sobre el texto pintado, que es justo lo que el usuario lee */
+    const n = parseNum(el.textContent.replace(/[^\d.,-]/g,""));
+    if(n===null || !isFinite(n)) return;
+    /* margen de medio punto: los sitios que redondean a entero son legítimos */
+    if(Math.abs(n-ref) > 0.51) malos.push(el.textContent.trim());
+  });
+  if(!malos.length) return;
+  av.className = "warn";
+  av.innerHTML = `<b>Aviso de coherencia.</b> El IDC calculado es
+    <b>${mo(ref)}</b>, pero en el informe aparece también como
+    <b>${malos.join("</b>, <b>")}</b>. Son la misma cifra y no pueden discrepar:
+    vuelve a pulsar <b>Analizar</b>. Si sigue pasando, no te fíes de este informe
+    y avísanos — es un fallo de la herramienta, no de tus datos.`;
+}
+
 function montarRail(){
   const pasos = [...document.querySelectorAll("#informe .step[id]")];
   const r = $("railidx");
@@ -3114,10 +3198,12 @@ function informe(R){
        Súbelo arriba: entender el negocio va antes que cualquier número.</div>`}
    </div>`;
 
-  out.innerHTML = cab + H + `<div class="cta-print" style="text-align:center;padding:1.5rem 0 0">
+  out.innerHTML = cab + `<div id="coherencia"></div>` + H +
+    `<div class="cta-print" style="text-align:center;padding:1.5rem 0 0">
      <button class="b2" onclick="window.print()">🖨 Guardar el informe como PDF</button>
      <div class="marca-pie">Valoración Peaky Minders · material formativo</div></div>`;
   enlazarValoracion();
+  comprobarCoherencia(R);
   animarInforme();
   montarRail();
   out.scrollIntoView({behavior:modoScroll(),block:"start"});
@@ -3131,7 +3217,7 @@ function bandaVeredicto(R){
   const pct = x => Math.max(0,Math.min(100, x/maxE*100)).toFixed(1)+"%";
   return `<div class="veredicto">
     <div class="k">IDC · precio máximo que pagarías por ${nom}</div>
-    <div class="n">${mo(v.idc)}</div>
+    <div class="n"><span data-idc>${mo(v.idc)}</span></div>
     <div class="d">Para ganar un <b style="color:var(--amber-strong)">${nf(v.obj*100,0)}% al año durante 5 años</b>.
       Hoy cotiza a ${mo(R.precio)} —
       ${v.recorr>=0 ? `todavía puede subir un <b style="color:var(--green)">${pc(v.recorr)}</b> y seguiría mereciendo la pena.`
@@ -3142,7 +3228,7 @@ function bandaVeredicto(R){
       <div class="marca" style="left:${pct(R.precio)}"></div>
       <div class="et" style="left:${pct(R.precio)}">hoy ${mo(R.precio,0)}</div>
       <div class="lim izq" style="left:${pct(v.zona)}">zona de análisis ${mo(v.zona,0)}</div>
-      <div class="lim der" style="left:${pct(v.idc)}">IDC ${mo(v.idc,0)}</div>
+      <div class="lim der" style="left:${pct(v.idc)}">IDC <span data-idc>${mo(v.idc,0)}</span></div>
     </div>
     <div class="d" style="margin-top:1.1rem;font-size:.84rem">${esc(R.estado.m)}</div>
   </div>`;
@@ -3184,6 +3270,16 @@ function tablaPartidas(R){
          <input class="vin" data-v="pcx" type="number" step="any" readonly
            value="${nf(v.capexRatio*100,2).replace(",",".")}" style="opacity:.6"></div>
      </div>
+     ${v.dosLados
+       ? `<div class="note" style="margin-top:.7rem"><b>Intereses proyectados por separado</b>,
+          como en la plantilla: cobra un <b>${nf(v.tipoIng*100,2)}%</b> por su caja y paga un
+          <b>${nf(v.tipoGas*100,2)}%</b> por su deuda. Salen de las filas
+          <em>Interest And Investment Income</em> e <em>Interest Expense, Total</em>, que vienen en
+          la misma tabla de la cuenta de resultados.</div>`
+       : `<div class="note" style="margin-top:.7rem">Los intereses se proyectan con <b>un solo
+          tipo</b> sobre la caja neta. Para hacerlo como la plantilla —un porcentaje para lo que
+          cobra y otro para lo que paga— rellena <b>Ingresos financieros</b> y <b>Gastos
+          financieros</b> arriba: son dos filas de la tabla que ya has pegado.</div>`}
 
      <h3>La proyección que sale de ahí</h3>
      <div class="tw"><table class="rs"><thead><tr><th>Millones</th>
@@ -3345,7 +3441,7 @@ function pasoValoracion(R){
         <tr><td class="l">÷ acciones dentro de 5 años</td><td class="n">${nf(v.acc5,1)} M</td></tr>
         <tr><td class="l"><b>= Precio dentro de 5 años</b></td><td class="n"><b>${mo(R.P.evFcf)}</b></td></tr>
         <tr><td class="l">÷ (1 + ${nf(v.obj*100,0)}%)<sup>5</sup> = ${nf(v.factor,4)}</td><td class="n"></td></tr>
-        <tr><td class="l"><b>= IDC</b></td><td class="n"><b style="color:var(--amber-strong)">${mo(v.idc)}</b></td></tr>
+        <tr><td class="l"><b>= IDC</b></td><td class="n"><b style="color:var(--amber-strong)"><span data-idc>${mo(v.idc)}</span></b></td></tr>
         <tr><td class="l">× 0,85 = <b>zona de análisis</b></td><td class="n"><b>${mo(v.zona)}</b></td></tr>
        </tbody></table>
      </div></details>
@@ -3563,7 +3659,7 @@ function conclusiones(R){
     out.push(["🏷️","Qué dice el precio",
       `El mercado pide <b>${mo(R.precio)}</b>. Con tus supuestos —crecer del ${nf(v.gF,1)}% al
        ${nf(v.gF5,1)}% y pagar ${mu(v.multObj)} por su caja— el precio máximo para ganar un
-       ${nf(v.obj*100,0)}% anual es <b>${mo(v.idc)}</b>. ${caro
+       ${nf(v.obj*100,0)}% anual es <b><span data-idc>${mo(v.idc)}</span></b>. ${caro
         ? `Está <b>${pc(Math.abs(v.recorr))} por encima</b> de ese techo: comprar hoy significa
            aceptar menos del ${nf(v.obj*100,0)}% anual, o confiar en que crecerá más de lo que has puesto.`
         : `Está <b>${pc(v.recorr)} por debajo</b> de ese techo. Eso no es una señal de compra: es que
@@ -3692,17 +3788,17 @@ function conclusionLlana(R){
 
     <p><b>5 · ¿Y cuánto puedo pagar hoy?</b> Aquí está el truco: si quieres ganar un
       <b>${nf(v.obj*100,0)}% cada año</b>, hoy no puedes pagar ese precio — tienes que pagar menos,
-      para que la diferencia sea tu ganancia. Ese número es <b>${mo(v.idc)}</b>.</p>
+      para que la diferencia sea tu ganancia. Ese número es <b><span data-idc>${mo(v.idc)}</span></b>.</p>
 
     <div class="db" style="margin-top:1rem"><span class="t">Y la respuesta es…</span>
       ${barato
-        ? `La tienda pide <b>${mo(R.precio)}</b> y tú podías llegar hasta <b>${mo(v.idc)}</b>.
+        ? `La tienda pide <b>${mo(R.precio)}</b> y tú podías llegar hasta <b><span data-idc>${mo(v.idc)}</span></b>.
            <b style="color:var(--green)">Cuesta menos de lo que puedes pagar</b>, con un
            ${pc(dif)} de margen.<br><br>
            Pero cuidado con lo que eso significa: <b>no quiere decir «compra»</b>. Quiere decir que
            el precio ha dejado de ser el problema, y que ahora empieza el trabajo de verdad —
            leer el informe anual y entender por qué está tan barata. Casi siempre hay un motivo.`
-        : `La tienda pide <b>${mo(R.precio)}</b> y tú podías llegar hasta <b>${mo(v.idc)}</b>.
+        : `La tienda pide <b>${mo(R.precio)}</b> y tú podías llegar hasta <b><span data-idc>${mo(v.idc)}</span></b>.
            <b style="color:var(--amber-strong)">Cuesta un ${pc(dif)} más de lo que te salen las
            cuentas.</b><br><br>
            Eso no significa que sea mala ni que vaya a bajar. Significa que <b>a este precio no
@@ -3759,7 +3855,7 @@ function cadenaValoracion(R){
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-top:1rem">
       <div>
         <div class="k" style="color:var(--amber)">Lo que vale para ti</div>
-        <div class="n" style="font-size:clamp(2.2rem,5.5vw,3.4rem)">${mo(v.idc)}</div>
+        <div class="n" style="font-size:clamp(2.2rem,5.5vw,3.4rem)"><span data-idc>${mo(v.idc)}</span></div>
         <div class="d">Tu precio máximo para ganar un ${nf(v.obj*100,0)}% anual</div>
       </div>
       <div>
@@ -3792,25 +3888,25 @@ function veredicto(R){
   const p=[];
   p.push(`<p><span class="q">🏪 La tienda</span> Imagina que en vez de una acción vas a comprar
     <b>${nom}</b> entera, como quien compra la panadería del barrio. Estas son las cuentas.</p>`);
-  if(R.cagrV!==null) p.push(`<p><span class="q">📈 ¿Viene más gente cada año?</span>${
+  if(R.cagrV!==null) p.push(`<p><span class="q">📈 ¿Viene más gente cada año?</span><em class="tq">CAGR de ventas · 10 años</em>${
     R.cagrV>=.10?`Sí, y mucho: vende un <b>${pc(R.cagrV)} más cada año</b>.`
     :R.cagrV>=.04?`Sí, poco a poco: un <b>${pc(R.cagrV)}</b> al año.`
     :`Casi no: un <b>${pc(R.cagrV)}</b> al año.`}</p>`);
-  if(R.c.mEbit.v!==null) p.push(`<p><span class="q">💰 De cada 100 €, ¿cuántos se queda?</span>Se queda
+  if(R.c.mEbit.v!==null) p.push(`<p><span class="q">💰 De cada 100 €, ¿cuántos se queda?</span><em class="tq">Margen EBIT</em>Se queda
     <b>${c100(R.c.mEbit.v)} €</b> de cada 100.${R.c.mEbit.v>=.20?" Es muchísimo — tiene algo que los demás no pueden copiar.":R.c.mEbit.v>=.10?" Está bien, sin más.":" Es poco: trabaja mucho para ganar poco."}</p>`);
-  if(R.c.conv.v!==null) p.push(`<p><span class="q">🏦 ¿Está el dinero en el cajón?</span>De cada 100 € que
+  if(R.c.conv.v!==null) p.push(`<p><span class="q">🏦 ¿Está el dinero en el cajón?</span><em class="tq">Conversión en caja · FCF / beneficio neto</em>De cada 100 € que
     dice ganar, <b>${c100(R.c.conv.v)} €</b> son dinero de verdad.${R.c.conv.v>=.70?" Negocio limpio.":R.c.conv.v>=.45?" Normal, pero hay que mirar dónde se va el resto.":" Se pierde demasiado por el camino."}</p>`);
-  if(R.c.roic.v!==null) p.push(`<p><span class="q">⚙️ Si mete 100 €, ¿cuánto le devuelven?</span>
+  if(R.c.roic.v!==null) p.push(`<p><span class="q">⚙️ Si mete 100 €, ¿cuánto le devuelven?</span><em class="tq">ROIC</em>
     <b>${c100(R.c.roic.v)} € al año</b>.${R.c.roic.v>=.20?" El banco te daría 2 o 3.":R.c.roic.v>=.10?" Está bien.":" Muy poco para el riesgo que corres."}</p>`);
-  if(d.dnEbitda[L]!==null) p.push(`<p><span class="q">💳 ¿Debe mucho?</span>${
+  if(d.dnEbitda[L]!==null) p.push(`<p><span class="q">💳 ¿Debe mucho?</span><em class="tq">Deuda neta / EBITDA</em>${
     d.dnEbitda[L]<0?"No: le sobra dinero guardado.":`Tardaría <b>${nf(d.dnEbitda[L],1)} años</b> de beneficios en pagar lo que debe.`}</p>`);
   const rojas = Object.keys(ESC).filter(k=>isFinite(R.V[k]) && sem(k,R.V[k])==="r");
-  p.push(`<p><span class="q">🚩 ¿Algo raro bajo la alfombra?</span>${
+  p.push(`<p><span class="q">🚩 ¿Algo raro bajo la alfombra?</span><em class="tq">Banderas rojas del método</em>${
     rojas.length?`Hay <b>${rojas.length}</b> cosa${rojas.length>1?"s":""} que mirar de cerca: ${rojas.map(k=>esc(ESC[k].lab).toLowerCase()).join(", ")}. Una luz roja no dice «huye»: dice «pregunta por qué».`
     :"No he encontrado nada raro con estos datos."}</p>`);
-  p.push(`<p><span class="q">🏷️ ¿Cuánto pide el dueño?</span>Hoy cuesta <b>${mo(R.precio)}</b>.
+  p.push(`<p><span class="q">🏷️ ¿Cuánto pide el dueño?</span><em class="tq">Precio objetivo · IDC · zona de análisis</em>Hoy cuesta <b>${mo(R.precio)}</b>.
     Con estas cuentas, dentro de 5 años debería valer <b>${mo(R.P.evFcf)}</b>. Para ganar un
-    <b>${nf(v.obj*100,0)}% cada año</b>, hoy no se debería pagar más de <b>${mo(v.idc)}</b>.
+    <b>${nf(v.obj*100,0)}% cada año</b>, hoy no se debería pagar más de <b><span data-idc>${mo(v.idc)}</span></b>.
     ${v.recorr>=0?`Como cuesta menos, todavía podría subir un <b>${pc(v.recorr)}</b> y seguiría mereciendo la pena.`
       :`Como cuesta más, tendría que bajar un <b>${pc(Math.abs(v.recorr))}</b> para merecer la pena.`}
     El precio al que de verdad merecería la pena mirarlo en serio es <b>${mo(v.zona)}</b>.</p>`);
