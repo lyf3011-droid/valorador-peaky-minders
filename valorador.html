@@ -1268,7 +1268,9 @@ CONCEPTOS.forEach(c => D[c.k] = new Array(N).fill(null));
 const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:null,
   mEbit:null, dn5:null, dil:null, obj:15,
   /* proyección por partidas, al estilo de la plantilla */
-  modo:null, pg:null, pm:null, pt:null, pint:null, prep:null, ptc:null};
+  modo:null, pg:null, pm:null, pt:null, pint:null, prep:null, ptc:null,
+  /* de dónde salen los supuestos: null, "analistas" o "forecast" */
+  origen:null};
 
 /* ══════════════════ UTILIDADES ══════════════════ */
 const nf = (n,d=1) => (n===null||n===undefined||!isFinite(n)) ? "—"
@@ -1819,7 +1821,7 @@ function pedirForecast(){
          es de otra empresa o el año de inicio está mal. Vale más avisar que
          montar una proyección absurda sin decir nada. */
       const raro = Math.abs(pg[0]) > 60;
-      VAL.modo = "partidas"; VAL.pg = pg; VAL.pm = pm;
+      VAL.modo = "partidas"; VAL.pg = pg; VAL.pm = pm; VAL.origen = "forecast";
       informe(calcular()); guardarTrabajo();
       pedirForecast();
       $("fcRes").innerHTML = (raro ? `<div class="warn"><b>Ojo: el primer año crecería un
@@ -1924,7 +1926,7 @@ Después, la tabla año por año con ventas, EBIT, margen y tipo, y las fuentes.
     const lc = linea("CRECIMIENTO"), lm = linea("MARGEN"), li = linea("IMPUESTO");
     if(lc.length >= 2 && lm.length >= 2){
       const cinco = (a, ult) => Array.from({length:5},(_,i)=> a[i]!==undefined ? a[i] : (a[a.length-1] ?? ult));
-      VAL.modo = "partidas";
+      VAL.modo = "partidas"; VAL.origen = "analistas";
       VAL.pg = cinco(lc);
       VAL.pm = cinco(lm);
       if(li.length) VAL.pt = cinco(li);
@@ -3281,8 +3283,10 @@ function pasoValoracion(R){
      <div class="note" style="margin-top:.2rem">
        <b>La escalera:</b> ${v.pasosF.map(g=>nf(g,1)+"%").join(" → ")}
        &nbsp;·&nbsp; equivale a un <b>${pc(v.cagrEquivF)}</b> anual compuesto.
-       &nbsp;·&nbsp; <b style="color:${VAL.g!==null?"var(--green)":"var(--amber-strong)"}">${
-         VAL.g!==null ? "supuesto tuyo" : "extrapolado del pasado"}</b>
+       &nbsp;·&nbsp; <b style="color:${VAL.origen||VAL.g!==null?"var(--green)":"var(--amber-strong)"}">${
+         VAL.origen==="forecast" ? "del consenso de InvestingPro"
+         : VAL.origen==="analistas" ? "del consenso de analistas"
+         : VAL.g!==null ? "supuesto tuyo" : "extrapolado del pasado"}</b>
        <span style="color:var(--muted-txt)">Ningún negocio crece al mismo ritmo cinco años seguidos. Por eso el
        crecimiento se va frenando en vez de mantenerse plano — es lo que hace la plantilla original, y es
        la diferencia entre una proyección optimista y una prudente.</span>
