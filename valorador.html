@@ -229,6 +229,43 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   color:var(--muted-txt);white-space:nowrap}
 .sug li.no{cursor:default;color:var(--muted-txt);font-size:.8rem}
 
+/* El botón que abre el modo guiado. Antes era uno más de una fila de botones y
+   nadie sabía que había que pulsarlo: ahora tiene su propio bloque */
+.puerta{border:1px solid var(--amber);background:var(--amber-muted);border-radius:12px;
+  padding:1.1rem 1.2rem;margin:1.2rem 0 .8rem;text-align:center}
+.pu-t{font-family:var(--font-m);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:.7rem}
+.pu-b{font-size:1.05rem!important;padding:.95rem 1.8rem!important}
+.pu-d{font-size:.84rem;color:var(--soft);margin-top:.75rem;line-height:1.6}
+.pu-c{display:inline-flex;align-items:center;gap:.45rem;margin:.9rem 0 0;font-size:.8rem;
+  cursor:pointer;color:var(--muted-txt)}
+/* Los sub-pasos dentro de la fase: dónde estás dentro del paso 2 de 4 */
+.subpasos{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:.2rem 0 1rem;
+  font-family:var(--font-m);font-size:.68rem;color:var(--muted-txt)}
+.subpasos b{color:var(--amber);font-weight:400}
+.subpasos .sp{display:inline-flex;align-items:center;gap:.35rem}
+.subpasos .sp.on{color:var(--text)}
+.subpasos .sp.on b{color:var(--amber-strong)}
+.subpasos .fl{color:var(--line-strong)}
+/* Las dos pantallas de Investing. Va arriba del todo, sin desplegable: es lo
+   primero que hay que entender y lo que más gente ha despistado */
+.dospatas{border:1px solid var(--amber-line);background:var(--amber-muted);border-radius:12px;
+  padding:1.1rem 1.2rem;margin:1.1rem 0}
+.dp-t{font-family:var(--font-m);font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:.9rem}
+.dp-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.9rem}
+.dp-c{position:relative;border:1px solid var(--line-strong);background:var(--surface);
+  border-radius:10px;padding:1rem 1.1rem .95rem}
+.dp-c.dp-pro{border-color:var(--amber);box-shadow:inset 0 0 0 1px rgba(245,158,11,.12)}
+.dp-n{position:absolute;top:.7rem;right:.9rem;font-family:var(--font-m);font-size:1.5rem;
+  font-weight:700;color:var(--line-strong);line-height:1}
+.dp-c.dp-pro .dp-n{color:var(--amber)}
+.dp-h{font-family:var(--font-h);font-weight:800;font-size:1rem;color:var(--text);padding-right:1.6rem}
+.dp-u{font-family:var(--font-m);font-size:.68rem;color:var(--amber-strong);margin:.25rem 0 .5rem;
+  word-break:break-all}
+.dp-d{font-size:.84rem;line-height:1.6;color:var(--soft)}
+.dp-p{font-size:.82rem;color:var(--muted-txt);margin-top:.85rem;padding-top:.75rem;
+  border-top:1px solid var(--amber-line)}
 .esq{display:block;width:100%;height:auto;margin:.7rem 0 .5rem;border-radius:10px}
 .esq-l{margin:.2rem 0 0;padding-left:1.35rem;font-size:.84rem;line-height:1.65;color:var(--soft)}
 .esq-l li{margin:.3rem 0}
@@ -811,16 +848,43 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 <section id="f2">
   <div class="sec-num">Paso 2 de 4 · Fundamental</div>
   <h2>Mete los datos de los últimos años</h2>
-  <p class="sub">Todos salen de tres pestañas de la ficha de la empresa en <b>Investing.com</b>
-  (o gratis en <b>stockanalysis.com</b>), siempre en modo <code>Annual</code>.
+  <p class="sub">Todo sale de <b>InvestingPro</b>, siempre en modo <code>Annual</code>.
   Debajo del nombre de cada fila tienes el nombre <em>literal</em> que hay que buscar.</p>
 
-  <details open>
+  <!-- Lo primero que hay que entender, y lo que más confusión ha causado:
+       Investing no es una pantalla, son dos, y los datos del método están
+       repartidos entre las dos. Va arriba del todo y sin desplegable. -->
+  <div class="dospatas">
+    <div class="dp-t">Antes de nada · Investing tiene dos sitios, y vas a usar los dos</div>
+    <div class="dp-g">
+      <div class="dp-c">
+        <div class="dp-n">1</div>
+        <div class="dp-h">La ficha de la empresa</div>
+        <div class="dp-u">investing.com/equities/…</div>
+        <div class="dp-d">De aquí sale <b>casi todo</b>: la cuenta de resultados, el balance y
+          el flujo de caja. Son las tablas que empiezan por <b>«Period Ending»</b>.
+          <br><b>Tres copias y ya está.</b></div>
+      </div>
+      <div class="dp-c dp-pro">
+        <div class="dp-n">2</div>
+        <div class="dp-h">El apartado <b>Pro</b></div>
+        <div class="dp-u">investing.com/<b>pro</b>/BOLSA:TICKER/…</div>
+        <div class="dp-d">Aquí están las <b>cuatro cosas que la ficha no trae</b>: la
+          <b>depreciación sola</b> —la que el método necesita—, las <b>previsiones de los
+          analistas</b>, los <b>múltiplos históricos</b> y el <b>Fair Value</b>.
+          <br><b>Se entra al final</b>, en los pasos 4 y 6.</div>
+      </div>
+    </div>
+    <div class="dp-p">Son la misma web y la misma suscripción: cambia la dirección y el diseño de
+      las tablas. Por eso cada paso te dice <b>a cuál de las dos</b> tiene que ir.</div>
+  </div>
+
+  <details>
     <summary>⚡ Lo más rápido: copiar la tabla entera</summary>
     <div class="dbody">
       <p style="margin-bottom:.7rem"><b>Una pestaña de Investing, de una sola vez.</b>
-      Igual que haces en el Excel con TIKR: seleccionas toda la tabla y la app reparte cada
-      fila en su sitio.</p>
+      No hay que meter los números uno a uno: seleccionas la tabla entera, la pegas, y la
+      herramienta reparte cada fila en su sitio.</p>
       <ol>
         <li>En Investing, pon el selector en <code>Annual</code> y despliega los grupos que
             quieras (el botón <em>Collapse All</em> / <em>Expand All</em> de arriba).</li>
@@ -847,10 +911,16 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
     </div>
   </details>
 
-  <div class="bar-actions" style="margin-bottom:.6rem">
-    <button class="b1" id="abrirBloque">📋 Pegar la tabla entera de Investing</button>
-    <label style="display:flex;align-items:center;gap:.45rem;margin:0;font-size:.8rem;cursor:pointer">
-      <input type="checkbox" id="invertir" style="width:auto"> los años vienen del más nuevo al más viejo</label>
+  <!-- Este botón es la puerta de todo el paso 2 y antes parecía uno más de la
+       fila. Ahora ocupa su propio bloque y dice explícitamente qué abre. -->
+  <div class="puerta">
+    <div class="pu-t">Empieza por aquí</div>
+    <button class="b1 pu-b" id="abrirBloque">📋 Meter los datos, un paso cada vez</button>
+    <div class="pu-d">Se abre el modo guiado: <b>cinco cuadros, de uno en uno</b>, y cada uno te
+      dice a qué página ir, qué copiar y qué llevas hecho.</div>
+    <label class="pu-c">
+      <input type="checkbox" id="invertir" style="width:auto">
+      <span>los años vienen del más nuevo al más viejo</span></label>
   </div>
 
   <div class="protocolo">
@@ -1642,7 +1712,7 @@ function pintarFuentes(){
       <span class="alt">
         ${hay?`<a class="busca" href="https://www.investing.com/search/?q=${encodeURIComponent(T)}"
              target="_blank" rel="noopener" title="Siempre funciona: busca la empresa por su nombre o ticker">🔎 Buscar en Investing</a>`:""}
-        ${hay?`<a href="https://stockanalysis.com/stocks/${encodeURIComponent(T)}/financials/" target="_blank" rel="noopener">StockAnalysis · gratis</a>`:""}
+        ${hay?`<a href="https://stockanalysis.com/stocks/${encodeURIComponent(T)}/financials/" target="_blank" rel="noopener" title="Solo si no tienes InvestingPro: los nombres de fila casi siempre coinciden">StockAnalysis · de apoyo, si no tienes Pro</a>`:""}
         ${hay&&!slug?`<button type="button" id="fijarSlug2">🔗 Recordar esta empresa</button>`:""}
       </span>
     </div>
@@ -1838,35 +1908,69 @@ Después de esa línea, añade la tabla año-precio para que yo pueda revisarla.
    y la tabla trae once columnas que pueden empezar en un ejercicio o en otro
    según la empresa. Adivinarlo sería meter datos mal sin que se note, así que
    se pregunta y se enseña lo que ha entendido antes de aplicar nada.        */
+/* «Median Forecast» NO puede estar aquí: esa fila se repite bajo CADA bloque de
+   la pestaña —ventas, BPA, EBITDA, EBIT— y la primera que aparece ganaba, así
+   que en cuanto Investing cambiara el orden se leería el consenso de beneficio
+   por acción como si fueran las ventas. Se buscan solo las filas en negrita,
+   las que llevan «(InvestingPro)», y la mediana queda como último recurso
+   explícito más abajo. */
 const FC_FILAS = {
-  ventas: ["revenue forecast (investingpro)", "revenue forecast", "median forecast"],
+  ventas: ["revenue forecast (investingpro)", "revenue forecast"],
   ebit:   ["ebit forecast (investingpro)", "ebit forecast median consensus"],
   ebitda: ["ebitda forecast (investingpro)"],
 };
-function leerForecast(txt){
-  const out = {};
-  const lineas = txt.split(/\n/).map(x=>x.trim());
-  for(let i=0;i<lineas.length;i++){
-    const bajo = lineas[i].toLowerCase().replace(/\s+/g," ");
-    for(const [k, alts] of Object.entries(FC_FILAS)){
-      if(out[k]) continue;
-      if(!alts.some(a => bajo === a || bajo.startsWith(a))) continue;
-      /* los números pueden venir en la misma línea o en las siguientes */
-      /* Los valores llegan uno por línea, y los años sin dato vienen como «-».
-         Ese guion NO puede cortar la lectura: es una columna vacía, no el final
-         de la fila — y suele ser justo la primera. */
-      const vacio = t => /^[-–—]$/.test(t);
-      let nums = tokensNum(lineas[i].slice((alts.find(a=>bajo.startsWith(a))||"").length));
-      let j = i+1, seguidasVacias = 0;
-      while(nums.length < 12 && j < lineas.length && j < i+20){
-        const linea = lineas[j];
-        if(vacio(linea)){ nums.push(null); j++; seguidasVacias = 0; continue; }
-        const t = tokensNum(linea);
-        if(!t.length){ if(linea && ++seguidasVacias > 0) break; j++; continue; }
-        nums = nums.concat(t); j++; seguidasVacias = 0;
-      }
-      if(nums.filter(x=>x!==null).length >= 3) out[k] = nums;
+
+/* Parte la tabla en filas {etiqueta, valores}, valga el formato que valga:
+   el horizontal de la ficha clásica y el vertical del InvestingPro nuevo, donde
+   el nombre va en una línea y cada cifra en la suya. El guion es una columna
+   sin dato —y suele ser justo la primera, la del año que ya es real—, así que
+   cuenta como hueco y no corta la fila. */
+function filasForecast(txt){
+  const L = txt.split(/\n/).map(x => x.trim());
+  const hueco = t => /^[-–—]$/.test(t);
+  const filas = [];
+  for(let i=0; i<L.length; i++){
+    const et = L[i];
+    if(!et || hueco(et) || esCeldaNumerica(et)) continue;
+    /* horizontal: el nombre y sus cifras en la misma línea */
+    const enLinea = tokensNum(et);
+    if(enLinea.length >= 3){
+      filas.push({et: normEt(et.replace(/[-–—\d.,()%\s]+$/, "")), val: enLinea});
+      continue;
     }
+    /* vertical: las cifras vienen debajo, una por línea */
+    const val = [];
+    for(let j=i+1; j<L.length && val.length < 14; j++){
+      const l = L[j];
+      if(!l) continue;
+      if(hueco(l)){ val.push(null); continue; }
+      if(!esCeldaNumerica(l)) break;           /* ya es la etiqueta siguiente */
+      val.push(...tokensNum(l));
+    }
+    if(val.filter(x => x !== null).length >= 3) filas.push({et: normEt(et), val});
+  }
+  return filas;
+}
+function leerForecast(txt){
+  const filas = filasForecast(txt);
+  const out = {};
+  const buscar = claves => {
+    for(const c of claves){
+      const f = filas.find(x => x.et === c) || filas.find(x => x.et.startsWith(c));
+      if(f) return f.val;
+    }
+    return null;
+  };
+  for(const [k, alts] of Object.entries(FC_FILAS)){
+    const v = buscar(alts);
+    if(v) out[k] = v;
+  }
+  /* Último recurso: si no aparece la fila en negrita de ventas pero hay UNA
+     sola mediana en lo pegado, es que se ha copiado solo el bloque de ventas.
+     Si hay varias no se adivina: se prefiere no leer nada a leer lo que no es. */
+  if(!out.ventas){
+    const med = filas.filter(f => f.et.startsWith("median forecast"));
+    if(med.length === 1) out.ventas = med[0].val;
   }
   return out;
 }
@@ -1898,6 +2002,17 @@ function pedirForecast(){
     if(!Object.keys(filas).length){
       r.innerHTML = `<span class="mal">No he encontrado ninguna fila de previsión.</span>
         Asegúrate de copiar la tabla entera, con los nombres de las filas.`; return; }
+    /* Si la cabecera trae las etiquetas FY … FY+10, el primer año lo sabemos
+       sin preguntar: es la columna que pone «FY» a secas. Se rellena la casilla
+       y se dice, para que el alumno vea que no se ha adivinado nada. */
+    const fy = fyDeLaTabla($("fcTxt").value);
+    let auto = "";
+    if(fy){
+      $("fcAnio").value = String(fy.ultimoReal);
+      auto = ` <b style="color:var(--green)">El primer año lo he leído de la cabecera:
+        ${fy.ultimoReal}</b> — es la columna marcada <code>FY</code>, y las
+        <b>${fy.previstos}</b> siguientes son estimaciones.`;
+    }
     const a0 = parseInt($("fcAnio").value, 10) || ult;
     const cab = filas.ventas || filas.ebit || filas.ebitda;
     const anios5 = Array.from({length:5},(_,i)=> ult+1+i);   /* los cinco que proyecta el método */
@@ -1913,7 +2028,7 @@ function pedirForecast(){
       <div class="note" style="margin:0 0 .6rem">He leído
         <b>${Object.keys(filas).map(k=>({ventas:"ventas",ebit:"EBIT",ebitda:"EBITDA"})[k]).join(", ")}</b>
         con <b>${cab.length} columnas</b>. Si la primera es <b>${a0}</b>, la última sería
-        <b>${a0 + cab.length - 1}</b>.</div>
+        <b>${a0 + cab.length - 1}</b>.${auto}</div>
       <div class="tw"><table class="rs"><thead><tr><th>Año</th>
         <th style="text-align:right">Ventas</th><th style="text-align:right">EBIT</th>
         <th style="text-align:right">Margen</th></tr></thead><tbody>
@@ -2010,7 +2125,8 @@ Después, la tabla año por año con ventas, EBIT, margen y tipo, y las fuentes.
       <div class="pt"><span class="pn">Estimaciones de los analistas</span>
         <button type="button" id="cerrarAnalistas" style="font-size:.75rem;padding:.2rem .5rem">Cerrar</button></div>
       <div style="font-size:.8rem;color:var(--soft);margin-bottom:.6rem">
-        En <b>InvestingPro</b> están en la pestaña <b>Forecast</b>, y en <b>TIKR</b> en <b>Estimates</b>.
+        Están en la pestaña <b>Forecasts</b> de <b>InvestingPro</b>, dentro del apartado
+        <b>Pro</b> — el mismo del paso 4.
         Si no tienes acceso, copia este texto y pídeselo a una IA.</div>
       <textarea id="promptAnalistasTxt" readonly style="min-height:150px">${esc(p)}</textarea>
       <div class="pb">
@@ -2480,7 +2596,21 @@ function pintarPegaGrid(){
        es un fallo: el <b>CapEx de mantenimiento</b> sale del paso 4, y los <b>pagos en acciones</b>
        Investing no los publica.</div>` : "");
 
-  $("pegagrid").innerHTML = `
+  /* Dentro del «paso 2 de 4» hay tres tramos, y cada uno va a una página
+     distinta de Investing. Saber en cuál estás es la mitad de no perderse. */
+  const tramo = (g==="IS"||g==="BS"||g==="CF") ? 1 : g==="ER" ? 2 : 3;
+  const sub = `<div class="subpasos">
+    <span class="sp${tramo===1?" on":""}"><b>2.1</b> Las tres cuentas
+      <span style="color:var(--muted-txt)">· ficha normal</span></span>
+    <span class="fl">→</span>
+    <span class="sp${tramo===2?" on":""}"><b>2.2</b> Lo que falte
+      <span style="color:var(--muted-txt)">· apartado Pro</span></span>
+    <span class="fl">→</span>
+    <span class="sp${tramo===3?" on":""}"><b>2.3</b> Los precios
+      <span style="color:var(--muted-txt)">· datos históricos</span></span>
+  </div>`;
+
+  $("pegagrid").innerHTML = sub + `
     <div class="ptira">${tira}</div>
     <div class="pegabox solo${e.lleno?" ok":""}" data-g="${g}">
       <div class="pt"><span class="pn">Paso ${PASO_PEGA+1} de 5 · ${esc(G[g])}</span>
@@ -2917,7 +3047,7 @@ function calcular(){
   der.cwc = mk(i => (i===0||der.wc[i]===null||der.wc[i-1]===null) ? 0 : der.wc[i]-der.wc[i-1]);
   if(!has("cobrar")) R.aviso.push("Sin cuentas a cobrar/pagar no se descuenta la variación de circulante: el FCF sale algo <b>optimista</b>.");
 
-  /* CapEx de mantenimiento — regla de la plantilla (TIKR_Cálculos!C7):
+  /* CapEx de mantenimiento — regla de la plantilla, hoja de cálculos, celda C7:
        SI( |CapEx neto| < Depreciación ; CapEx neto ; Depreciación )
      Es decir, la depreciación es el TECHO, no el valor. Una empresa no puede
      estar gastando en mantenerse más de lo que gasta en total: si invierte
@@ -4025,8 +4155,8 @@ function resumen(R){
       incorporan cosas que el histórico no puede saber — contratos firmados, capacidad en
       construcción, productos que aún no se venden.
       <br><br>
-      <b>Cómo se usan:</b> en la pestaña <em>Forecast</em> de InvestingPro —o en <em>Estimates</em> de
-      TIKR— tienes el consenso. Esas cifras sustituyen la escalera de los primeros años, y el
+      <b>Cómo se usan:</b> en la pestaña <em>Forecasts</em> de InvestingPro, dentro del
+      apartado <b>Pro</b>, tienes el consenso. Esas cifras sustituyen la escalera de los primeros años, y el
       desvanecimiento se aplica solo a partir de ahí. En la pregunta 6 tienes el botón
       <b>«📊 Traer las estimaciones de los analistas»</b>: te da el texto para pedirlas y las mete en
       la escalera. El resultado es una valoración más pegada a lo que el mercado espera de verdad.
