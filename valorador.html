@@ -620,7 +620,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
     ROIC sin que haya desgaste real. Esos casos tienen su propio método.
   </div>
   <p class="mini">⚠️ Material formativo. No es asesoramiento financiero ni recomendación de compra o venta.
-  &nbsp;·&nbsp; <a href="guia.html" style="color:var(--amber);text-decoration:none;border-bottom:1px solid var(--amber-line)">📖 Guía de datos: dónde está cada número y qué significa ↗</a></p>
+  &nbsp;·&nbsp; <a href="index.html" style="color:var(--amber);text-decoration:none;border-bottom:1px solid var(--amber-line)">📖 Guía de datos: dónde está cada número y qué significa ↗</a></p>
 </div></header>
 
 <div class="wrap">
@@ -784,7 +784,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
       <p style="margin-top:.6rem">Las filas con el botón <b style="color:var(--d2-hi)">ƒ</b> se pueden
       <b>calcular</b> si no las encuentras: te pide las dos partidas que las componen y la rellena sola.</p>
       <p style="margin-top:.6rem">👉 La explicación completa de qué es cada dato y qué trampa tiene está
-      en la <a href="guia.html" style="color:var(--amber)">guía de datos</a>.</p>
+      en la <a href="index.html" style="color:var(--amber)">guía de datos</a>.</p>
     </div>
   </details>
 
@@ -801,11 +801,14 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
         nombres de fila. El idioma se cambia en el pie de la página de Investing.
         <span class="pr-x">Si lo tienes en español también lo reconoce, pero en inglés podrás
         comparar tu trabajo con el de cualquier compañero.</span></li>
-      <li><b>Configura la tabla así</b>, con los desplegables de arriba:
-        <span class="pr-x"><b>Fiscal Years</b> · <b>Ascending</b> · <b>10 Years</b> ·
-        <b>Millions</b> — y la <b>moneda en la que reporta la empresa</b>, no en la tuya.
-        Si pones euros en una empresa americana, te lo convierte todo y no cuadrará con nada.
-        El selector de moneda está arriba a la derecha.</span></li>
+      <li><b>Configura la tabla exactamente así.</b> Los cuatro desplegables de arriba y la moneda:
+        <span class="pr-x">
+        <b>Fiscal Years</b> · <b>Ascending</b> · <b>10 Years</b> · <b>Millions</b><br>
+        <b>Moneda:</b> la que reporta la empresa, no la tuya. Si pones euros en una americana te lo
+        convierte todo y no cuadrará con nada — en Alphabet la diferencia es del 15%.<br>
+        <b>Ascending importa</b>: los años tienen que ir del más antiguo al más nuevo, porque
+        <b>al copiar no vienen las fechas</b> y la herramienta los coloca por orden. Si los tienes
+        al revés, marca la casilla de abajo.</span></li>
       <li><b>Copia las cuentas enteras</b> —resultados, balance y flujo de caja— desde la primera
         fila hasta la última, y pega cada una en su cuadro.
         <span class="pr-x">Despliega los grupos antes de copiar: lo que esté plegado no se copia.</span></li>
@@ -1079,7 +1082,7 @@ const SIN = {
  ebitda:["ebitda"],
  ebit:["operating income","ebit","operating income (loss)","beneficio operativo",
        "ingreso operativo","resultado de explotación","margen neto"],
- interes:["net interest expenses","net interest expense",
+ interes:["net interest expenses","net interest expense","net interest expense (income)",
           "gastos netos por intereses","gastos por intereses netos"],
  impuestos:["income tax expense","income tax","provision for income taxes",
             "impuesto sobre la renta","impuesto sobre beneficios","impuesto de sociedades"],
@@ -1107,7 +1110,7 @@ const SIN = {
            "total de ingresos corrientes no devengados","ingresos no devengados",
            "ingresos diferidos"],
  da:["depreciation & amortization, total","depreciation and amortization",
-     "depreciation & amortization",
+     "depreciation & amortization","d&a",
      "total de la depreciación y amortización","depreciación y amortización"],
  capexMant:["capex mantenimiento","capex de mantenimiento","maintenance capex","depreciation",
             "depreciación"],
@@ -1682,6 +1685,134 @@ Después de esa línea, añade la tabla año-precio para que yo pueda revisarla.
   $("preciosBox").scrollIntoView({behavior:modoScroll(),block:"center"});
 }
 
+/* ══════════════════ PESTAÑA FORECASTS DE INVESTINGPRO ══════════════════
+   Trae las estimaciones de consenso ya hechas, que es justo lo que la plantilla
+   mete a mano en las celdas naranjas. El problema: al copiar NO vienen los años,
+   y la tabla trae once columnas que pueden empezar en un ejercicio o en otro
+   según la empresa. Adivinarlo sería meter datos mal sin que se note, así que
+   se pregunta y se enseña lo que ha entendido antes de aplicar nada.        */
+const FC_FILAS = {
+  ventas: ["revenue forecast (investingpro)", "revenue forecast", "median forecast"],
+  ebit:   ["ebit forecast (investingpro)", "ebit forecast median consensus"],
+  ebitda: ["ebitda forecast (investingpro)"],
+};
+function leerForecast(txt){
+  const out = {};
+  const lineas = txt.split(/\n/).map(x=>x.trim());
+  for(let i=0;i<lineas.length;i++){
+    const bajo = lineas[i].toLowerCase().replace(/\s+/g," ");
+    for(const [k, alts] of Object.entries(FC_FILAS)){
+      if(out[k]) continue;
+      if(!alts.some(a => bajo === a || bajo.startsWith(a))) continue;
+      /* los números pueden venir en la misma línea o en las siguientes */
+      /* Los valores llegan uno por línea, y los años sin dato vienen como «-».
+         Ese guion NO puede cortar la lectura: es una columna vacía, no el final
+         de la fila — y suele ser justo la primera. */
+      const vacio = t => /^[-–—]$/.test(t);
+      let nums = tokensNum(lineas[i].slice((alts.find(a=>bajo.startsWith(a))||"").length));
+      let j = i+1, seguidasVacias = 0;
+      while(nums.length < 12 && j < lineas.length && j < i+20){
+        const linea = lineas[j];
+        if(vacio(linea)){ nums.push(null); j++; seguidasVacias = 0; continue; }
+        const t = tokensNum(linea);
+        if(!t.length){ if(linea && ++seguidasVacias > 0) break; j++; continue; }
+        nums = nums.concat(t); j++; seguidasVacias = 0;
+      }
+      if(nums.filter(x=>x!==null).length >= 3) out[k] = nums;
+    }
+  }
+  return out;
+}
+
+function pedirForecast(){
+  const A = anios(), ult = A[A.length-1];
+  $("fcBox").classList.remove("hide");
+  $("fcBox").innerHTML =
+    `<div class="pegabox">
+      <div class="pt"><span class="pn">Estimaciones · pestaña <i>Forecasts</i> de InvestingPro</span>
+        <button type="button" id="fcCerrar" style="font-size:.75rem;padding:.2rem .5rem">Cerrar</button></div>
+      <div style="font-size:.8rem;color:var(--soft);margin-bottom:.6rem">
+        Copia la tabla entera y pégala aquí. Busco tres filas: <b>Revenue Forecast</b>,
+        <b>EBIT Forecast</b> y <b>EBITDA Forecast</b>.
+        <b style="color:var(--amber-strong)">Al copiar no vienen los años</b>, así que dime cuál es
+        el primero y te enseño lo que he entendido antes de tocar nada.</div>
+      <textarea id="fcTxt" placeholder="Pega aquí la tabla de Forecasts…" style="min-height:150px"></textarea>
+      <div class="vgrid" style="margin-top:.7rem">
+        <div><label>El primer año de la tabla es…</label>
+          <input id="fcAnio" type="number" step="1" value="${ult}"></div>
+      </div>
+      <div class="pb"><button type="button" class="pri" id="fcLeer">Ver qué he entendido</button></div>
+      <div class="pr" id="fcRes"></div>
+     </div>`;
+  $("fcCerrar").onclick = () => { $("fcBox").classList.add("hide"); $("fcBox").innerHTML=""; };
+  $("fcLeer").onclick = () => {
+    const filas = leerForecast($("fcTxt").value);
+    const r = $("fcRes");
+    if(!Object.keys(filas).length){
+      r.innerHTML = `<span class="mal">No he encontrado ninguna fila de previsión.</span>
+        Asegúrate de copiar la tabla entera, con los nombres de las filas.`; return; }
+    const a0 = parseInt($("fcAnio").value, 10) || ult;
+    const cab = filas.ventas || filas.ebit || filas.ebitda;
+    const anios5 = Array.from({length:5},(_,i)=> ult+1+i);   /* los cinco que proyecta el método */
+    const col = a => a - a0;                                  /* qué columna es cada año */
+    const dentro = a => col(a) >= 0 && col(a) < cab.length;
+    const tabla = anios5.map(a => ({
+      anio: a, ok: dentro(a),
+      ventas: filas.ventas && dentro(a) ? filas.ventas[col(a)] : null,
+      ebit:   filas.ebit   && dentro(a) ? filas.ebit[col(a)]   : null,
+    }));
+    const faltan = tabla.filter(x => !x.ok).length;
+    r.innerHTML = `
+      <div class="note" style="margin:0 0 .6rem">He leído
+        <b>${Object.keys(filas).map(k=>({ventas:"ventas",ebit:"EBIT",ebitda:"EBITDA"})[k]).join(", ")}</b>
+        con <b>${cab.length} columnas</b>. Si la primera es <b>${a0}</b>, la última sería
+        <b>${a0 + cab.length - 1}</b>.</div>
+      <div class="tw"><table class="rs"><thead><tr><th>Año</th>
+        <th style="text-align:right">Ventas</th><th style="text-align:right">EBIT</th>
+        <th style="text-align:right">Margen</th></tr></thead><tbody>
+        ${tabla.map(x=>`<tr><td class="l">${x.anio}</td>
+          <td class="n">${x.ventas!==null?nf(x.ventas,0):"—"}</td>
+          <td class="n">${x.ebit!==null?nf(x.ebit,0):"—"}</td>
+          <td class="n">${(x.ventas&&x.ebit)?nf(x.ebit/x.ventas*100,1)+"%":"—"}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${faltan?`<div class="warn" style="margin-top:.5rem">Faltan ${faltan} de los cinco años.
+        Revisa el año de la primera columna.</div>`:""}
+      <div class="pb" style="margin-top:.6rem">
+        <button type="button" class="pri" id="fcAplicar">Usar estos supuestos en la proyección</button></div>
+      <div style="font-size:.78rem;color:var(--muted-txt);margin-top:.5rem">Comprueba que los números
+        cuadran con lo que ves en InvestingPro antes de aplicarlos. Si el primer año no es el que
+        pensabas, cámbialo arriba y vuelve a mirar.</div>`;
+    $("fcAplicar").onclick = () => {
+      const base = R_ULT && R_ULT.ventas ? R_ULT.ventas[R_ULT.L] : null;
+      if(!base){ r.innerHTML += `<div class="warn">Necesito las ventas del último año real. Pega antes la cuenta de resultados.</div>`; return; }
+      const pg = [], pm = [];
+      let prev = base;
+      for(const x of tabla){
+        if(x.ventas === null){ pg.push(pg.length?pg[pg.length-1]:5); pm.push(pm.length?pm[pm.length-1]:20); continue; }
+        pg.push(Math.round((x.ventas/prev - 1)*1000)/10);
+        pm.push(x.ebit !== null ? Math.round(x.ebit/x.ventas*1000)/10 : (pm.length?pm[pm.length-1]:20));
+        prev = x.ventas;
+      }
+      /* Si el primer salto es disparatado, casi siempre es que la tabla pegada
+         es de otra empresa o el año de inicio está mal. Vale más avisar que
+         montar una proyección absurda sin decir nada. */
+      const raro = Math.abs(pg[0]) > 60;
+      VAL.modo = "partidas"; VAL.pg = pg; VAL.pm = pm;
+      informe(calcular()); guardarTrabajo();
+      pedirForecast();
+      $("fcRes").innerHTML = (raro ? `<div class="warn"><b>Ojo: el primer año crecería un
+        ${nf(pg[0],0)}%.</b> Eso no suele ser real. Comprueba que la tabla es de
+        <b>esta misma empresa</b> y que el año de la primera columna es el correcto.</div>` : "") +
+        `<span class="bien">✓ Proyección montada con el consenso.</span>
+        Crecimiento: <b>${pg.map(x=>nf(x,1)+"%").join(" → ")}</b><br>
+        Margen EBIT: <b>${pm.map(x=>nf(x,1)+"%").join(" → ")}</b>
+        <div style="margin-top:.4rem;color:var(--muted-txt)">Míralos abajo en la tabla de supuestos
+        y cámbialos si no te convencen. El consenso es un punto de partida, no una verdad.</div>`;
+    };
+  };
+  $("fcBox").scrollIntoView({behavior:modoScroll(), block:"center"});
+}
+
 /* ══════════════════ ESTIMACIONES DE LOS ANALISTAS ══════════════════
    El método extrapola el pasado. Los analistas incorporan lo que el pasado
    no puede saber: contratos firmados, capacidad en construcción, productos
@@ -1862,7 +1993,7 @@ async function verificarIA(){
   t += `las he transcrito con el signo cambiado a propósito. No lo señales como error.\n`;
   const texto = t;
   try{ await navigator.clipboard.writeText(texto);
-    $("progFalta").innerHTML = `✓ Tabla copiada. Pégala en tu IA junto con la captura de <b>${esc(G[TAB])}</b> y el texto de la <a href="guia.html" style="color:var(--amber)">guía</a>.`;
+    $("progFalta").innerHTML = `✓ Tabla copiada. Pégala en tu IA junto con la captura de <b>${esc(G[TAB])}</b> y el texto de la <a href="index.html" style="color:var(--amber)">guía</a>.`;
   }catch(e){
     $("bloqueBox").classList.remove("hide"); $("bloque").value = texto; $("bloque").select();
     $("progFalta").textContent = "Cópiala del cuadro de texto de arriba.";
@@ -3029,13 +3160,16 @@ function pasoValoracion(R){
      </div>
 
      <div class="bar-actions" style="margin-top:.8rem">
-       <button type="button" class="b2" id="promptAnalistas">📊 Traer las estimaciones de los analistas</button>
+       <button type="button" class="b2" id="promptAnalistas">📊 Pedir las estimaciones a una IA</button>
+       <button type="button" class="b2" id="btnForecast" style="border-color:var(--amber-line);
+         color:var(--amber-strong)">📋 Pegar la pestaña Forecasts de InvestingPro</button>
        <button type="button" class="b2" id="modoPartidas"
          style="border-color:${VAL.modo==="partidas"?"var(--amber)":"var(--line-strong)"};
                 color:${VAL.modo==="partidas"?"var(--amber-strong)":"var(--soft)"}">
          ${VAL.modo==="partidas"?"✓ Proyectando por partidas":"📐 Proyectar por partidas (como la plantilla)"}</button>
      </div>
      <div id="analistasBox" class="pegagrid hide" style="margin-top:.8rem"></div>
+     <div id="fcBox" class="pegagrid hide" style="margin-top:.8rem"></div>
      ${VAL.modo==="partidas" ? tablaPartidas(R) : ""}
      <details class="noimp" style="margin-top:.6rem"><summary>Ajustes finos · beneficios, retorno, deuda y dilución</summary>
        <div class="dbody"><div class="vgrid" style="margin:0">
@@ -3450,6 +3584,7 @@ function enlazarValoracion(){
     };
   });
   if($("promptAnalistas")) $("promptAnalistas").onclick = pedirAnalistas;
+  if($("btnForecast")) $("btnForecast").onclick = pedirForecast;
   if($("modoPartidas")) $("modoPartidas").onclick = () => {
     if(VAL.modo === "partidas"){ VAL.modo = null; }
     else {
