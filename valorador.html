@@ -4882,7 +4882,7 @@ const SEC_INTERES = {ingreso:["InvestmentIncomeInterest","InterestIncomeOther"],
    prueba; los públicos se quedan de reserva. Se publica con dos órdenes desde
    04_INFRA/worker — están en el README de esa carpeta.
    Déjalo vacío y todo sigue funcionando como hasta ahora.                  */
-const PUENTE_PROPIO = "";
+const PUENTE_PROPIO = "https://peaky-puente.peakyminders.workers.dev";
 /* ─────────────────────────────────────────────────────────────────────── */
 
 const SEC_PUENTES = [
@@ -5676,12 +5676,28 @@ $("ticker").onkeydown = e => {
 $("ticker").oninput = () => {
   pintarEnlaces(); pintarFuentes(); pintarEnlacesPrecio();
   pintarSugerencias($("ticker").value);
-  /* si lo que hay escrito es exactamente una empresa conocida, avisa del sector ya */
   const v = $("ticker").value.trim().toUpperCase();
   const e = IDX_POR_TICKER[v];
-  if(e && !SUG.length){ clearTimeout(SEC_FICHA_T); avisarSector(e); }
-  /* y si no está en la lista interna, se busca entre las 10.400 de la SEC */
-  else if(!e && !SUG.length && v.length >= 1) buscarFichaSEC(v);
+  /* Si lo escrito es exactamente una empresa conocida, el aviso de sector sale
+     SIEMPRE — también con la lista de sugerencias abierta. Antes se callaba
+     mientras hubiera sugerencias, así que al escribir «PLD», que es un REIT,
+     no avisaba de nada: y ese aviso es lo único que impide valorar una
+     inmobiliaria con un método que no sirve para inmobiliarias. */
+  if(e){ clearTimeout(SEC_FICHA_T); avisarSector(e); }
+  else {
+    /* La tarjeta que hubiera era de OTRA empresa, así que fuera. Sin esto se
+       quedaba pegada: al escribir «SOFI» pasabas por «SO» —Southern Company—
+       y la ficha de Southern se quedaba puesta mientras terminabas de teclear.
+       Enseñar el sector de una empresa que no es la que estás escribiendo es
+       peor que no enseñar nada. */
+    clearTimeout(SEC_FICHA_T);
+    $("idinfo").innerHTML = "";
+    /* Se busca en la SEC aunque haya sugerencias abiertas: «MELI» propone
+       Meliá Hoteles por parecido de nombre, y eso estaba impidiendo encontrar
+       MercadoLibre. Quien manda es lo que has escrito, no lo que se parece.
+       De teclear demasiado ya protege el retardo de medio segundo. */
+    if(v.length >= 2) buscarFichaSEC(v);
+  }
 };
 $("ticker").onblur = () => setTimeout(cerrarSugerencias, 120);
 $("ticker").onfocus = () => { if($("ticker").value.trim()) pintarSugerencias($("ticker").value); };
