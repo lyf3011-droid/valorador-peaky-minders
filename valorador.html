@@ -1250,7 +1250,7 @@ CONCEPTOS.forEach(c => D[c.k] = new Array(N).fill(null));
 const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:null,
   mEbit:null, dn5:null, dil:null, obj:15,
   /* proyección por partidas, al estilo de la plantilla */
-  modo:null, pg:null, pm:null, pt:null, pint:null, prep:null};
+  modo:null, pg:null, pm:null, pt:null, pint:null, prep:null, ptc:null};
 
 /* ══════════════════ UTILIDADES ══════════════════ */
 const nf = (n,d=1) => (n===null||n===undefined||!isFinite(n)) ? "—"
@@ -2585,12 +2585,18 @@ function calcular(){
     /* cuánto del flujo se va en repartir y reinvertir es un supuesto más:
        la plantilla lo deja editable y aquí también. Por defecto, el histórico. */
     const reparto = VAL.prep!==null && VAL.prep!==undefined ? VAL.prep/100 : repartoHist;
-    const tipoCaja = (() => {                 /* qué renta le saca a su caja */
+    /* Qué renta le saca a su caja. Ojo: el «interés neto» del último año es la
+       diferencia entre lo que cobra por su caja y lo que paga por su deuda, así
+       que en una empresa con las dos cosas sale un tipo engañosamente bajo. La
+       plantilla los proyecta por separado con sus propios porcentajes; aquí se
+       deja editable, que es lo que más acerca el resultado. */
+    const tipoHist = (() => {
       const c = z(g("caja"),L) + z(g("inversion"),L),
             d = z(g("deudaCP"),L) + z(g("deudaLP"),L);
       const base = c - d;
       return (base !== 0 && at(interes,L) !== null) ? at(interes,L)/base : 0.03;
     })();
+    const tipoCaja = VAL.ptc !== null && VAL.ptc !== undefined ? VAL.ptc/100 : tipoHist;
 
     const dn5Base = der.deudaNeta[L]!==null ? der.deudaNeta[L] : 0;
     let vt = ventas[L], dat = daRatio, dnT = dn5Base;
@@ -2611,7 +2617,8 @@ function calcular(){
                   capexMant:cxm, interes:intAno, impuesto:imp, fcf, dn:dnT});
     }
     const u = filas[4];
-    R.v.repartoHist = repartoHist; R.v.reparto = reparto; R.v.tipoCaja = tipoCaja;
+    R.v.repartoHist = repartoHist; R.v.reparto = reparto;
+    R.v.tipoCaja = tipoCaja; R.v.tipoHist = tipoHist;
     if(VAL.dn5 === null) R.v.dn5 = u.dn;      /* si no lo has fijado tú, se proyecta */
     R.v.partidas = filas;
     R.v.pg = pg; R.v.pm = pm; R.v.pt = pt; R.v.pint = pint;
@@ -3045,6 +3052,9 @@ function tablaPartidas(R){
        <div><label>Se reparte y reinvierte (% del FCF)</label>
          <input class="vin" data-v="prep" type="number" step="any"
            value="${nf(v.reparto*100,0)}"></div>
+       <div><label>Lo que le renta la caja (% al año)</label>
+         <input class="vin" data-v="ptc" type="number" step="any"
+           value="${nf(v.tipoCaja*100,2).replace(",",".")}"></div>
        <div><label>CapEx mant. / ventas</label>
          <input class="vin" data-v="pcx" type="number" step="any" readonly
            value="${nf(v.capexRatio*100,2).replace(",",".")}" style="opacity:.6"></div>
