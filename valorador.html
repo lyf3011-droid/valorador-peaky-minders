@@ -2367,10 +2367,11 @@ function esquemaPaso(g){
   </svg>
   <ol class="esq-l">
     <li>En el desplegable elige <b>EBITDA Reconciliation</b> — o <b>Forecasts</b>.</li>
-    <li>Empieza a seleccionar <b>en el nombre de la primera fila</b>. Si empiezas en un número,
-      la columna congelada se queda fuera y solo vienen cifras sueltas.</li>
-    <li>Arrastra hasta la última cifra y pega aquí. O más fácil: clic en la tabla y
-      <kbd>Ctrl</kbd>+<kbd>A</kbd>.</li>
+    <li>Selecciona <b>desde el nombre de la primera fila</b> hasta la última cifra. O más
+      fácil: clic en la tabla y <kbd>Ctrl</kbd>+<kbd>A</kbd>.</li>
+    <li>Pega aquí. Esta pantalla copia el nombre y sus diez cifras <b>uno debajo de otro</b>
+      en vez de en una tabla, y <b>eso también lo entiendo</b>. Lo único que no puedo leer es
+      si copias solo los números y te dejas los nombres.</li>
   </ol>`;
 
   if(g==="MK") return `
@@ -2728,6 +2729,15 @@ function leerPrecios(ta, caja){
 }
 
 /* respaldo cuando el portapapeles no trajo HTML */
+/* Una línea que es SOLO una cifra —una celda suelta—, no una etiqueta.
+   Vale el guion y la raya larga, que en Investing significan «sin dato». */
+function esCeldaNumerica(linea){
+  const t = String(linea).trim();
+  if(!t) return false;
+  if(/^[-–—]$/.test(t)) return true;
+  return /^[(\s]*[-−+]?[\d][\d.,]*\s*[%x]?\s*\)?$/.test(t);
+}
+
 function leerTextoPlano(txt){
   const out = [];
   const L = txt.split(/\n/).map(x=>x.trim());
@@ -2739,6 +2749,22 @@ function leerTextoPlano(txt){
       if(!alt) continue;
       let nums = tokensNum(L[i].slice(alt.length));
       if(nums.length < 3 && L[i+1]) nums = tokensNum(L[i+1]);
+      /* ── Formato vertical ────────────────────────────────────────────────
+         El InvestingPro nuevo no copia como una tabla: pega el nombre de la
+         fila en una línea y cada una de las diez cifras en la suya. Antes eso
+         se leía como «han venido números sin nombres», que era justo al revés:
+         los nombres estaban, pero separados de sus datos. Se recogen las
+         líneas siguientes mientras sean celdas sueltas y se para en cuanto
+         aparece la etiqueta de la fila siguiente. */
+      if(nums.length < 3){
+        const acc = [];
+        for(let j=i+1; j<L.length && acc.length < 24; j++){
+          if(!L[j]) continue;                       /* una línea vacía no corta */
+          if(!esCeldaNumerica(L[j])) break;         /* ya es la etiqueta siguiente */
+          acc.push(...tokensNum(L[j]));
+        }
+        if(acc.length >= 3) nums = acc;
+      }
       if(nums.length >= 3) out.push({et:alt, val:nums});
       break;
     }
