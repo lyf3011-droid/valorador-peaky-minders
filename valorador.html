@@ -4566,10 +4566,22 @@ async function yahoo(url){
     const r = await fetch(url, {signal:c.signal});
     if(r.ok) return await r.json();
   }catch(e){ /* bloqueado por el navegador: seguimos */ }
-  const c2 = new AbortController(); setTimeout(()=>c2.abort(), 12000);
-  const r2 = await fetch("https://corsproxy.io/?url=" + encodeURIComponent(url), {signal:c2.signal});
-  if(!r2.ok) throw new Error("sin respuesta");
-  return await r2.json();
+  /* Si hay reenviador propio se usa ése; si no, el público de siempre. Y si
+     el propio fallara, se reintenta con el público antes de darse por vencido. */
+  const vias = [
+    ...(PUENTE_PROPIO ? [PUENTE_PROPIO.replace(/\/+$/,"") + "/?url=" + encodeURIComponent(url)] : []),
+    "https://corsproxy.io/?url=" + encodeURIComponent(url),
+  ];
+  let ultimo = null;
+  for(const via of vias){
+    try{
+      const c2 = new AbortController(); setTimeout(()=>c2.abort(), 12000);
+      const r2 = await fetch(via, {signal:c2.signal});
+      if(r2.ok) return await r2.json();
+      ultimo = "código " + r2.status;
+    }catch(e){ ultimo = "sin conexión"; }
+  }
+  throw new Error(ultimo || "sin respuesta");
 }
 
 /* ══════════════════ LOS CUATRO PASOS ══════════════════
@@ -4709,7 +4721,16 @@ const SEC_INTERES = {ingreso:["InvestmentIncomeInterest","InterestIncomeOther"],
      codetabs         → 521, caído
    El /get envuelve la respuesta en {contents:"…"}, y por eso se desenvuelve
    abajo. Los otros se dejan de reserva por si un día vuelven. */
+/* ── TU REENVIADOR ────────────────────────────────────────────────────────
+   Pega aquí la URL del Worker de Cloudflare y pasa a ser el primero que se
+   prueba; los públicos se quedan de reserva. Se publica con dos órdenes desde
+   04_INFRA/worker — están en el README de esa carpeta.
+   Déjalo vacío y todo sigue funcionando como hasta ahora.                  */
+const PUENTE_PROPIO = "";
+/* ─────────────────────────────────────────────────────────────────────── */
+
 const SEC_PUENTES = [
+  ...(PUENTE_PROPIO ? [u => PUENTE_PROPIO.replace(/\/+$/,"") + "/?url=" + encodeURIComponent(u)] : []),
   u => "https://api.allorigins.win/get?url=" + encodeURIComponent(u),
   u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
