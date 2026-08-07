@@ -847,7 +847,18 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   </div>
 
   <div class="protocolo">
-    <div class="pr-t">Protocolo · hazlo en este orden</div>
+    <div class="pr-t">Lo único que hay que saber antes de empezar</div>
+    <div class="pr-o" style="margin-top:0;border:0;padding-top:0"><b>Obligatorias son seis:</b>
+      <b>ventas · EBITDA · EBIT · impuestos · acciones diluidas</b> de la cuenta de resultados, y
+      <b>caja, deuda a largo y patrimonio neto</b> del balance. Con eso ya sale un análisis;
+      lo demás afina el resultado.<br>
+      <b>Y una regla:</b> InvestingPro <b>en inglés</b>, con los cuatro desplegables en
+      <code>Fiscal Years · Ascending · 10 Years · Millions</code> y <b>la moneda que reporta la
+      empresa</b>. <span style="color:var(--muted-txt)">Los años no los toques: se detectan solos
+      por las etiquetas <code>FY-9</code> … <code>FY</code> de la cabecera.</span></div>
+    <details class="mas" style="margin-top:.8rem">
+      <summary>El protocolo completo, paso por paso, y qué hay en cada pestaña</summary>
+      <div style="padding:.6rem 0 0">
     <ol class="pr-l">
       <li><b>Pon InvestingPro en inglés.</b> Es la fuente principal y el método está escrito con sus
         nombres de fila. El idioma se cambia en el pie de la página de Investing.
@@ -889,6 +900,11 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
           <td class="l">Los <b>múltiplos históricos</b> para contrastar el que vas a usar tú.
             Mirar, no pegar.</td></tr>
       </tbody></table></div>
+      </div>
+    </details>
+    <div class="pr-o"><b>No hace falta que te lo aprendas.</b> Al pulsar el botón de abajo, la
+      herramienta te lleva de <b>un paso cada vez</b> y cada uno te dice qué página abrir, qué
+      copiar y qué llevas hecho.</div>
   </div>
 
   <div class="bar-actions" style="margin-bottom:.6rem">
@@ -902,30 +918,6 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   <div class="pr" id="res10K" style="margin-bottom:.8rem"></div>
 
   <div id="bloqueBox" class="hide">
-    <!-- El protocolo entero está arriba, pero cuando abres este bloque ya no lo ves y
-         parece que no existe. Aquí va lo imprescindible, a la vista, donde de verdad
-         se usa: los cuatro desplegables, la moneda y el idioma. -->
-    <div class="protocolo" style="margin:0 0 .9rem">
-      <div class="pr-t">Antes de pegar · comprueba estas cinco cosas en InvestingPro</div>
-      <ol class="pr-l" style="margin:0">
-        <li><b>Idioma: inglés.</b> El método está escrito con sus nombres de fila.
-          <span class="pr-x">En español también lo reconoce, pero en inglés tu trabajo es
-          comparable con el de cualquier compañero.</span></li>
-        <li><b>Los cuatro desplegables:</b> <b>Fiscal Years</b> · <b>Ascending</b> ·
-          <b>10 Years</b> · <b>Millions</b>.</li>
-        <li><b>Moneda: la que reporta la empresa</b>, no la tuya. En Alphabet, poner euros
-          desvía el resultado un 15%.</li>
-        <li><b>Despliega los grupos</b> antes de copiar: lo que esté plegado no se copia.</li>
-        <li><b>Copia desde «Period Ending» hasta el final</b>, y pega cada tabla en su cuadro.</li>
-      </ol>
-      <div class="pr-o">También puedes pegar aquí <b>EBITDA Reconciliation</b> y <b>Forecasts</b>:
-        el quinto cuadro —<b>Lo que falte</b>— acepta cualquier tabla y se queda solo con las
-        filas que aún estén vacías. Y si algo sigue sin salir, el botón de la <b>SEC</b> de arriba
-        lo busca en las cuentas oficiales.</div>
-    </div>
-    <div class="note" style="margin-bottom:.9rem">Un cuadro por cuenta. Copia cada tabla de
-      InvestingPro y pégala en el suyo con <kbd>Ctrl</kbd>+<kbd>V</kbd>: se reconoce sola.
-      No hace falta que las pegues todas ni en orden.</div>
     <div class="pegagrid" id="pegagrid"></div>
   </div>
 
@@ -2285,6 +2277,30 @@ const HTML_CAJA = {};                       /* HTML pegado en cada cuadro */
 let PASO_PEGA = 0;
 const ORDEN_PEGA = ["IS","BS","CF","ER","MK"];
 
+/* ── Los enlaces del InvestingPro nuevo ────────────────────────────────────
+   Su dirección es  investing.com/pro/BOLSA:TICKER/financials/tabla  y el
+   prefijo de la bolsa no se puede sacar del ticker… pero sí de Yahoo, que ya
+   devuelve el mercado al pulsar «Buscar». Con eso el enlace queda exacto:
+   TSLA cotiza en NasdaqGS  →  …/pro/NASDAQGS:TSLA/financials/ebitda
+   Si aún no se ha buscado, se cae al buscador de Investing, que también llega. */
+let BOLSA_PRO = null;
+const PRO_BOLSA = {
+  "nasdaqgs":"NASDAQGS", "nasdaqgm":"NASDAQGM", "nasdaqcm":"NASDAQCM",
+  "nasdaq":"NASDAQGS", "nyse":"NYSE", "nyse arca":"NYSEARCA",
+  "nyseamerican":"NYSEAMERICAN", "nyse american":"NYSEAMERICAN",
+  "nyse mkt":"NYSEAMERICAN", "otc markets":"OTCPK"
+};
+function fijarBolsaPro(nombreYahoo){
+  const k = String(nombreYahoo||"").trim().toLowerCase();
+  BOLSA_PRO = PRO_BOLSA[k] || null;
+}
+/* tabla: income_statement · balance_sheet · cash_flow · ebitda · forecasts */
+function urlPro(tabla){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  if(!T) return null;
+  return BOLSA_PRO ? `https://www.investing.com/pro/${BOLSA_PRO}:${T}/financials/${tabla}` : null;
+}
+
 function estadoPega(g){
   const suyas = CONCEPTOS.filter(c => c.g===g).map(c=>c.k);
   const todas = CONCEPTOS.filter(c => !c.auto).map(c=>c.k);
@@ -2310,7 +2326,7 @@ function pintarPegaGrid(){
          se manda al buscador de Investing, que sí lleva al sitio correcto. */
   const esNuevo = (g==="ER");
   const url = !T ? null
-    : esNuevo ? "https://www.investing.com/search/?q=" + encodeURIComponent(T)
+    : esNuevo ? (urlPro("ebitda") || "https://www.investing.com/search/?q=" + encodeURIComponent(T))
     : g==="MK" ? (slug ? "https://www.investing.com/equities/" + slug + "-historical-data"
                        : "https://www.investing.com/search/?q=" + encodeURIComponent(T))
     : slug ? "https://www.investing.com/equities/" + slug + "-" + f.inv
@@ -2353,8 +2369,23 @@ function pintarPegaGrid(){
          Vale una línea, una columna o la tabla entera: se reconoce igual.
        </div></details>`
     : `Copia la tabla entera desde <b>«Period Ending»</b> hasta el final y pégala aquí.
-       Es la ficha clásica de Investing (<code>investing.com/equities/…</code>).
-       Se recomienda <b>en inglés</b>; en español también lo reconoce.`
+       Es la <b>ficha clásica</b> de Investing (<code>investing.com/equities/…</code>).
+       <details class="mas" style="margin-top:.5rem"><summary>Cómo dejar la tabla antes de copiar</summary>
+       <div style="padding:.5rem 0 0">
+         <b>1. Idioma: inglés.</b> El método está escrito con sus nombres de fila. En español
+           también lo reconoce, pero en inglés tu trabajo es comparable con el de cualquier
+           compañero.<br>
+         <b>2. Los cuatro desplegables de arriba:</b>
+           <code>Fiscal Years</code> · <code>Ascending</code> · <code>10 Years</code> ·
+           <code>Millions</code>.<br>
+         <b>3. La moneda: la que reporta la empresa</b>, no la tuya. En Alphabet, poner euros
+           desvía el resultado un 15%.<br>
+         <b>4. Despliega los grupos</b> antes de copiar: lo que esté plegado no se copia.<br>
+         <b>5. Selecciona desde «Period Ending»</b> hasta la última fila y copia.
+         <div class="note" style="margin-top:.6rem"><b>Los años no hay que tocarlos.</b> La
+           cabecera trae <code>FY-9</code> … <code>FY</code> y de ahí sale solo cuál es el último
+           ejercicio real, aunque la empresa no cierre en diciembre.</div>
+       </div></details>`
       + (g==="CF" ? `<br><span style="color:var(--muted-txt)">Dos se quedarán vacías y no es un
          fallo: el <b>CapEx de mantenimiento</b> sale del paso 4, y los <b>pagos en acciones</b>
          Investing no los publica — se traen de la SEC o se dejan, que son informativos.</span>` : "");
@@ -2366,7 +2397,15 @@ function pintarPegaGrid(){
         <span class="pe">${e.hechos}/${e.total} ${e.total===1?"partida":"partidas"}</span></div>
       <div style="font-size:.82rem;color:var(--soft);margin:.25rem 0 .7rem;line-height:1.6">${ayuda}</div>
       ${url?`<a class="th-link" href="${url}" target="_blank" rel="noopener">${
-        esNuevo?"buscar la empresa en Investing ↗":"abrir en InvestingPro ↗"}</a>`:""}
+        !esNuevo ? "abrir en InvestingPro ↗"
+        : BOLSA_PRO ? "abrir EBITDA Reconciliation ↗" : "buscar la empresa en Investing ↗"}</a>`:""}
+      ${esNuevo && BOLSA_PRO ? `
+        <a class="th-link" href="${urlPro("forecasts")}" target="_blank" rel="noopener"
+           style="margin-left:.9rem">abrir Forecasts ↗</a>` : ""}
+      ${esNuevo && !BOLSA_PRO && T ? `<div class="note" style="margin:.4rem 0 .6rem">
+        Pulsa <b>Buscar</b> arriba y estos enlaces pasan a llevarte <b>directos</b> a la tabla:
+        hace falta saber en qué bolsa cotiza para componer la dirección
+        <code>investing.com/pro/<b>BOLSA</b>:${esc(T)}/financials/ebitda</code>.</div>` : ""}
       <textarea data-pega="${g}" placeholder="${g==="MK"?"85.19 101.95 156.79 220.97 …":"Pega aquí la tabla de "+esc(G[g].toLowerCase())+"…"}"></textarea>
       <div class="pb">
         <button type="button" class="pri" data-leer="${g}">Reconocer</button>
@@ -2422,16 +2461,51 @@ function aniosDeLaTabla(txt){
   const u = [...new Set(y)].sort((a,b)=>a-b);
   return {min: u[0], max: u[u.length-1], n: u.length};
 }
+
+/* InvestingPro etiqueta cada columna además de con la fecha: FY-9 … FY-1 … FY,
+   y en Forecasts sigue con FY+1 … FY+10. Esa etiqueta es mejor que la fecha,
+   porque dice cuál es el ÚLTIMO EJERCICIO REAL sin tener que suponer nada:
+   es la columna que pone «FY» a secas. Sin esto, al pegar la tabla de
+   Forecasts —que llega hasta 2035— la app ofrecía ajustar los años a
+   2026-2035, que es exactamente lo contrario de lo que hay que hacer. */
+function fyDeLaTabla(txt){
+  const et = [...String(txt).matchAll(/\bFY\s*([+-]\s*\d{1,2})?\b/g)]
+    .map(m => m[1] ? +m[1].replace(/\s+/g,"") : 0);
+  if(et.length < 3) return null;
+  const i = et.indexOf(0);
+  if(i < 0) return null;                       /* no hay columna «FY» a secas */
+  const fechas = [...String(txt).matchAll(/\b(19[89]\d|20[0-5]\d)-\d{2}-\d{2}\b/g)].map(m=>+m[1]);
+  if(fechas.length !== et.length) return null; /* etiquetas y fechas no casan */
+  return {ultimoReal: fechas[i], reales: i+1, previstos: et.length-1-i};
+}
+
 function avisoAnios(txt){
-  const t = aniosDeLaTabla(txt);
+  const fy = fyDeLaTabla(txt);
+  const t = fy
+    ? {min: fy.ultimoReal - fy.reales + 1, max: fy.ultimoReal, n: fy.reales, porFY: true}
+    : aniosDeLaTabla(txt);
   if(!t) return "";
   const A = anios(), a0 = A[0], a1 = A[A.length-1];
+  /* Una tabla de previsiones trae un solo año real y diez estimados. Ahí no hay
+     nada que ajustar: los años del análisis los mandan las cuentas, no el
+     consenso. Se dice qué se ha entendido y se para. */
+  if(fy && fy.reales < 3){
+    return fy.ultimoReal === a1 ? "" : `<div class="warn" style="margin-top:.5rem">
+      <b>Esta es una tabla de previsiones.</b> Su último ejercicio real es
+      <b>${fy.ultimoReal}</b> y las <b>${fy.previstos}</b> columnas siguientes son estimaciones
+      de analistas. Aquí tienes configurado que el último año real es <b>${a1}</b>.
+      <b>Cuadra primero las cuentas</b> —resultados, balance y flujo de caja— y vuelve a pegar
+      esta: los años de la proyección salen solos de ahí.</div>`;
+  }
   if(t.min === a0 && t.max === a1) return "";
   /* Muchas empresas no cierran en diciembre —Nvidia en enero, Microsoft en
      junio— así que sus diez ejercicios no son 2016-2025. En vez de mandar al
      usuario a cuadrarlo a mano, se ofrece hacerlo de un clic. */
-  return `<div class="warn" style="margin-top:.5rem"><b>Esta tabla va de ${t.min} a ${t.max}</b>,
-    y aquí tienes configurado <b>${a0} a ${a1}</b>. Los datos se colocan por orden, así que
+  return `<div class="warn" style="margin-top:.5rem"><b>Esta tabla va de ${t.min} a ${t.max}</b>${
+    t.porFY ? ` —lo sé por las etiquetas <code>FY-${t.n-1}</code> … <code>FY</code> de la
+      cabecera, que marcan cuál es el último ejercicio <b>real</b>${
+      fy.previstos ? `, y las <b>${fy.previstos}</b> columnas siguientes son estimaciones` : ""}—`
+    : ""}, y aquí tienes configurado <b>${a0} a ${a1}</b>. Los datos se colocan por orden, así que
     quedarían desplazados ${Math.abs(t.max-a1)} ${Math.abs(t.max-a1)===1?"año":"años"}.
     <button type="button" class="pri" data-fijaranios="${t.max}|${t.max-t.min+1}"
       style="margin-top:.5rem;font-family:var(--font-m);font-size:.7rem;padding:.4rem .8rem;
@@ -2470,8 +2544,32 @@ function leerCaja(g){
   if(!filas.length && ta.value.trim()) filas = leerTextoPlano(ta.value);
 
   if(!filas.length){
-    caja.innerHTML = `<span class="mal">No he leído ninguna tabla.</span> Copia desde
-      «Period Ending» hasta el final y <b>pega</b> aquí (no escribas el texto).`;
+    /* El caso más frecuente, y hasta ahora el peor explicado: viene la columna
+       de números pero SIN los nombres de fila. Pasa al arrastrar el ratón por
+       la tabla del InvestingPro nuevo, donde la primera columna va congelada y
+       no se arrastra con las demás. Sin etiqueta no hay nada que reconocer, y
+       decir «copia desde Period Ending» ahí no ayuda: manda a otra página. */
+    const lineas = ta.value.trim().split(/\r?\n/).filter(x=>x.trim());
+    const soloNum = lineas.length >= 3 &&
+      lineas.filter(x => /^[\s(]*[-−+]?[\d.,]+[\s)%]*$/.test(x.trim())).length >= lineas.length*0.7;
+    caja.innerHTML = soloNum
+      ? `<span class="mal">Han venido los números, pero sin los nombres de las filas.</span>
+         Sin el nombre no puedo saber cuál es cuál.<br>
+         <b>Lo que ha pasado:</b> en las tablas de InvestingPro la <b>primera columna va
+         congelada</b>, y al arrastrar el ratón se queda fuera.<br>
+         <b>Solución:</b> haz clic en una celda de la tabla y pulsa
+         <kbd>Ctrl</kbd>+<kbd>A</kbd> y luego <kbd>Ctrl</kbd>+<kbd>C</kbd>, o empieza a
+         seleccionar <b>desde el nombre de la primera fila</b> —a la izquierda del todo— y
+         arrastra hasta la última cifra de abajo a la derecha.`
+      : g === "ER"
+      ? `<span class="mal">No he leído ninguna tabla.</span> Selecciona <b>desde el nombre de la
+         primera fila</b> hasta la última cifra y <b>pega</b> aquí con
+         <kbd>Ctrl</kbd>+<kbd>V</kbd> (no escribas el texto a mano).`
+      : g === "MK"
+      ? `<span class="mal">No he leído ningún precio.</span> Pega los <b>${N} cierres</b> en una
+         línea o una columna, o usa el botón de Yahoo del paso del precio.`
+      : `<span class="mal">No he leído ninguna tabla.</span> Copia desde
+         «Period Ending» hasta el final y <b>pega</b> aquí (no escribas el texto).`;
     return;
   }
   const puestas = [];
@@ -3639,6 +3737,12 @@ function cuadroFairValue(R){
       promedio de <b>12 modelos</b>, y puedes desplegarlos uno a uno. <b>Míralo y escríbelo
       aquí.</b> No lo trae la herramienta a propósito: verlo con tus ojos y anotarlo
       <em>es</em> parte del ejercicio.</p>
+    ${(()=>{ const T=($("ticker").value||"").trim().toUpperCase();
+      return (BOLSA_PRO && T)
+        ? `<a class="th-link" href="https://www.investing.com/pro/${BOLSA_PRO}:${T}"
+             target="_blank" rel="noopener">abrir el Fair Value de ${esc(T)} ↗</a>`
+        : `<div class="note">Pulsa <b>Buscar</b> en el paso 1 y aquí aparecerá el enlace directo
+             a la página del Fair Value.</div>`; })()}
 
     <div class="db" style="margin:.9rem 0"><span class="t">De los 12 modelos, solo estos dos</span>
       Y elegidos por <b>lo que miden</b>, no por lo que dan:<br>
@@ -5123,7 +5227,9 @@ async function buscar(){
     const m = j.chart?.result?.[0]?.meta;
     if(m){ info = {nombre:m.longName||m.shortName||"", precio:m.regularMarketPrice,
       moneda:({USD:"$",EUR:"€",GBP:"£",GBp:"p",CHF:"CHF",CAD:"C$",JPY:"¥"})[m.currency]||m.currency,
-      bolsa:m.fullExchangeName, hi:m.fiftyTwoWeekHigh, lo:m.fiftyTwoWeekLow}; }
+      bolsa:m.fullExchangeName, hi:m.fiftyTwoWeekHigh, lo:m.fiftyTwoWeekLow};
+      /* con la bolsa ya se pueden componer los enlaces del InvestingPro nuevo */
+      fijarBolsaPro(m.fullExchangeName); }
     else err.push("Yahoo no reconoce ese ticker");
   }catch(e){ err.push("no hay conexión con Yahoo Finance"); }
 
