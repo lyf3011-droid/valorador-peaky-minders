@@ -1392,7 +1392,7 @@ const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:n
   /* proyección por partidas, al estilo de la plantilla */
   modo:null, pg:null, pm:null, pt:null, pint:null, prep:null, ptc:null,
   /* el contraste externo: Fair Value de InvestingPro y el IDC del Excel */
-  fv:null, idcX:null,
+  fv:null, fvEb:null, fvDcf:null, idcX:null,
   /* de dónde salen los supuestos: null, "analistas" o "forecast" */
   origen:null};
 
@@ -3615,8 +3615,14 @@ function pasoValoracion(R){
    parte del ejercicio. El dato lo escribe el alumno mirándolo: no se inventa. */
 function cuadroFairValue(R){
   const v = R.v;
-  const fv  = (VAL.fv  !== null && VAL.fv  !== undefined && isFinite(VAL.fv))  ? +VAL.fv  : null;
-  const idcX= (VAL.idcX!== null && VAL.idcX!== undefined && isFinite(VAL.idcX))? +VAL.idcX: null;
+  const nn = k => (VAL[k]!==null && VAL[k]!==undefined && isFinite(VAL[k])) ? +VAL[k] : null;
+  const fv = nn("fv"), fvEb = nn("fvEb"), fvDcf = nn("fvDcf"), idcX = nn("idcX");
+  /* de los doce modelos de InvestingPro solo se piden dos, y elegidos por lo que
+     miden, no por lo que dan: el EV/EBITDA es de la familia del EV/FCF que ya
+     calcula el método, y el 5Y DCF EBITDA Exit ES el método (proyectar cinco años
+     y aplicar un múltiplo de salida) con otro tipo de descuento. */
+  const refs = [fvEb, fvDcf].filter(x => x!==null);
+  const ref  = refs.length ? refs.reduce((a,b)=>a+b,0)/refs.length : fv;
 
   const fila = (et, val, nota) => `<tr><td class="l">${et}</td>
     <td class="n"><b style="color:var(--amber-strong)">${val===null?"—":mo(val)}</b></td>
@@ -3629,13 +3635,41 @@ function cuadroFairValue(R){
   <div class="panel" style="margin-top:1.2rem">
     <h3 style="margin-top:0">Contrasta tu número con InvestingPro</h3>
     <p class="step-w">Antes de fiarte de un precio objetivo, ponlo al lado de otro que no hayas
-      calculado tú. En InvestingPro está el <b>Fair Value</b>, en la pestaña <b>Overview</b> de la
-      empresa. <b>Míralo y escríbelo aquí.</b> No lo trae la herramienta a propósito: verlo con tus
-      ojos y anotarlo <em>es</em> parte del ejercicio.</p>
+      calculado tú. En InvestingPro, pestaña <b>Overview</b>, está el <b>Fair Value</b>: un
+      promedio de <b>12 modelos</b>, y puedes desplegarlos uno a uno. <b>Míralo y escríbelo
+      aquí.</b> No lo trae la herramienta a propósito: verlo con tus ojos y anotarlo
+      <em>es</em> parte del ejercicio.</p>
+
+    <div class="db" style="margin:.9rem 0"><span class="t">De los 12 modelos, solo estos dos</span>
+      Y elegidos por <b>lo que miden</b>, no por lo que dan:<br>
+      <b>· EV / EBITDA Multiples</b> — es un múltiplo sobre valor de empresa, la misma familia que
+        tu EV/FCF. De hecho ya lo calculas tú, arriba.<br>
+      <b>· 5Y DCF EBITDA Exit</b> — es <b>tu método</b>: proyecta cinco años y aplica un múltiplo
+        de salida sobre el EBITDA. Lo único distinto es que ellos descuentan al coste del capital
+        y tú exiges un ${nf(v.obj*100,0)}% anual.
+      <details class="mas" style="margin-top:.6rem"><summary>Y por qué NO los otros diez</summary>
+        <div style="padding:.5rem 0 0">
+          <b>Price / Book Multiples: no.</b> Compara contra el valor contable, y en una empresa
+          moderna el valor contable no recoge ni la marca, ni las patentes, ni las recompras.
+          Además es el múltiplo que <b>este mismo método reserva para las financieras</b>, que son
+          justo las empresas donde el IDC no vale. Si se parece a tu número, es casualidad.<br>
+          <b>Analyst Targets: tampoco.</b> No son una valoración: son <b>precios objetivo a 12
+          meses</b>, anclados al precio de hoy. Usarlos rompe lo único que sostiene este método —
+          que el precio se mira el último.<br>
+          <b>Y la trampa de fondo:</b> elegir el modelo que <em>coincide</em> contigo es sesgo de
+          confirmación. El modelo se escoge <b>antes</b> de ver el resultado. Si luego coincide,
+          es una señal; si lo eliges porque coincide, no has comprobado nada.
+        </div></details></div>
 
     <div class="vgrid">
-      <div><label>Fair Value de InvestingPro (${esc(MON)})</label>
-        <input class="vin" data-v="fv" type="number" step="any" placeholder="p. ej. 512.40"
+      <div><label>EV / EBITDA Multiples (${esc(MON)})</label>
+        <input class="vin" data-v="fvEb" type="number" step="any" placeholder="p. ej. 251.93"
+          value="${fvEb!==null?fvEb:""}"></div>
+      <div><label>5Y DCF EBITDA Exit (${esc(MON)})</label>
+        <input class="vin" data-v="fvDcf" type="number" step="any" placeholder="p. ej. 226.27"
+          value="${fvDcf!==null?fvDcf:""}"></div>
+      <div><label>Fair Value · el promedio de los 12</label>
+        <input class="vin" data-v="fv" type="number" step="any" placeholder="p. ej. 239.60"
           value="${fv!==null?fv:""}"></div>
       <div><label>IDC de tu plantilla de Excel (opcional)</label>
         <input class="vin" data-v="idcX" type="number" step="any" placeholder="si lo has calculado"
@@ -3647,20 +3681,26 @@ function cuadroFairValue(R){
       <tbody>
         ${fila("<b>Tu IDC</b> · este informe", v.idc,
           `Proyecta 5 años y te exige un <b>${nf(v.obj*100,0)}% anual</b>. Es un precio de entrada, no una tasación.`)}
-        ${fila("Fair Value · InvestingPro", fv,
-          "Promedio de una docena de modelos, a 12 meses y sin exigir rentabilidad. Es una tasación.")}
+        ${fila("EV / EBITDA Multiples · InvestingPro", fvEb,
+          "La misma familia que tu EV/FCF: múltiplo sobre valor de empresa.")}
+        ${fila("5Y DCF EBITDA Exit · InvestingPro", fvDcf,
+          "Cinco años proyectados y múltiplo de salida. Es tu método con otro descuento.")}
+        ${fila("Fair Value · promedio de los 12", fv,
+          "Contexto. Mete dentro modelos que aquí no aplican, como el Price/Book.")}
         ${idcX!==null ? fila("IDC · tu Excel", idcX, "El mismo método, calculado a mano en la plantilla.") : ""}
         <tr><td class="l">Lo que pide hoy el mercado</td>
           <td class="n"><b>${mo(R.precio)}</b></td>
           <td class="l" style="font-size:.82rem;color:var(--soft)">El único dato que no es una opinión.</td></tr>
       </tbody></table></div>
 
-    ${fv===null ? `<div class="note" style="margin-top:.8rem">En cuanto escribas el Fair Value,
-       aquí aparece la comparación y qué significa que se parezcan o no.</div>` : (()=>{
-      const rel = v.idc/fv - 1;
+    ${ref===null ? `<div class="note" style="margin-top:.8rem">En cuanto escribas al menos uno de
+       los dos modelos, aquí aparece la comparación y qué significa que se parezcan o no.</div>` : (()=>{
+      const rel = v.idc/ref - 1;
       const cerca = Math.abs(rel) <= 0.15;
       return `<div class="db" style="margin-top:1rem"><span class="t">Y esto qué significa</span>
-        Tu IDC está un <b>${dif(v.idc,fv)}</b> respecto al Fair Value de Investing
+        Tu IDC está un <b>${dif(v.idc,ref)}</b> respecto a ${refs.length===2
+          ? "la media de los dos modelos comparables"
+          : "el modelo comparable que has puesto"}
         ${idcX!==null?`, y un <b>${dif(v.idc,idcX)}</b> respecto al de tu Excel`:""}.
         ${cerca
           ? `<b style="color:var(--green)">Están cerca</b>, y eso es buena señal: dos caminos muy
