@@ -695,6 +695,25 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
   <div id="idinfo"></div>
 
+  <details class="faltan" style="margin-top:.7rem">
+    <summary>Los 11 sectores, y por qué el sector importa antes que ningún número</summary>
+    <p style="font-size:.86rem;color:var(--soft);line-height:1.6;margin:.7rem 0 0">
+      Toda cotizada cae en uno de estos once. La herramienta lo dice al escribir el ticker:
+      lo conoce de memoria para 578 empresas y lo saca del registro de la <b>SEC</b> para las
+      más de <b>10.000</b> cotizadas en EE. UU.</p>
+    <div class="tw" style="margin-top:.6rem"><table class="rs"><tbody>
+      <tr><td class="l">Tecnología · Salud · Industria · Materiales · Energía</td>
+        <td class="l">Consumo discrecional · Consumo básico · Comunicación · Servicios públicos</td></tr>
+      <tr><td class="l" colspan="2"><b style="color:#f87171">Financieras</b> e
+        <b style="color:#f87171">Inmobiliarias</b> — el método <b>no vale</b> para estas dos</td></tr>
+    </tbody></table></div>
+    <p style="font-size:.86rem;color:var(--soft);line-height:1.6;margin:.7rem 0 0">
+      En un banco la deuda no es una carga: es su materia prima. En una inmobiliaria, la
+      amortización descuenta unos edificios que no pierden valor. En los dos casos el flujo de
+      caja libre mide otra cosa y el IDC que salga no significa nada. Por eso el sector se mira
+      <b>antes</b> que los números, y no después.</p>
+  </details>
+
   <div class="bar-actions" style="margin-top:1.1rem">
     <button class="b2" id="demo">Cargar ejemplo completo (META, 10 años)</button>
     <button class="b2" id="limpiar">Limpiar todo</button>
@@ -1292,10 +1311,52 @@ function avisarSector(e){
       lo impide — pero <b>el resultado no sirve para decidir nada</b>.</span></div>`;
   } else {
     caja.innerHTML = `<div class="idcard"><div class="n">${esc(e.n)}</div>
-      <div class="m">${esc(e.b)} · ${esc(SECTOR_NOMBRE[e.s]||"")} · ${esc(e.t)}</div>
-      <div class="m" style="margin-top:.5rem;color:var(--muted)">Nombre y moneda puestos desde la
-      lista de empresas, sin internet. Pulsa <b>Buscar</b> si quieres además el precio de hoy.</div></div>`;
+      <div class="m">${esc(e.b)} · ${esc(SECTOR_NOMBRE[e.s] || "sector sin clasificar")} · ${esc(e.t)}</div>
+      <div class="m" style="margin-top:.5rem;color:var(--muted)">${
+        e.origen === "sec"
+          ? `Nombre y sector traídos del registro oficial de la <b>SEC</b>${
+              e.sicTxt ? ` (código SIC ${esc(String(e.sic))} · ${esc(e.sicTxt)})` : ""}.
+             El sector es una <b>equivalencia aproximada</b>: la SEC clasifica con SIC y el método
+             habla en GICS. Compruébalo si te va a cambiar la decisión.`
+          : `Nombre y moneda puestos desde la lista de empresas, sin internet.`}
+        Pulsa <b>Buscar</b> si quieres además el precio de hoy.</div></div>`;
   }
+}
+
+/* Si el ticker no está en la lista interna, se pregunta a la SEC. Va con retardo
+   porque se dispara al teclear, y con un candado para que una respuesta lenta de
+   un ticker viejo no pise lo que el usuario está escribiendo ahora. */
+let SEC_FICHA_T = null, SEC_FICHA_ULT = "";
+const SEC_FICHA_CACHE = {};
+function buscarFichaSEC(ticker){
+  const T = (ticker||"").trim().toUpperCase();
+  clearTimeout(SEC_FICHA_T);
+  if(T.length < 1 || /[.\-]/.test(T)) return;
+  if(SEC_FICHA_CACHE[T]){ SEC_FICHA_ULT = T; avisarSector(SEC_FICHA_CACHE[T]); return; }
+  SEC_FICHA_T = setTimeout(async () => {
+    SEC_FICHA_ULT = T;
+    const caja = $("idinfo");
+    /* la primera vez hay que bajarse el catálogo entero (800 KB por un reenviador
+       gratuito: tarda). Después queda guardado en el navegador y es instantáneo
+       para siempre, también sin internet. Conviene decirlo o parece colgado. */
+    const primera = !localStorage.getItem("secIDX");
+    caja.innerHTML = `<div class="note">Buscando <b>${esc(T)}</b> entre las 10.400 cotizadas
+      de EE. UU.…${primera ? ` <b>La primera vez tarda</b> —hay que descargar el catálogo de la
+      SEC entero—. Se guarda en este navegador y a partir de ahí es instantáneo.` : ""}</div>`;
+    try{
+      const f = await fichaSEC(T);
+      if(SEC_FICHA_ULT !== T) return;                  /* ya escribe otra cosa */
+      if(!f){ caja.innerHTML = `<div class="note">No encuentro <b>${esc(T)}</b> entre las cotizadas
+        de EE. UU. Si es europea, escribe el nombre a mano: el resto funciona igual.</div>`; return; }
+      SEC_FICHA_CACHE[T] = f;
+      if(!$("nombre").value) $("nombre").value = f.n;
+      avisarSector(f);
+    }catch(err){
+      if(SEC_FICHA_ULT !== T) return;
+      caja.innerHTML = `<div class="note">No he podido consultar la SEC (${esc(String(err.message||err))}).
+        Escribe el nombre a mano: el resto funciona igual.</div>`;
+    }
+  }, 550);
 }
 
 /* ══════════════════ ESTADO ══════════════════ */
@@ -4235,28 +4296,49 @@ const SEC_INTERES = {ingreso:["InvestmentIncomeInterest","InterestIncomeOther"],
 /* La SEC no permite que la llame una página web directamente, así que se pasa
    por un reenviador. Se prueban varios porque son servicios gratuitos y
    cualquiera puede estar caído: si fallan todos, se dice y se sigue a mano. */
+/* Comprobado el 7-ago-2026 contra la SEC de verdad, y desde un navegador —que
+   es lo que importa, porque exige la cabecera CORS y curl no—:
+     allorigins /get  → 200 CON cabecera CORS   ✅ el único fiable
+     allorigins /raw  → 500, y cuando responde no manda la cabecera
+     corsproxy.io     → 403, la SEC lo bloquea
+     codetabs         → 521, caído
+   El /get envuelve la respuesta en {contents:"…"}, y por eso se desenvuelve
+   abajo. Los otros se dejan de reserva por si un día vuelven. */
 const SEC_PUENTES = [
-  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  u => "https://api.allorigins.win/get?url=" + encodeURIComponent(u),
   u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
   u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
 ];
 let SEC_PUENTE_OK = null;                 /* el primero que funcione se reutiliza */
 
-async function secJSON(url){
+/* espera: el fichero de tickers pesa 800 KB y por un reenviador gratuito no baja
+   en 9 segundos ni de broma. Ése fue el motivo real de que la SEC «no funcionara»:
+   no era el 403, era que se abortaba antes de tiempo. */
+async function secJSON(url, espera){
   const orden = SEC_PUENTE_OK !== null
     ? [SEC_PUENTES[SEC_PUENTE_OK], ...SEC_PUENTES.filter((_,i)=>i!==SEC_PUENTE_OK)]
     : SEC_PUENTES;
   let ultimo = "";
   for(const puente of orden){
     try{
-      const c = new AbortController(); setTimeout(()=>c.abort(), 9000);
+      const c = new AbortController(); setTimeout(()=>c.abort(), espera || 9000);
       const r = await fetch(puente(url), {signal:c.signal});
       /* 404 = el puente funciona, es la SEC la que no tiene ese concepto para
          esta empresa. No sirve de nada preguntárselo a otro puente. */
       if(r.status === 404){ SEC_PUENTE_OK = SEC_PUENTES.indexOf(puente);
         const e = new Error("no existe"); e.noExiste = true; throw e; }
       if(!r.ok){ ultimo = "código " + r.status; continue; }
-      const j = await r.json();
+      let j = await r.json();
+      /* allorigins /get envuelve: {contents:"…", status:{http_code}} */
+      if(j && typeof j.contents === "string"){
+        if(j.status && j.status.http_code === 404){
+          SEC_PUENTE_OK = SEC_PUENTES.indexOf(puente);
+          const e = new Error("no existe"); e.noExiste = true; throw e;
+        }
+        try{ j = JSON.parse(j.contents); }
+        catch(e){ ultimo = "respuesta ilegible"; continue; }
+      }
       SEC_PUENTE_OK = SEC_PUENTES.indexOf(puente);
       return j;
     }catch(e){
@@ -4267,16 +4349,82 @@ async function secJSON(url){
   throw new Error("no he podido llegar a la SEC · " + ultimo);
 }
 
-async function secCIK(ticker){
+/* El fichero de la SEC trae las ~10.400 cotizadas de EE. UU. con su nombre. Ya se
+   descargaba para buscar el CIK y se tiraba el nombre; ahora se guarda entero, que
+   es lo que convierte la lista interna de 578 empresas en el catálogo completo. */
+async function secMapa(){
   let mapa = null;
-  try{ mapa = JSON.parse(localStorage.getItem("secCIK") || "null"); }catch(e){}
+  try{ mapa = JSON.parse(localStorage.getItem("secIDX") || "null"); }catch(e){}
   if(!mapa){
-    const j = await secJSON("https://www.sec.gov/files/company_tickers.json");
+    const j = await secJSON("https://www.sec.gov/files/company_tickers.json", 40000);
     mapa = {};
-    Object.values(j).forEach(e => { mapa[String(e.ticker).toUpperCase()] = String(e.cik_str).padStart(10,"0"); });
-    try{ localStorage.setItem("secCIK", JSON.stringify(mapa)); }catch(e){}
+    Object.values(j).forEach(e => {
+      mapa[String(e.ticker).toUpperCase()] = [String(e.cik_str).padStart(10,"0"), e.title||""];
+    });
+    try{ localStorage.setItem("secIDX", JSON.stringify(mapa)); }catch(e){}
   }
-  return mapa[ticker.toUpperCase()] || null;
+  return mapa;
+}
+async function secCIK(ticker){
+  const m = await secMapa();
+  const e = m[ticker.toUpperCase()];
+  return e ? e[0] : null;
+}
+
+/* ── SIC → los 11 sectores GICS ───────────────────────────────────────────
+   La SEC no publica el sector GICS: publica su propio código SIC, que es de
+   1987 y tiene otra lógica. La traducción es BUENA pero no exacta, y por eso
+   la app lo dice cuando el sector viene de aquí. Lo que sí acierta siempre es
+   lo único que de verdad importa para el método: si es un banco, una
+   aseguradora o una inmobiliaria, casos en los que el IDC no vale. */
+const SIC_EXACTO = {
+  "6798":"R",                              /* REIT */
+  "2834":"H","2835":"H","2836":"H","8731":"H","5122":"H","3841":"H","3842":"H",
+  "3843":"H","3844":"H","3845":"H","3826":"H","3821":"T",
+  "3571":"T","3572":"T","3575":"T","3576":"T","3577":"T","3578":"T","3579":"T",
+  "3661":"T","3663":"C","3669":"T","3672":"T","3674":"T","3675":"T","3677":"T",
+  "3678":"T","3679":"T","3827":"T","3861":"T",
+  "3711":"D","3713":"D","3714":"D","3715":"I","3716":"D","3721":"I","3724":"I",
+  "3728":"I","3730":"I","3743":"I","3751":"D","3760":"I","3812":"I",
+  "5411":"S","5412":"S","5912":"S","2860":"M","2911":"E",
+  "7310":"C","7311":"C","7812":"C","7819":"C","7822":"C","7829":"C","7841":"C",
+  "7900":"C","7990":"C","7996":"D","7997":"D","4813":"C","4822":"C","4832":"C",
+  "4833":"C","4841":"C","4899":"C","2711":"C","2721":"C","2731":"C","2741":"C"
+};
+const SIC_RANGO = [
+  [ 100, 999,"S"], [1000,1099,"M"], [1200,1299,"M"], [1300,1399,"E"], [1400,1499,"M"],
+  [1500,1799,"I"], [2000,2199,"S"], [2200,2399,"D"], [2400,2699,"M"], [2700,2799,"C"],
+  [2800,2899,"M"], [2900,2999,"E"], [3000,3099,"M"], [3100,3199,"D"], [3200,3399,"M"],
+  [3400,3499,"I"], [3500,3599,"I"], [3600,3699,"T"], [3700,3799,"I"], [3800,3899,"T"],
+  [3900,3999,"D"], [4000,4499,"I"], [4500,4599,"I"], [4600,4799,"E"], [4800,4899,"C"],
+  [4900,4999,"U"], [5000,5199,"I"], [5200,5999,"D"], [6000,6499,"F"], [6500,6599,"R"],
+  [6600,6799,"F"], [7000,7099,"D"], [7200,7299,"D"], [7300,7399,"T"], [7500,7699,"D"],
+  [7700,7999,"C"], [8000,8099,"H"], [8100,8299,"D"], [8300,8399,"H"], [8400,8999,"I"],
+  [9000,9999,"I"]
+];
+function sicASector(sic){
+  const s = String(sic||"").trim(); if(!s) return null;
+  if(SIC_EXACTO[s]) return SIC_EXACTO[s];
+  const n = +s; if(!isFinite(n)) return null;
+  for(const [a,b,g] of SIC_RANGO) if(n>=a && n<=b) return g;
+  return null;
+}
+
+/* Ficha de una empresa que NO está en la lista interna, sacada de la SEC.
+   Devuelve el mismo formato que la lista de 578 para que todo lo demás
+   —el aviso de financieras, la tarjeta, la moneda— funcione igual. */
+async function fichaSEC(ticker){
+  const T = ticker.trim().toUpperCase();
+  if(!T || /[.\-]/.test(T)) return null;        /* .MC/.DE no cotizan en la SEC */
+  const mapa = await secMapa();
+  const e = mapa[T]; if(!e) return null;
+  let sic = null, sicTxt = "";
+  try{
+    const sub = await secJSON(`https://data.sec.gov/submissions/CIK${e[0]}.json`);
+    sic = sub.sic; sicTxt = sub.sicDescription || "";
+  }catch(err){}
+  return {t:T, n:e[1], s:sicASector(sic), b:"Cotizada en EE. UU.",
+          sic, sicTxt, origen:"sec"};
 }
 
 /* de la respuesta XBRL saca {año: valor en millones} usando solo los 10-K */
@@ -4767,7 +4915,13 @@ async function buscar(){
     else err.push("Yahoo no reconoce ese ticker");
   }catch(e){ err.push("no hay conexión con Yahoo Finance"); }
 
-  const conocida = IDX_POR_TICKER[t];
+  /* la lista interna primero; si no está, lo que ya sepamos de la SEC, y si
+     tampoco, se le pregunta ahora — el aviso de financieras vale para las
+     10.400, no solo para las 578 que van dentro de la página */
+  let conocida = IDX_POR_TICKER[t] || SEC_FICHA_CACHE[t] || null;
+  if(!conocida){
+    try{ const f = await fichaSEC(t); if(f){ conocida = f; SEC_FICHA_CACHE[t] = f; } }catch(e){}
+  }
   if(info.nombre){
     if(!$("nombre").value) $("nombre").value = info.nombre;
     $("precio").value = info.precio ?? "";
@@ -4939,8 +5093,11 @@ $("ticker").oninput = () => {
   pintarEnlaces(); pintarFuentes(); pintarEnlacesPrecio();
   pintarSugerencias($("ticker").value);
   /* si lo que hay escrito es exactamente una empresa conocida, avisa del sector ya */
-  const e = IDX_POR_TICKER[$("ticker").value.trim().toUpperCase()];
-  if(e && !SUG.length) avisarSector(e);
+  const v = $("ticker").value.trim().toUpperCase();
+  const e = IDX_POR_TICKER[v];
+  if(e && !SUG.length){ clearTimeout(SEC_FICHA_T); avisarSector(e); }
+  /* y si no está en la lista interna, se busca entre las 10.400 de la SEC */
+  else if(!e && !SUG.length && v.length >= 1) buscarFichaSEC(v);
 };
 $("ticker").onblur = () => setTimeout(cerrarSugerencias, 120);
 $("ticker").onfocus = () => { if($("ticker").value.trim()) pintarSugerencias($("ticker").value); };
