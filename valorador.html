@@ -3371,10 +3371,10 @@ function resumenSinPrecio(R){
       si gana dinero al crecer, si ese beneficio llega a la caja, cuánto le rinde lo que invierte y
       cuánto debe. Eso es el 80% del trabajo. El precio es el último paso, y aquí no hace falta
       llegar a él.</div>
+     <h3 style="margin-top:1.6rem">Y esto es lo que significa, sin tecnicismos</h3>
+     ${conclusionLlana(R)}
      <div class="note">⚠️ Material formativo. Esto no es una recomendación de venta ni un juicio sobre
-      el futuro de la empresa: es la foto de diez años de cuentas. Una compañía en pérdidas puede
-      recuperarse, pero entonces la estarías comprando por lo que crees que pasará, no por lo que
-      ha hecho — y eso es otra decisión, con otro riesgo.</div>`,
+      el futuro de la empresa: es la foto de diez años de cuentas.</div>`,
     "res","Resumen");
 }
 
@@ -3413,6 +3413,12 @@ function resumen(R){
     ${conclusiones(R)}
     <h3>Cómo hemos llegado a este número</h3>
     ${cadenaValoracion(R)}
+
+    <h3>De dónde ha salido cada dato del precio</h3>
+    ${origenDelPrecio(R)}
+
+    <h3>Y esto es lo que significa, sin tecnicismos</h3>
+    ${conclusionLlana(R)}
 
     <h3>El paso que falta: qué dicen los analistas</h3>
     <div class="note" style="margin-top:.6rem">
@@ -3580,6 +3586,127 @@ function conclusiones(R){
 }
 
 /* ── la cadena entera: del dato al valor, y el precio DESPUÉS ── */
+/* De dónde ha salido cada dato del precio. Es la pregunta que más se repite
+   —«¿y esto de dónde lo has sacado?»— y hasta ahora había que confiar. */
+function origenDelPrecio(R){
+  const v = R.v, A = R.A;
+  const n = D.precioAno.filter(x=>x!==null).length;
+  const filas = [
+    ["El precio de hoy", mo(R.precio),
+     "Lo has escrito tú arriba, o lo ha traído el botón «Buscar» de Yahoo Finance.",
+     "Solo sirve para comparar al final. No entra en ningún cálculo."],
+    [`Los ${n} cierres de ${A[0]} a ${A[A.length-1]}`,
+     n ? `${mo(D.precioAno.find(x=>x!==null))} → ${mo([...D.precioAno].reverse().find(x=>x!==null))}` : "—",
+     "De Yahoo Finance, de la tabla de datos históricos de Investing, o escritos a mano.",
+     "Con ellos se calcula a cuántas veces su caja ha cotizado esta empresa cada año."],
+    ["El múltiplo que ha pagado el mercado",
+     R.cMult && R.cMult.evFcf ? `media ${mu(R.cMult.evFcf.media)} · mediana ${mu(R.cMult.evFcf.mediana)}` : "—",
+     "Sale de dividir el valor de la empresa entre su caja, año por año.",
+     "No es una opinión: es lo que se ha pagado de verdad."],
+    ["El múltiplo que usamos", mu(v.multObj),
+     VAL.mult !== null ? "Lo has puesto tú." : "El más bajo de los dos de arriba, por prudencia.",
+     "Es tu segunda decisión. Súbelo o bájalo y mira cuánto se mueve el resultado."],
+  ];
+  return `<div class="tw"><table class="rs">
+    <thead><tr><th>Dato</th><th style="text-align:right">Valor</th><th>De dónde sale</th><th>Para qué sirve</th></tr></thead>
+    <tbody>${filas.map(([a,b,c,d])=>`<tr>
+      <td class="l"><b>${a}</b></td>
+      <td class="n" style="color:var(--amber-strong)">${b}</td>
+      <td class="l" style="font-size:.86em">${c}</td>
+      <td class="l" style="font-size:.86em;color:var(--muted-txt)">${d}</td></tr>`).join("")}</tbody>
+    </table></div>
+    <div class="note" style="margin-top:.7rem">Fíjate en una cosa: <b>de los cuatro, solo el último
+    lo decides tú</b>. Los otros tres son hechos. Por eso el múltiplo es donde hay que pensar.</div>`;
+}
+
+/* La conclusión en cristiano. Lo que le contarías a alguien que no sabe nada
+   de esto si te preguntara «¿y entonces qué?». */
+function conclusionLlana(R){
+  const nom = ($("nombre").value||$("ticker").value||"la empresa").trim();
+
+  /* Sin valoración —flujo de caja negativo, vetos, falta el precio— no hay
+     número que explicar, pero sí hay conclusión. Y es la más importante. */
+  if(R.sinVal || R.sinPrecio || !R.v || !R.v.idc){
+    const fcf = R.der && R.der.fcf ? R.der.fcf[R.L] : null;
+    const quema = fcf !== null && !(fcf > 0);
+    return `<div class="kid">
+      <p><b>Imagina que ${esc(nom)} es una tienda</b> y que estás pensando si comprarla entera.</p>
+      <p><b>Aquí no hay número final, y eso ya es la respuesta.</b></p>
+      ${quema ? `<p>El método pone precio multiplicando el dinero que la tienda mete en la caja
+        cada año. Pero es que <b>esta tienda no mete dinero: lo saca</b> —
+        ${nf(Math.abs(fcf),0)} millones el último año. Multiplicar eso por un número no da un
+        precio, da un disparate.</p>` : `<p>Faltan datos para poner precio. Lo que sí se ha podido
+        calcular está arriba.</p>`}
+      ${R.veto && R.veto.length ? `<p>Además, el método tiene unas reglas que <b>paran el
+        análisis</b> cuando algo va muy mal, y aquí se han encendido
+        <b>${R.veto.length}</b>.</p>` : ""}
+      <div class="db" style="margin-top:1rem"><span class="t">Y entonces, ¿qué?</span>
+        Que una empresa así <b>puede ser una gran inversión</b> — si te crees que va a
+        recuperarse. Pero entonces no la estarías comprando por lo que gana, sino
+        <b>por lo que crees que ganará</b>. Eso es otra decisión, con otro riesgo, y esta
+        herramienta no la cubre. Aquí no se puede poner precio a una promesa.
+      </div>
+      <p style="margin-top:1rem;color:var(--muted)">Lo que sí te ha dicho el informe: si crece,
+      si gana al vender, si el beneficio llega a la caja y cuánto debe. Eso es el 80% del trabajo,
+      y en este caso es todo lo que hace falta saber.</p>
+    </div>`;
+  }
+
+  const v = R.v;
+  const barato = R.precio <= v.idc;
+  const dif = Math.abs(v.recorr);
+  const cal = R.score===null ? null : R.score>=70 ? "bueno" : R.score>=55 ? "normal" : "flojo";
+  return `
+  <div class="kid">
+    <p><b>Imagina que ${esc(nom)} es una tienda</b> y que estás pensando si comprarla entera.</p>
+
+    <p><b>1 · ¿Es buena la tienda?</b> ${
+      cal==="bueno" ? `Sí. Vende más cada año, se queda una buena parte de lo que entra, y ese
+        dinero llega de verdad a la caja.`
+      : cal==="normal" ? `Regular. Funciona, pero no destaca en nada. Ni para salir corriendo ni
+        para emocionarse.`
+      : cal===null ? `No hay datos suficientes para juzgarla.`
+      : `No mucho. Tiene varios números en rojo, y eso no lo arregla ningún precio.`}
+      ${R.veto.length ? ` <b style="color:#f87171">Además, el método ha encendido
+      ${R.veto.length} ${R.veto.length===1?"alarma":"alarmas"} y por eso no se puede valorar.</b>` : ""}</p>
+
+    <p><b>2 · ¿Cuánto dinero mete en la caja cada año?</b> Ahora mismo
+      <b>${nf(R.der.fcf[R.L],0)} millones</b>. No el beneficio que sale en las noticias: el dinero
+      de verdad, después de pagar lo que hace falta para que la tienda siga abierta.</p>
+
+    <p><b>3 · ¿Y dentro de cinco años?</b> Si sigue creciendo como hemos supuesto,
+      <b>${nf(v.fcf5,0)} millones</b>. Ese es el supuesto más importante de todo el informe, y lo
+      has puesto tú.</p>
+
+    <p><b>4 · ¿Cuánto valdría entonces?</b> Si la gente sigue pagando lo de siempre
+      —<b>${mu(v.multObj)}</b> veces esa caja—, cada trozo de la tienda valdría
+      <b>${mo(R.P.evFcf)}</b> dentro de cinco años.</p>
+
+    <p><b>5 · ¿Y cuánto puedo pagar hoy?</b> Aquí está el truco: si quieres ganar un
+      <b>${nf(v.obj*100,0)}% cada año</b>, hoy no puedes pagar ese precio — tienes que pagar menos,
+      para que la diferencia sea tu ganancia. Ese número es <b>${mo(v.idc)}</b>.</p>
+
+    <div class="db" style="margin-top:1rem"><span class="t">Y la respuesta es…</span>
+      ${barato
+        ? `La tienda pide <b>${mo(R.precio)}</b> y tú podías llegar hasta <b>${mo(v.idc)}</b>.
+           <b style="color:var(--green)">Cuesta menos de lo que puedes pagar</b>, con un
+           ${pc(dif)} de margen.<br><br>
+           Pero cuidado con lo que eso significa: <b>no quiere decir «compra»</b>. Quiere decir que
+           el precio ha dejado de ser el problema, y que ahora empieza el trabajo de verdad —
+           leer el informe anual y entender por qué está tan barata. Casi siempre hay un motivo.`
+        : `La tienda pide <b>${mo(R.precio)}</b> y tú podías llegar hasta <b>${mo(v.idc)}</b>.
+           <b style="color:var(--amber-strong)">Cuesta un ${pc(dif)} más de lo que te salen las
+           cuentas.</b><br><br>
+           Eso no significa que sea mala ni que vaya a bajar. Significa que <b>a este precio no
+           llegas a tu 15% anual</b>. Se apunta el número, y se espera.`}
+    </div>
+
+    <p style="margin-top:1rem;color:var(--muted)">Y una cosa que conviene recordar: todo esto sale
+    de suponer que el futuro se parecerá al pasado. <b>Nadie sabe si será así.</b> Por eso el
+    número no es una verdad — es una forma ordenada de pensar.</p>
+  </div>`;
+}
+
 function cadenaValoracion(R){
   if(!R.v || !R.v.idc) return `<div class="note">Faltan datos para reconstruir la cadena.</div>`;
   const v=R.v, d=R.der, L=R.L, A=R.A;
