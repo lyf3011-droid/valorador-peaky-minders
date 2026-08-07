@@ -230,6 +230,30 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
 .sug li.no{cursor:default;color:var(--muted-txt);font-size:.8rem}
 
 .pegagrid{display:grid;grid-template-columns:1fr;gap:1rem}
+/* la tira de los 5 pasos: dónde estoy y qué llevo hecho, de un vistazo */
+.ptira{display:flex;gap:.4rem;flex-wrap:wrap}
+.pchip{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--font-m);font-size:.7rem;
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--soft);
+  border-radius:20px;padding:.4rem .8rem;cursor:pointer;transition:all .15s}
+.pchip:hover{border-color:var(--amber-line);color:var(--text)}
+.pchip .pc-n{display:inline-flex;align-items:center;justify-content:center;width:1.1rem;height:1.1rem;
+  border-radius:50%;background:var(--line-strong);color:var(--text);font-size:.62rem}
+.pchip .pc-e{color:var(--muted-txt);font-size:.66rem}
+.pchip.on{border-color:var(--amber);color:var(--text);background:var(--amber-muted)}
+.pchip.on .pc-n{background:var(--amber);color:#0a0a0a}
+.pchip.ok .pc-n{background:var(--green);color:#0a0a0a}
+.pchip.ok .pc-n::after{content:"✓";font-size:.6rem}
+.pchip.ok .pc-n{font-size:0}
+.pegabox.solo{border-color:var(--amber-line)}
+.pnav{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-top:.9rem;
+  padding-top:.8rem;border-top:1px solid var(--line)}
+.pnav button{font-family:var(--font-m);font-size:.72rem;border:1px solid var(--line-strong);
+  background:transparent;color:var(--soft);border-radius:7px;padding:.5rem .9rem;cursor:pointer}
+.pnav button:hover:not(:disabled){border-color:var(--amber-line);color:var(--text)}
+.pnav button:disabled{opacity:.3;cursor:default}
+.pnav button.pri{background:var(--amber);border-color:var(--amber);color:#0a0a0a;font-weight:700}
+.pnav-x{flex:1;min-width:12rem;font-size:.78rem;color:var(--muted-txt)}
+@media print{.ptira,.pnav{display:none!important}}
 .pegabox{border:1px solid var(--line-strong);background:var(--surface);border-radius:10px;padding:1.1rem 1.2rem}
 .pegabox.ok{border-color:rgba(74,222,128,.45);background:rgba(74,222,128,.05)}
 .pegabox .pt{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem}
@@ -1367,6 +1391,8 @@ const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:n
   mEbit:null, dn5:null, dil:null, obj:15,
   /* proyección por partidas, al estilo de la plantilla */
   modo:null, pg:null, pm:null, pt:null, pint:null, prep:null, ptc:null,
+  /* el contraste externo: Fair Value de InvestingPro y el IDC del Excel */
+  fv:null, idcX:null,
   /* de dónde salen los supuestos: null, "analistas" o "forecast" */
   origen:null};
 
@@ -2250,42 +2276,97 @@ function leerHTMLInvesting(html){
 
 /* ── un cuadro de pegado por cuenta ── */
 const HTML_CAJA = {};                       /* HTML pegado en cada cuadro */
+/* ══════════════════ METER LOS DATOS · UN PASO CADA VEZ ══════════════════
+   Antes se veían los cinco cuadros a la vez con todas sus explicaciones. Para
+   alguien a quien no se le da bien la informática eso no es una guía: son cinco
+   cosas compitiendo, y el resultado es desorden y datos en el cuadro que no es.
+   Ahora se ve UNO, con su enlace y su explicación, y una tira arriba que dice
+   dónde estás y qué llevas hecho. Nada se ha quitado: se ha puesto en fila. */
+let PASO_PEGA = 0;
+const ORDEN_PEGA = ["IS","BS","CF","ER","MK"];
+
+function estadoPega(g){
+  const suyas = CONCEPTOS.filter(c => c.g===g).map(c=>c.k);
+  const todas = CONCEPTOS.filter(c => !c.auto).map(c=>c.k);
+  const lista = g === "ER" ? todas : suyas;
+  const total = lista.length;
+  const hechos = lista.filter(k => D[k].some(v=>v!==null)).length;
+  return {total, hechos, lleno: hechos===total};
+}
+
 function pintarPegaGrid(){
   const T = ($("ticker").value||"").trim().toUpperCase();
   const slug = slugDe(T);
-  $("pegagrid").innerHTML = ["IS","BS","CF","ER","MK"].map(g=>{
-    const f = FUENTE[g];
-    const url = !T ? null
-      : g==="MK" ? (slug ? `https://www.investing.com/equities/${slug}-historical-data`
-                         : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`)
-      : slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
-             : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
-    /* el cajón de sastre mide sobre TODAS las partidas; los demás, sobre las suyas */
-    const suyas = CONCEPTOS.filter(c => c.g===g).map(c=>c.k);
-    const todas = CONCEPTOS.filter(c => !c.auto).map(c=>c.k);
-    const lista = g === "ER" ? todas : suyas;
-    const total  = lista.length;
-    const hechos = lista.filter(k => D[k].some(v=>v!==null)).length;
-    const ayuda = g==="ER"
-      ? `<b>El cajón de sastre.</b> Pega aquí <b>cualquier otra tabla</b> y me quedo solo con las
-         partidas que sigan vacías — nunca pisa lo que ya tienes.<br>
-         La más útil es <b>EBITDA Reconciliation</b>, donde está la
-         <code>Depreciation</code> que las otras no traen. Cambia el desplegable de arriba en
-         InvestingPro, copia y pega.`
-      : g==="MK"
-      ? `Pega los <b>${N} precios de cierre</b>, del más antiguo al más nuevo. Vale una línea,
-         una columna o la tabla de datos históricos.`
-      : `Copia la tabla entera desde <b>«Period Ending»</b> hasta el final y pégala aquí.
-         Se recomienda <b>Investing en inglés</b>; si lo tienes en español también lo reconoce.`
-        + (g==="CF" ? `<br><span style="color:var(--muted-txt)">Dos se quedarán vacías y no es un
-           fallo: el <b>CapEx de mantenimiento</b> está en el cuadro de abajo, y los <b>pagos en
-           acciones</b> Investing no los publica — se traen de la SEC o se dejan, que son
-           informativos.</span>` : "");
-    return `<div class="pegabox${hechos===total?" ok":""}" data-g="${g}">
-      <div class="pt"><span class="pn">${esc(G[g])}</span>
-        <span class="pe">${hechos}/${total} ${total===1?"partida":"partidas"}</span></div>
-      <div style="font-size:.8rem;color:var(--soft);margin:.1rem 0 .6rem">${ayuda}</div>
-      ${url?`<a class="th-link" href="${url}" target="_blank" rel="noopener">abrir en InvestingPro ↗</a>`:""}
+  if(PASO_PEGA < 0) PASO_PEGA = 0;
+  if(PASO_PEGA >= ORDEN_PEGA.length) PASO_PEGA = ORDEN_PEGA.length-1;
+  const g = ORDEN_PEGA[PASO_PEGA];
+  const f = FUENTE[g];
+
+  /* Dos páginas distintas de InvestingPro, y confundirlas es el error nº 1:
+       · las tres cuentas están en la ficha clásica  investing.com/equities/…
+       · EBITDA Reconciliation y Forecasts, en el InvestingPro nuevo
+         investing.com/pro/BOLSA:TICKER/financials/…  — y ahí el prefijo de la
+         bolsa (NASDAQGS:, NYSE:…) no se puede adivinar desde el ticker, así que
+         se manda al buscador de Investing, que sí lleva al sitio correcto. */
+  const esNuevo = (g==="ER");
+  const url = !T ? null
+    : esNuevo ? "https://www.investing.com/search/?q=" + encodeURIComponent(T)
+    : g==="MK" ? (slug ? "https://www.investing.com/equities/" + slug + "-historical-data"
+                       : "https://www.investing.com/search/?q=" + encodeURIComponent(T))
+    : slug ? "https://www.investing.com/equities/" + slug + "-" + f.inv
+           : "https://www.investing.com/search/?q=" + encodeURIComponent(T);
+
+  const e = estadoPega(g);
+
+  /* la tira de arriba: dónde estoy, qué llevo, y se puede saltar pulsando */
+  const tira = ORDEN_PEGA.map((k,i)=>{
+    const s = estadoPega(k);
+    return `<button type="button" class="pchip${i===PASO_PEGA?" on":""}${s.lleno?" ok":""}"
+      data-paso="${i}"><span class="pc-n">${i+1}</span> ${esc(G[k])}
+      <span class="pc-e">${s.hechos}/${s.total}</span></button>`;
+  }).join("");
+
+  const ayuda = g==="ER"
+    ? `<b>Esto es OTRA página de InvestingPro</b>, no la de las cuentas. Es el InvestingPro
+       nuevo, el de la dirección <code>investing.com/pro/<b>BOLSA:TICKER</b>/financials/…</code>
+       — por ejemplo <code>…/pro/NASDAQGS:TSLA/financials/ebitda</code>.
+       <details class="mas" style="margin-top:.5rem"><summary>Cómo llegar y qué copiar</summary>
+       <div style="padding:.5rem 0 0">
+         <b>1.</b> Pulsa el enlace de abajo: te lleva al buscador de Investing. Elige la empresa.<br>
+         <b>2.</b> Entra en <b>InvestingPro</b> → <b>Financials</b>.<br>
+         <b>3.</b> En el desplegable de arriba elige <b>EBITDA Reconciliation</b> —ahí está la
+           <code>Depreciation</code> sola, que la ficha clásica no trae— o <b>Forecasts</b>,
+           que trae la proyección de los analistas.<br>
+         <b>4.</b> Comprueba los <b>años</b> igual que antes y copia la tabla entera.<br>
+         <b>5.</b> Pégala aquí: me quedo <b>solo con lo que siga vacío</b> y nunca piso lo tuyo.
+       </div></details>`
+    : g==="MK"
+    ? `<b>Y esto es una tercera página</b>: los precios no están en las cuentas.
+       Pega los <b>${N} precios de cierre</b>, del más antiguo al más nuevo.
+       <details class="mas" style="margin-top:.5rem"><summary>Dónde están y qué seleccionar</summary>
+       <div style="padding:.5rem 0 0">
+         En la ficha de la empresa, pestaña <b>Datos históricos</b>
+         (<code>…-historical-data</code>). Arriba se elige el <b>rango de fechas</b> y la
+         <b>frecuencia: Mensual o Anual</b>. Copia la columna de <b>cierre</b> de los últimos
+         ${N} años.<br>
+         <b>O más fácil:</b> el botón de Yahoo del paso del precio los trae solos.<br>
+         Vale una línea, una columna o la tabla entera: se reconoce igual.
+       </div></details>`
+    : `Copia la tabla entera desde <b>«Period Ending»</b> hasta el final y pégala aquí.
+       Es la ficha clásica de Investing (<code>investing.com/equities/…</code>).
+       Se recomienda <b>en inglés</b>; en español también lo reconoce.`
+      + (g==="CF" ? `<br><span style="color:var(--muted-txt)">Dos se quedarán vacías y no es un
+         fallo: el <b>CapEx de mantenimiento</b> sale del paso 4, y los <b>pagos en acciones</b>
+         Investing no los publica — se traen de la SEC o se dejan, que son informativos.</span>` : "");
+
+  $("pegagrid").innerHTML = `
+    <div class="ptira">${tira}</div>
+    <div class="pegabox solo${e.lleno?" ok":""}" data-g="${g}">
+      <div class="pt"><span class="pn">Paso ${PASO_PEGA+1} de 5 · ${esc(G[g])}</span>
+        <span class="pe">${e.hechos}/${e.total} ${e.total===1?"partida":"partidas"}</span></div>
+      <div style="font-size:.82rem;color:var(--soft);margin:.25rem 0 .7rem;line-height:1.6">${ayuda}</div>
+      ${url?`<a class="th-link" href="${url}" target="_blank" rel="noopener">${
+        esNuevo?"buscar la empresa en Investing ↗":"abrir en InvestingPro ↗"}</a>`:""}
       <textarea data-pega="${g}" placeholder="${g==="MK"?"85.19 101.95 156.79 220.97 …":"Pega aquí la tabla de "+esc(G[g].toLowerCase())+"…"}"></textarea>
       <div class="pb">
         <button type="button" class="pri" data-leer="${g}">Reconocer</button>
@@ -2295,24 +2376,39 @@ function pintarPegaGrid(){
       </div>
       <div class="pr" data-res="${g}"></div>
       ${g==="CF" ? `<div class="pr" id="resSEC"></div>` : ""}
+      <div class="pnav">
+        <button type="button" ${PASO_PEGA===0?"disabled":""} data-mover="-1">← anterior</button>
+        <span class="pnav-x">${e.lleno
+          ? `<b style="color:var(--green)">Este paso está completo.</b>`
+          : `Puedes seguir sin completarlo: el informe calcula con lo que haya.`}</span>
+        <button type="button" class="${e.lleno?"pri":""}" ${PASO_PEGA===ORDEN_PEGA.length-1?"disabled":""}
+          data-mover="1">siguiente →</button>
+      </div>
     </div>`;
-  }).join("");
 
   $("pegagrid").querySelectorAll("textarea").forEach(ta=>{
-    ta.addEventListener("paste", e => {
-      const dt = e.clipboardData || window.clipboardData;
+    ta.addEventListener("paste", ev => {
+      const dt = ev.clipboardData || window.clipboardData;
       const html = dt ? dt.getData("text/html") : "";
       HTML_CAJA[ta.dataset.pega] = (html && html.includes("<table")) ? html : null;
       setTimeout(()=>leerCaja(ta.dataset.pega), 80);      /* reconoce solo al pegar */
     });
   });
   $("pegagrid").querySelectorAll("[data-leer]").forEach(b=>b.onclick=()=>leerCaja(b.dataset.leer));
+  $("pegagrid").querySelectorAll("[data-paso]").forEach(b=>b.onclick=()=>{
+    PASO_PEGA = +b.dataset.paso; pintarPegaGrid();
+    $("pegagrid").scrollIntoView({behavior:modoScroll(),block:"nearest"});
+  });
+  $("pegagrid").querySelectorAll("[data-mover]").forEach(b=>b.onclick=()=>{
+    PASO_PEGA += +b.dataset.mover; pintarPegaGrid();
+    $("pegagrid").scrollIntoView({behavior:modoScroll(),block:"nearest"});
+  });
   enlazarAjusteAnios();
   if($("btnSEC")) $("btnSEC").onclick = () => traerSEC("cf");
   $("pegagrid").querySelectorAll("[data-limpiar]").forEach(b=>b.onclick=()=>{
-    const g=b.dataset.limpiar;
-    CONCEPTOS.filter(c=>c.g===g).forEach(c=>D[c.k]=new Array(N).fill(null));
-    HTML_CAJA[g]=null; pintarMatriz(); pintarPegaGrid(); guardarTrabajo();
+    const k=b.dataset.limpiar;
+    CONCEPTOS.filter(c=>c.g===k).forEach(c=>D[c.k]=new Array(N).fill(null));
+    HTML_CAJA[k]=null; pintarMatriz(); pintarPegaGrid(); guardarTrabajo();
   });
 }
 
@@ -3506,8 +3602,84 @@ function pasoValoracion(R){
         <tr><td class="l">× 0,85 = <b>zona de análisis</b></td><td class="n"><b>${mo(v.zona)}</b></td></tr>
        </tbody></table>
      </div></details>
+     ${cuadroFairValue(R)}
      <div class="note">Un estado operativo <b>abre un análisis</b>. Nunca autoriza una compra por sí mismo.</div>`,
      "p6","Precio");
+}
+
+/* ── El contraste contra InvestingPro ──────────────────────────────────────
+   Un número solo no da confianza; dos que se parecen, sí. Aquí se pone al lado
+   el Fair Value que publica InvestingPro. NO es el mismo cálculo —ellos promedian
+   una docena de modelos y descuentan a un año, nosotros proyectamos cinco y
+   exigimos un 15% anual— así que no tienen por qué coincidir, y decirlo forma
+   parte del ejercicio. El dato lo escribe el alumno mirándolo: no se inventa. */
+function cuadroFairValue(R){
+  const v = R.v;
+  const fv  = (VAL.fv  !== null && VAL.fv  !== undefined && isFinite(VAL.fv))  ? +VAL.fv  : null;
+  const idcX= (VAL.idcX!== null && VAL.idcX!== undefined && isFinite(VAL.idcX))? +VAL.idcX: null;
+
+  const fila = (et, val, nota) => `<tr><td class="l">${et}</td>
+    <td class="n"><b style="color:var(--amber-strong)">${val===null?"—":mo(val)}</b></td>
+    <td class="l" style="font-size:.82rem;color:var(--soft)">${nota}</td></tr>`;
+
+  const dif = (a,b) => (a===null||b===null||!b) ? "—"
+    : `${a/b-1>=0?"+":"−"}${pc(Math.abs(a/b-1))}`;
+
+  return `
+  <div class="panel" style="margin-top:1.2rem">
+    <h3 style="margin-top:0">Contrasta tu número con InvestingPro</h3>
+    <p class="step-w">Antes de fiarte de un precio objetivo, ponlo al lado de otro que no hayas
+      calculado tú. En InvestingPro está el <b>Fair Value</b>, en la pestaña <b>Overview</b> de la
+      empresa. <b>Míralo y escríbelo aquí.</b> No lo trae la herramienta a propósito: verlo con tus
+      ojos y anotarlo <em>es</em> parte del ejercicio.</p>
+
+    <div class="vgrid">
+      <div><label>Fair Value de InvestingPro (${esc(MON)})</label>
+        <input class="vin" data-v="fv" type="number" step="any" placeholder="p. ej. 512.40"
+          value="${fv!==null?fv:""}"></div>
+      <div><label>IDC de tu plantilla de Excel (opcional)</label>
+        <input class="vin" data-v="idcX" type="number" step="any" placeholder="si lo has calculado"
+          value="${idcX!==null?idcX:""}"></div>
+    </div>
+
+    <div class="tw" style="margin-top:.9rem"><table class="rs">
+      <thead><tr><th>De dónde sale</th><th style="text-align:right">Precio</th><th>Qué mide</th></tr></thead>
+      <tbody>
+        ${fila("<b>Tu IDC</b> · este informe", v.idc,
+          `Proyecta 5 años y te exige un <b>${nf(v.obj*100,0)}% anual</b>. Es un precio de entrada, no una tasación.`)}
+        ${fila("Fair Value · InvestingPro", fv,
+          "Promedio de una docena de modelos, a 12 meses y sin exigir rentabilidad. Es una tasación.")}
+        ${idcX!==null ? fila("IDC · tu Excel", idcX, "El mismo método, calculado a mano en la plantilla.") : ""}
+        <tr><td class="l">Lo que pide hoy el mercado</td>
+          <td class="n"><b>${mo(R.precio)}</b></td>
+          <td class="l" style="font-size:.82rem;color:var(--soft)">El único dato que no es una opinión.</td></tr>
+      </tbody></table></div>
+
+    ${fv===null ? `<div class="note" style="margin-top:.8rem">En cuanto escribas el Fair Value,
+       aquí aparece la comparación y qué significa que se parezcan o no.</div>` : (()=>{
+      const rel = v.idc/fv - 1;
+      const cerca = Math.abs(rel) <= 0.15;
+      return `<div class="db" style="margin-top:1rem"><span class="t">Y esto qué significa</span>
+        Tu IDC está un <b>${dif(v.idc,fv)}</b> respecto al Fair Value de Investing
+        ${idcX!==null?`, y un <b>${dif(v.idc,idcX)}</b> respecto al de tu Excel`:""}.
+        ${cerca
+          ? `<b style="color:var(--green)">Están cerca</b>, y eso es buena señal: dos caminos muy
+             distintos llegan casi al mismo sitio. No demuestra que el número sea correcto —los dos
+             podrían equivocarse igual—, pero sí que <b>no has metido la pata en los datos</b>.`
+          : rel < 0
+          ? `<b>Tu número es bastante más bajo.</b> Es lo normal y no es un error: tú exiges un
+             ${nf(v.obj*100,0)}% anual durante cinco años y ellos no exigen nada. Si la diferencia
+             pasa del 40%, mira igualmente el crecimiento y el múltiplo que has puesto.`
+          : `<b>Tu número es bastante más alto</b>, y eso sí merece una parada. Con el descuento del
+             ${nf(v.obj*100,0)}% deberías salir <em>por debajo</em> de una tasación normal. Revisa el
+             crecimiento del paso 6 y el múltiplo del 7: probablemente uno de los dos va suelto.`}
+      </div>`;
+    })()}
+
+    <div class="note" style="margin-top:.8rem"><b>No son el mismo cálculo y no tienen que coincidir.</b>
+      El Fair Value contesta «¿cuánto vale?». El IDC contesta «¿cuánto puedo pagar hoy para ganar un
+      ${nf(v.obj*100,0)}% anual?». Son dos preguntas distintas, y la segunda siempre da un número menor.</div>
+  </div>`;
 }
 
 /* Resumen cuando no hay precio objetivo: el semáforo del negocio sí se puede
