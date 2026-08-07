@@ -96,6 +96,11 @@ table.mx tr:hover td.c0{background:var(--raised)}
 .cl .req{color:var(--amber);font-size:.7rem}
 .cf{font-family:var(--font-m);font-size:.62rem;color:var(--amber);opacity:.75;line-height:1.3;margin-top:.1rem;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* segunda línea, para las partidas que necesitan una explicación:
+   el nombre de la fila va en ámbar y el matiz debajo, en gris y sin gritar */
+.cn{font-size:.68rem;color:var(--muted-txt);line-height:1.45;margin-top:.2rem;max-width:34rem;
+  white-space:normal}
+.cn i{color:var(--soft);font-style:normal;font-family:var(--font-m);font-size:.94em}
 .fx{font-family:var(--font-m);font-size:.62rem;background:rgba(14,143,191,.16);color:var(--d2-hi);
   border:1px solid rgba(14,143,191,.4);border-radius:4px;padding:.02rem .28rem;cursor:pointer;
   margin-left:.15rem;flex:none}
@@ -1029,7 +1034,8 @@ Paleta de datos validada para daltonismo y contraste sobre fondo oscuro.<br><br>
 const $ = id => document.getElementById(id);
 
 /* ══════════════════ CONCEPTOS ══════════════════ */
-const G = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja", MK:"Mercado"};
+const G = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja",
+           ER:"EBITDA Reconciliation", MK:"Mercado"};
 const CONCEPTOS = [
  {k:"ventas",   g:"IS", lab:"Ventas",                     src:"Total Revenues", req:1},
  {k:"ebitda",   g:"IS", lab:"EBITDA",                     src:"EBITDA", req:1,
@@ -1055,7 +1061,8 @@ const CONCEPTOS = [
 
  {k:"da",       g:"CF", lab:"Depreciación y amortización",src:"Depreciation & Amortization, Total", req:1,
    calc:{op:"−", a:"EBITDA", b:"Operating Income"}},
- {k:"capexMant",g:"CF", lab:"CapEx de mantenimiento",     src:"la Depreciation sola · TIKR la publica, Investing no · si la dejas vacía se usa la D&A total y el resultado sale más prudente", pos:1,
+ {k:"capexMant",g:"CF", lab:"CapEx de mantenimiento",     src:"Depreciation (la sola, no la D&A)",
+   nota:"Investing la trae en la pestaña <i>EBITDA Reconciliation</i>. Si la dejas vacía se usa la D&A total y el resultado sale más prudente.", pos:1,
    calc:{op:"−", a:"Depreciation & Amortization, Total", b:"Amortization (si solo aparece la amortización)"}},
  {k:"capex",    g:"CF", lab:"CapEx total",                src:"Capital Expenditure", pos:1},
  {k:"adquisi",  g:"CF", lab:"Adquisiciones",              src:"Cash Acquisitions", pos:1},
@@ -1423,6 +1430,9 @@ const FUENTE = {
   IS:{sa:"financials/",                    ya:"financials",    inv:"income-statement", lab:"cuenta de resultados"},
   BS:{sa:"financials/balance-sheet/",      ya:"balance-sheet", inv:"balance-sheet",    lab:"balance"},
   CF:{sa:"financials/cash-flow-statement/",ya:"cash-flow",     inv:"cash-flow",        lab:"flujo de caja"},
+  /* la reconciliación del EBITDA no tiene página propia: es un desplegable
+     dentro de la misma pantalla de cuentas, así que el enlace va a la de resultados */
+  ER:{sa:"financials/",                    ya:"financials",    inv:"income-statement", lab:"EBITDA Reconciliation"},
   MK:{sa:"history/",                       ya:"history",       inv:"historical-data",  lab:"cotización histórica"}
 };
 
@@ -1574,7 +1584,8 @@ function pintarMatriz(){
   filas.forEach(c=>{
     h += `<tr><td class="c0"><div class="cl">${esc(c.lab)}${c.req?'<span class="req">●</span>':""}`
        + (c.calc?`<button type="button" class="fx" data-calc="${c.k}" title="Calcular a partir de otras dos partidas">ƒ</button>`:"")
-       + `</div><div class="cf" title="${esc(c.src)}">${esc(c.src)}${c.pos?" · en positivo":""}</div></td>`;
+       + `</div><div class="cf" title="${esc(c.src)}">${esc(c.src)}${c.pos?" · en positivo":""}</div>`
+       + (c.nota ? `<div class="cn">${c.nota}</div>` : "") + `</td>`;
     for(let i=0;i<N;i++){
       const v = D[c.k][i];
       h += `<td><input data-k="${c.k}" data-i="${i}" inputmode="decimal"
@@ -2010,15 +2021,49 @@ async function verificarIA(){
     $("progFalta").textContent = "Cópiala del cuadro de texto de arriba.";
   }
 }
+/* El contador separa lo que PARA el análisis de lo que solo lo afina. Antes
+   decía «faltan obligatorios: …» sin distinguir, y una partida opcional
+   ausente parecía tan grave como una imprescindible. */
 function progreso(){
-  const tot = CONCEPTOS.length*N;
-  let hechas=0; CONCEPTOS.forEach(c=>D[c.k].forEach(v=>{ if(v!==null) hechas++; }));
-  const p = Math.round(hechas/tot*100);
+  /* Dos partidas no cuentan para el porcentaje cuando están cubiertas de otra
+     forma, porque si no la barra se queda en el 87% para siempre y parece que
+     falta algo cuando no falta:
+       · CapEx de mantenimiento — si hay D&A, el método la usa y sale más prudente
+       · Pagos en acciones — no entran en el flujo de caja, son informativos    */
+  const cubiertaPorDA = D.capexMant.every(v=>v===null) && D.da.some(v=>v!==null);
+  const fuera = new Set(["sbc"]);
+  if(cubiertaPorDA) fuera.add("capexMant");
+  const cuentan = CONCEPTOS.filter(c => !fuera.has(c.k));
+  const tot = cuentan.length*N;
+  let hechas=0; cuentan.forEach(c=>D[c.k].forEach(v=>{ if(v!==null) hechas++; }));
+  const p = tot ? Math.round(hechas/tot*100) : 0;
   $("progTxt").textContent = p+" %";
   $("progFill").style.width = p+"%";
-  const falta = REQ.filter(k=>D[k].filter(v=>v!==null).length===0)
-    .map(k=>CONCEPTOS.find(c=>c.k===k).lab);
-  $("progFalta").textContent = falta.length ? "faltan obligatorios: "+falta.join(", ") : "obligatorios completos ✓";
+
+  const vacia = k => D[k] && D[k].every(v=>v===null);
+  const nom = k => (CONCEPTOS.find(c=>c.k===k)||{}).lab || k;
+  const faltanReq = REQ.filter(vacia).map(nom);
+  const faltanOpt = CONCEPTOS.filter(c=>!c.req && !c.auto && !fuera.has(c.k) && vacia(c.k)).map(c=>c.lab);
+  const cubiertas = [
+    cubiertaPorDA ? "el CapEx de mantenimiento se aproxima con la D&amp;A" : null,
+    vacia("sbc")  ? "los pagos en acciones no entran en el flujo de caja" : null,
+  ].filter(Boolean);
+  const pie = cubiertas.length
+    ? `<div style="font-size:.78rem;color:var(--muted-txt);margin-top:.2rem">Investing no publica
+       dos partidas y no hace falta buscarlas: ${cubiertas.join(" · ")}.</div>` : "";
+
+  $("progFalta").innerHTML = faltanReq.length
+    ? `<b style="color:#f87171">Faltan ${faltanReq.length} imprescindibles:</b>
+       ${esc(faltanReq.join(", "))}
+       ${faltanOpt.length?`<span style="color:var(--muted-txt)"> · y ${faltanOpt.length} que solo
+         afinan el resultado</span>`:""}`
+    : faltanOpt.length
+      ? `<b style="color:var(--green)">Ya se puede analizar ✓</b>
+         <span style="color:var(--muted-txt)">· faltan ${faltanOpt.length} que solo afinan:
+         ${esc(faltanOpt.slice(0,4).join(", "))}${faltanOpt.length>4?"…":""}</span>`
+      : `<b style="color:var(--green)">Completo ✓</b>
+         <span style="color:var(--muted-txt)">· todo lo que hace falta está puesto</span>`;
+  $("progFalta").innerHTML += pie;
 }
 
 /* ══════════════════ RECONOCEDOR DE TABLAS PEGADAS ══════════════════
@@ -2108,24 +2153,31 @@ const HTML_CAJA = {};                       /* HTML pegado en cada cuadro */
 function pintarPegaGrid(){
   const T = ($("ticker").value||"").trim().toUpperCase();
   const slug = slugDe(T);
-  $("pegagrid").innerHTML = ["IS","BS","CF","MK"].map(g=>{
+  $("pegagrid").innerHTML = ["IS","BS","CF","ER","MK"].map(g=>{
     const f = FUENTE[g];
     const url = !T ? null
       : g==="MK" ? (slug ? `https://www.investing.com/equities/${slug}-historical-data`
                          : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`)
       : slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
              : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
-    const total = CONCEPTOS.filter(c=>c.g===g).length;
-    const hechos = CONCEPTOS.filter(c=>c.g===g && D[c.k].some(v=>v!==null)).length;
-    const ayuda = g==="MK"
+    const suyas = g === "ER" ? ["capexMant","da","ebitda"]
+                             : CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
+    const total = suyas.length;
+    const hechos = suyas.filter(k => D[k].some(v=>v!==null)).length;
+    const ayuda = g==="ER"
+      ? `Aquí es donde está <b>la partida que falta casi siempre</b>: la
+         <code>Depreciation &amp; Amortization</code> de la pestaña <b>EBITDA Reconciliation</b>.
+         Cambia el desplegable de arriba en InvestingPro, copia la tabla y pégala aquí.
+         Solo se queda con lo que las otras no traen.`
+      : g==="MK"
       ? `Pega los <b>${N} precios de cierre</b>, del más antiguo al más nuevo. Vale una línea,
          una columna o la tabla de datos históricos.`
       : `Copia la tabla entera desde <b>«Period Ending»</b> hasta el final y pégala aquí.
          Se recomienda <b>Investing en inglés</b>; si lo tienes en español también lo reconoce.`
-        + (g==="CF" ? `<br><b style="color:var(--amber-strong)">Dos no las publica Investing</b> en
-           esta tabla y se quedarán vacías: <b>CapEx de mantenimiento</b> —la <i>Depreciation</i>
-           sola— y <b>pagos en acciones (SBC)</b>. No es un fallo de nada:
-           <b>púlsalo abajo y las traigo de la SEC</b>, que es donde sí están.` : "");
+        + (g==="CF" ? `<br><span style="color:var(--muted-txt)">Dos se quedarán vacías y no es un
+           fallo: el <b>CapEx de mantenimiento</b> está en el cuadro de abajo, y los <b>pagos en
+           acciones</b> Investing no los publica — se traen de la SEC o se dejan, que son
+           informativos.</span>` : "");
     return `<div class="pegabox${hechos===total?" ok":""}" data-g="${g}">
       <div class="pt"><span class="pn">${esc(G[g])}</span>
         <span class="pe">${hechos}/${total} ${total===1?"partida":"partidas"}</span></div>
@@ -2152,6 +2204,7 @@ function pintarPegaGrid(){
     });
   });
   $("pegagrid").querySelectorAll("[data-leer]").forEach(b=>b.onclick=()=>leerCaja(b.dataset.leer));
+  enlazarAjusteAnios();
   if($("btnSEC")) $("btnSEC").onclick = () => traerSEC("cf");
   $("pegagrid").querySelectorAll("[data-limpiar]").forEach(b=>b.onclick=()=>{
     const g=b.dataset.limpiar;
@@ -2175,17 +2228,42 @@ function avisoAnios(txt){
   if(!t) return "";
   const A = anios(), a0 = A[0], a1 = A[A.length-1];
   if(t.min === a0 && t.max === a1) return "";
-  return `<div class="warn" style="margin-top:.5rem"><b>Ojo con los años.</b> Esta tabla va de
-    <b>${t.min} a ${t.max}</b>, y arriba tienes configurado <b>${a0} a ${a1}</b>. Los datos se
-    colocan por orden, así que estarían desplazados. Cambia el «último año cerrado» o el número de
-    años, y vuelve a pegar.</div>`;
+  /* Muchas empresas no cierran en diciembre —Nvidia en enero, Microsoft en
+     junio— así que sus diez ejercicios no son 2016-2025. En vez de mandar al
+     usuario a cuadrarlo a mano, se ofrece hacerlo de un clic. */
+  return `<div class="warn" style="margin-top:.5rem"><b>Esta tabla va de ${t.min} a ${t.max}</b>,
+    y aquí tienes configurado <b>${a0} a ${a1}</b>. Los datos se colocan por orden, así que
+    quedarían desplazados ${Math.abs(t.max-a1)} ${Math.abs(t.max-a1)===1?"año":"años"}.
+    <button type="button" class="pri" data-fijaranios="${t.max}|${t.max-t.min+1}"
+      style="margin-top:.5rem;font-family:var(--font-m);font-size:.7rem;padding:.4rem .8rem;
+      border-radius:6px;border:1px solid var(--amber);background:var(--amber);color:#0a0a0a;
+      cursor:pointer">Ajustar a ${t.min}–${t.max} y volver a leer</button></div>`;
+}
+
+/* El botón que ajusta los años a los que trae la tabla pegada. Vive dentro del
+   mensaje de resultado, que se reescribe cada vez, así que hay que volver a
+   engancharlo después de cada repintado. */
+function enlazarAjusteAnios(){
+  document.querySelectorAll("#pegagrid [data-fijaranios]").forEach(b => b.onclick = () => {
+    const [ult, n] = b.dataset.fijaranios.split("|").map(Number);
+    const nuevo = Math.max(3, Math.min(10, n));
+    if(nuevo !== N){ $("nAnios").value = String(nuevo); cambiarN(); }
+    ANIO_FIN = ult; $("anioFin").value = ult;
+    /* con los años buenos, se relee todo lo que hubiera pegado */
+    ["IS","BS","CF"].forEach(g => { if(HTML_CAJA[g]) leerCaja(g); });
+    pintarMatriz(); guardarTrabajo();
+  });
 }
 
 function leerCaja(g){
   const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
   const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
   if(g==="MK"){ leerPrecios(ta, caja); return; }
-  const soloDe = CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
+  /* El cuadro de EBITDA Reconciliation no tiene partidas propias: pesca las que
+     las tablas normales no traen —la Depreciation sola sobre todo— sin tocar
+     nada de lo que ya hayas metido por otro lado. */
+  const soloDe = g === "ER" ? ["capexMant","da","ebitda"]
+                            : CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
   let filas = [];
   if(HTML_CAJA[g]){ try{ filas = leerHTMLInvesting(HTML_CAJA[g]); }catch(e){} }
   if(!filas.length && ta.value.trim()) filas = leerTextoPlano(ta.value);
@@ -2224,6 +2302,9 @@ function leerCaja(g){
   pintarPegaGrid();
   $("pegagrid").querySelector(`textarea[data-pega="${g}"]`).value = ta.value;
   $("pegagrid").querySelector(`[data-res="${g}"]`).innerHTML = caja.innerHTML;
+  /* el botón de ajustar los años nace aquí, después de repintar la rejilla,
+     así que hay que darle su función ahora o no responde a nada */
+  enlazarAjusteAnios();
 }
 
 /* el cuadro de mercado: una lista de cierres, o la tabla de datos históricos entera */
