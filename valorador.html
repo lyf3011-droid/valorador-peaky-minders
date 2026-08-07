@@ -2870,7 +2870,7 @@ function cuentaHasta(el, txtFinal){
         dec = (m[0].split(",")[1]||"").length, t0 = performance.now();
   if(!isFinite(fin)){ el.textContent = txtFinal; return; }
   (function tick(t){
-    const p = Math.min(1,(t-t0)/700), v = fin*(1-Math.pow(1-p,3));
+    const p = Math.min(1,(t-t0)/380), v = fin*(1-Math.pow(1-p,3));
     el.textContent = txtFinal.replace(m[0], v.toLocaleString("es-ES",
       {minimumFractionDigits:dec,maximumFractionDigits:dec}));
     if(p<1) requestAnimationFrame(tick); else el.textContent = txtFinal;
@@ -2882,9 +2882,13 @@ function animarInforme(){
     if(!e.isIntersecting) return; obsNum.unobserve(e.target);
     cuentaHasta(e.target, e.target.textContent);
   }),{threshold:.6});
-  document.querySelectorAll("#informe .kpi .v, #informe .veredicto .n, #informe .score-n")
-    .forEach(el=>obsNum.observe(el));
-  const ver = document.querySelector("#informe .veredicto .n");
+  /* Solo animan las cifras de las preguntas 1 a 5. El bloque del precio no:
+     ahí conviven el IDC, la escala y las tarjetas, y si unos cuentan y otros
+     no, durante ese instante los números NO cuadran entre sí y parece que el
+     cálculo está mal. Es exactamente lo que hacía dudar. */
+  document.querySelectorAll("#informe .kpi .v, #informe .score-n")
+    .forEach(el => { if(!el.closest("#p6")) obsNum.observe(el); });
+  const ver = document.querySelector("#informe .veredicto");
   if(ver){ const oS = new IntersectionObserver(es=>es.forEach(e=>{
     if(e.isIntersecting){ SND.toca(); oS.disconnect(); } }),{threshold:.6}); oS.observe(ver); }
   const obsStep = new IntersectionObserver(es=>es.forEach(e=>{
