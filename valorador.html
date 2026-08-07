@@ -140,6 +140,29 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
 #fuentes .red b{color:var(--amber)}
 
 /* ═══ UN CUADRO DE PEGADO POR CUENTA ═══ */
+/* el protocolo: InvestingPro manda, y en inglés */
+.protocolo{border:1px solid var(--amber-line);background:var(--amber-muted);border-radius:10px;
+  padding:1rem 1.2rem;margin-bottom:1rem}
+.protocolo .pr-t{font-family:var(--font-m);font-size:.68rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--amber-strong);margin-bottom:.6rem}
+.protocolo .pr-l{margin:0;padding-left:1.15rem;font-size:.86rem;line-height:1.6;color:var(--soft)}
+.protocolo .pr-l li{margin:.45rem 0}
+.protocolo .pr-l li::marker{color:var(--amber);font-family:var(--font-m);font-size:.8rem}
+.protocolo .pr-x{display:block;font-size:.8rem;color:var(--muted-txt);margin-top:.15rem}
+.protocolo .pr-o{margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--amber-line);
+  font-size:.84rem;color:var(--soft);line-height:1.6}
+@media print{.protocolo{display:none!important}}
+
+/* lo que falta se dice al final y en voz baja, no abriendo el informe */
+.faltan{margin-top:1.4rem;border:1px solid var(--line);border-radius:8px;background:transparent}
+.faltan>summary{list-style:none;cursor:pointer;padding:.6rem .85rem;font-family:var(--font-m);
+  font-size:.7rem;letter-spacing:.05em;color:var(--muted-txt);display:flex;align-items:center;gap:.5rem}
+.faltan>summary::-webkit-details-marker{display:none}
+.faltan>summary::before{content:"·";color:var(--amber);font-size:1.4rem;line-height:0}
+.faltan>summary:hover{color:var(--soft)}
+.faltan>div,.faltan>.tw{padding:0 .85rem .85rem}
+@media print{.faltan>summary{color:#666}}
+
 /* aviso de trabajo recuperado */
 .recup{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1.2rem;
   padding:.75rem 1rem;border:1px solid rgba(74,222,128,.4);background:rgba(74,222,128,.06);
@@ -721,12 +744,31 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
       <input type="checkbox" id="invertir" style="width:auto"> los años vienen del más nuevo al más viejo</label>
   </div>
 
+  <div class="protocolo">
+    <div class="pr-t">Protocolo · hazlo en este orden</div>
+    <ol class="pr-l">
+      <li><b>Pon InvestingPro en inglés.</b> Es la fuente principal y el método está escrito con sus
+        nombres de fila. El idioma se cambia en el pie de la página de Investing.
+        <span class="pr-x">Si lo tienes en español también lo reconoce, pero en inglés podrás
+        comparar tu trabajo con el de cualquier compañero.</span></li>
+      <li><b>Copia las tres cuentas enteras</b> —resultados, balance y flujo de caja— desde
+        «Period Ending» hasta el final, y pega cada una en su cuadro.
+        <span class="pr-x">Despliega los grupos antes de copiar: lo que esté plegado no se copia.</span></li>
+      <li><b>Trae los precios</b> con el botón de Yahoo, o pégalos en el cuadro de Mercado.</li>
+      <li><b>Solo si algo queda vacío</b>, pulsa el botón de la SEC. Investing no publica la
+        <i>Depreciation</i> sola ni el SBC, y ahí es donde están.</li>
+    </ol>
+    <div class="pr-o"><b>Lo obligatorio</b> son seis: <b>ventas · EBITDA · EBIT · impuestos ·
+      acciones diluidas</b> de la cuenta de resultados, y <b>caja, deuda a largo y patrimonio neto</b>
+      del balance. Con eso ya sale un análisis. Lo demás afina el resultado.</div>
+  </div>
+
   <div class="bar-actions" style="margin-bottom:.6rem">
     <button class="b2" id="btnSECtop" style="border-color:var(--amber-line);color:var(--amber-strong)">
       🏛 Rellenar desde la SEC (empresas de EE. UU.)</button>
     <button class="b2" id="btn10K">📄 Ver los informes anuales</button>
     <span style="font-size:.8rem;color:var(--soft);align-self:center">
-      Trae las 24 partidas de los informes oficiales. Solo rellena lo que esté vacío.</span>
+      Solo para lo que Investing no publica. Nunca pisa lo que ya has metido.</span>
   </div>
   <div class="pr" id="resSECtop" style="margin-bottom:.8rem"></div>
   <div class="pr" id="res10K" style="margin-bottom:.8rem"></div>
@@ -898,28 +940,30 @@ const SIN = {
  ventas:["total revenues","total revenue","revenue","revenues","ingresos","ventas",
          "ingresos totales"],
  ebitda:["ebitda"],
- ebit:["operating income","ebit","beneficio operativo","ingreso operativo",
-       "resultado de explotación","margen neto"],
+ ebit:["operating income","ebit","operating income (loss)","beneficio operativo",
+       "ingreso operativo","resultado de explotación","margen neto"],
  interes:["net interest expenses","net interest expense",
           "gastos netos por intereses","gastos por intereses netos"],
  impuestos:["income tax expense","income tax","provision for income taxes",
             "impuesto sobre la renta","impuesto sobre beneficios","impuesto de sociedades"],
  acciones:["diluted weighted average shares outstanding","diluted shares outstanding",
+           "weighted average diluted shares outstanding",
            "promedio ponderado diluido de acciones en circulación"],
  caja:["cash and equivalents","cash & equivalents","cash and cash equivalents",
        "efectivo y equivalentes","efectivo y equivalentes de efectivo"],
  inversion:["short term investments","short-term investments",
             "inversiones a corto plazo"],
  deudaCP:["short-term borrowings","short term borrowings",
-          "préstamos a corto plazo"],
+          "current portion of long-term debt","current portion of long-term debt / leases",
+          "préstamos a corto plazo","parte actual de la deuda a largo plazo"],
  deudaLP:["long-term debt","long term debt","deuda a largo plazo"],
  leaseCP:["current portion of leases","parte actual de arrendamientos"],
  leaseLP:["long-term leases","long term leases","arrendamientos a largo plazo"],
  equity:["total equity","total shareholders' equity","total shareholders equity",
          "patrimonio neto","patrimonio neto total"],
- cobrar:["accounts receivable, total","accounts receivable",
-         "total de cuentas por cobrar","cuentas por cobrar"],
- pagar:["accounts payable, total","accounts payable",
+ cobrar:["accounts receivable, total","accounts receivable","total receivables",
+         "total de cuentas por cobrar","cuentas por cobrar","créditos totales"],
+ pagar:["accounts payable, total","accounts payable","total accounts payable",
         "total de cuentas por pagar","cuentas por pagar"],
  inventar:["inventory","inventories","inventario","inventarios","existencias"],
  unearned:["unearned revenue current, total","unearned revenue current","deferred revenue",
@@ -2466,7 +2510,7 @@ function montarRail(){
   pasos.forEach(p=>obs.observe(p));
 }
 
-let R_ULT = null;
+let R_ULT = null, AVISO_FALTAN = "";
 function informe(R){
   R_ULT = R;
   const out=$("informe");
@@ -2475,22 +2519,25 @@ function informe(R){
   const A=R.A, d=R.der, L=R.L, nom=esc($("nombre").value||"la empresa");
   let H = "";
 
-  /* faltan datos: se avisa, pero el análisis sigue con lo que hay */
-  if(R.faltan && R.faltan.length) H += `<div class="step" style="border-color:var(--amber-line)">
-    <div class="step-h"><span class="step-n">Faltan datos</span>
-      <span class="step-q">El análisis está incompleto</span></div>
-    <p class="step-w">He calculado todo lo que permiten los datos que hay. Estas
-    ${R.faltan.length} partida${R.faltan.length>1?"s":""} faltan, y por eso hay huecos:</p>
-    <div class="tw"><table class="rs">
-      <thead><tr><th>Falta</th><th>Dónde está</th><th>Sin ella no se puede calcular</th></tr></thead>
-      <tbody>${R.faltan.map(f=>`<tr>
-        <td class="l"><b style="color:var(--amber-strong)">${esc(f.lab)}</b></td>
-        <td class="l" style="font-family:var(--font-m);font-size:.76rem">${esc(f.tab)} → ${esc(f.src)}</td>
-        <td class="l">${esc(f.impide)}</td></tr>`).join("")}</tbody>
-    </table></div>
-    <div class="note">Sube arriba, rellena lo que falte y vuelve a pulsar
-    <b>Analizar la empresa</b>. Lo que ya está calculado no se pierde.</div>
-  </div>`;
+  /* Faltan datos. Antes esto abría el informe con un cartel enorme y una tabla,
+     y lo primero que veías era lo que NO tenías. Ahora el informe empieza por
+     el análisis; lo que falta se dice al final, en una línea, y con el detalle
+     a un clic. Se calcula igual todo lo que los datos permitan. */
+  AVISO_FALTAN = (R.faltan && R.faltan.length) ? `
+    <details class="faltan">
+      <summary>${R.faltan.length} ${R.faltan.length>1?"partidas sin rellenar":"partida sin rellenar"} ·
+        el resto del informe está calculado con lo que hay</summary>
+      <div class="tw" style="margin-top:.8rem"><table class="rs">
+        <thead><tr><th>Falta</th><th>Dónde está</th><th>Qué deja fuera</th></tr></thead>
+        <tbody>${R.faltan.map(f=>`<tr>
+          <td class="l"><b style="color:var(--amber-strong)">${esc(f.lab)}</b></td>
+          <td class="l" style="font-family:var(--font-m);font-size:.76rem">${esc(f.tab)} → ${esc(f.src)}</td>
+          <td class="l">${esc(f.impide)}</td></tr>`).join("")}</tbody>
+      </table></div>
+      <div class="note" style="margin-top:.6rem">Rellénalas arriba y vuelve a pulsar
+      <b>Analizar la empresa</b>. Lo que ya está calculado no se pierde.</div>
+    </details>` : "";
+
 
   /* vetos */
   if(R.veto.length) H += `<div class="step"><div class="step-h"><span class="step-n">⛔ Alto</span>
@@ -2648,6 +2695,7 @@ function informe(R){
 
   /* ── PASO 7 · resumen ── */
   H += resumen(R);
+  H += AVISO_FALTAN;      /* lo que falta, al final y en voz baja */
 
   /* ── P5 · portada del informe, delante de todo ── */
   const hoy = new Date().toLocaleDateString("es-ES",{day:"numeric",month:"long",year:"numeric"});
