@@ -145,6 +145,34 @@ h1 em{font-style:normal;color:var(--amber)}
 .bq .n{font-family:var(--font-m);font-size:.63rem;letter-spacing:.13em;text-transform:uppercase;
   color:var(--amber);margin-top:.25rem}
 .bq .de{font-size:.83rem;color:var(--soft);margin:.6rem 0 1rem;flex:1}
+/* ── modo clase ──
+   Pantalla completa, una idea por pantalla, se avanza con las flechas.
+   Para proyectar delante de gente sin hacer scroll. */
+#clase{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;
+  flex-direction:column;padding:clamp(1.5rem,5vw,4rem)}
+#clase.on{display:flex}
+#clase .cl-top{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;
+  font-family:var(--font-m);font-size:.68rem;letter-spacing:.14em;color:var(--muted)}
+#clase .cl-top .marca{margin-right:auto;color:var(--txt);font-family:var(--font-h);
+  font-weight:800;font-size:.95rem;letter-spacing:0}
+#clase .cl-top .marca b{color:var(--amber)}
+#clase .cl-body{flex:1;display:flex;flex-direction:column;justify-content:center;
+  align-items:center;text-align:center;gap:1.2rem;min-height:0}
+#clase .cl-n{font-family:var(--font-m);font-size:.7rem;letter-spacing:.2em;color:var(--amber)}
+#clase h2{font-size:clamp(1.9rem,5.2vw,3.4rem);line-height:1.05;margin:0;max-width:20ch}
+#clase .cl-d{font-size:clamp(1rem,2vw,1.3rem);color:var(--soft);max-width:46ch;line-height:1.6}
+#clase svg{max-width:min(52rem,92vw);max-height:44vh;height:auto}
+#clase .cl-bar{display:flex;align-items:center;gap:.7rem}
+#clase .cl-bar button{font-family:var(--font-m);font-size:.72rem;letter-spacing:.06em;
+  padding:.6rem 1.1rem;border-radius:7px;border:1px solid var(--line-strong);
+  background:transparent;color:var(--soft);cursor:pointer}
+#clase .cl-bar button:hover:not(:disabled){border-color:var(--amber-line);color:var(--amber-strong)}
+#clase .cl-bar button:disabled{opacity:.3;cursor:default}
+#clase .cl-pip{display:flex;gap:.4rem;margin:0 .4rem}
+#clase .cl-pip i{width:7px;height:7px;border-radius:50%;background:var(--line-strong)}
+#clase .cl-pip i.on{background:var(--amber)}
+@media print{#clase{display:none!important}}
+
 /* ── capa 2: el desarrollo, plegado ──
    La idea de cada sección se entiende con el diagrama y tres líneas. Lo demás
    sigue escrito, pero detrás de un clic: así la guía se recorre en cinco
@@ -338,6 +366,23 @@ button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:3px}
 </div>
 
 <div id="pagina">
+<!-- ══════════ MODO CLASE ══════════ -->
+<div id="clase" role="dialog" aria-modal="true" aria-label="Modo clase">
+  <div class="cl-top">
+    <span class="marca">Valoración <b>Peaky Minders</b></span>
+    <span id="clPos"></span>
+    <button type="button" id="clSalir" style="font-family:var(--font-m);font-size:.68rem;
+      letter-spacing:.14em;background:transparent;border:1px solid var(--line-strong);
+      color:var(--soft);padding:.4rem .8rem;border-radius:6px;cursor:pointer">Salir · Esc</button>
+  </div>
+  <div class="cl-body" id="clBody"></div>
+  <div class="cl-bar" style="justify-content:center">
+    <button type="button" id="clAnt">← Anterior</button>
+    <span class="cl-pip" id="clPip"></span>
+    <button type="button" id="clSig">Siguiente →</button>
+  </div>
+</div>
+
 <nav id="nav"><div class="in">
   <a class="marca" href="index.html">Valoración <b>Peaky Minders</b></a>
   <span class="sep"></span>
@@ -431,6 +476,9 @@ button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:3px}
   </div>
 
   <div class="cta-2">
+    <button type="button" id="abrirClase" class="pri"
+      style="font-family:var(--font-m);font-size:.72rem;letter-spacing:.06em;cursor:pointer">
+      ▶ Modo clase · pantalla completa</button>
     <a class="pri" href="valorador.html">Ir directo a la calculadora →</a>
     <a href="#panaderia">Ver las seis resueltas con una panadería ↓</a>
     <a href="#datos25">Los 25 datos y dónde está cada uno ↓</a>
@@ -1361,6 +1409,65 @@ $("copiar").onclick = async () => {
 };
 
 pintarDatos();
+
+/* ══════════════════ MODO CLASE ══════════════════
+   Para explicar el método delante de gente sin hacer scroll: una idea por
+   pantalla, se avanza con las flechas del teclado o del mando. Reutiliza los
+   diagramas que ya están en la página, así que no hay nada duplicado. */
+const dg = etiqueta => {
+  const s = [...document.querySelectorAll('svg.dg')]
+    .find(x => (x.getAttribute('aria-label')||'').includes(etiqueta));
+  return s ? s.outerHTML : '';
+};
+const PASES = [
+  {n:"El método", h:"Seis preguntas, y el precio va la última",
+   d:"Esto es todo. Lo demás es explicar cada una despacio.", svg:()=>dg("cinco primeras")},
+  {n:"Pregunta 1", h:"¿Crece?",
+   d:"¿Vende más que hace diez años — y todos los años? Una empresa que no crece solo puede darte dividendos, y eso tiene techo."},
+  {n:"Pregunta 2", h:"¿Gana al vender?",
+   d:"De cada 100 € que entran por la puerta, ¿cuántos se queda? Un margen alto que aguanta diez años es la prueba de que tiene algo que los demás no pueden copiar."},
+  {n:"Pregunta 3", h:"¿Ese beneficio llega a la caja?",
+   d:"El beneficio es una opinión; la caja es un hecho. Aquí es donde el flujo de caja libre no se copia: se construye.",
+   svg:()=>dg("Cascada")},
+  {n:"La decisión que lo cambia todo", h:"Mantener no es crecer",
+   d:"Reponer el horno es un coste. Comprar una amasadora es una apuesta. Solo lo primero se resta del flujo de caja.",
+   svg:()=>dg("9.000")},
+  {n:"Pregunta 4", h:"¿Cuánto le rinde lo que invierte?",
+   d:"El ROIC es el ratio rey: cuando mete 100 €, ¿cuánto le devuelven? Por debajo del 10% gana menos de lo que le cuesta el dinero."},
+  {n:"Pregunta 5", h:"¿Aguantaría un año malo?",
+   d:"Cuánto debe, cuánto diluye a sus socios, cuántas banderas rojas lleva encima."},
+  {n:"Pregunta 6", h:"Y ahora sí: ¿cuánto cuesta?",
+   d:"Se proyecta la caja a cinco años, se multiplica por lo que el mercado suele pagar, y se trae a hoy exigiendo un 15% anual.",
+   svg:()=>dg("Línea del tiempo")},
+  {n:"El resultado", h:"El IDC no es lo que vale: es lo máximo que puedes pagar",
+   d:"Y llegar a ese precio no autoriza nada. Abre el trabajo de verdad: leer el informe anual y entender el negocio."},
+  {n:"Aviso", h:"Material formativo",
+   d:"Esto no es asesoramiento financiero ni una recomendación de compra o venta. El método no sirve para bancos, aseguradoras ni inmobiliarias patrimonialistas."},
+];
+let CL = 0;
+function clPinta(){
+  const p = PASES[CL];
+  $("clBody").innerHTML = `<div class="cl-n">${p.n}</div><h2>${p.h}</h2>
+    ${p.svg ? p.svg() : ""}<div class="cl-d">${p.d}</div>`;
+  $("clPos").textContent = `${CL+1} / ${PASES.length}`;
+  $("clPip").innerHTML = PASES.map((_,i)=>`<i class="${i===CL?"on":""}"></i>`).join("");
+  $("clAnt").disabled = CL===0;
+  $("clSig").disabled = CL===PASES.length-1;
+}
+function clAbre(){ CL=0; clPinta(); $("clase").classList.add("on");
+  document.body.style.overflow="hidden"; $("clSig").focus(); }
+function clCierra(){ $("clase").classList.remove("on"); document.body.style.overflow=""; }
+function clMueve(d){ CL = Math.min(PASES.length-1, Math.max(0, CL+d)); clPinta(); }
+$("clAnt").onclick = () => clMueve(-1);
+$("clSig").onclick = () => clMueve(1);
+$("clSalir").onclick = clCierra;
+document.addEventListener("keydown", e => {
+  if(!$("clase").classList.contains("on")) return;
+  if(e.key==="ArrowRight"||e.key===" "||e.key==="PageDown"){ e.preventDefault(); clMueve(1); }
+  if(e.key==="ArrowLeft"||e.key==="PageUp"){ e.preventDefault(); clMueve(-1); }
+  if(e.key==="Escape") clCierra();
+});
+if($("abrirClase")) $("abrirClase").onclick = clAbre;
 $("prompt").textContent = prompt();
 </script>
 </body>
