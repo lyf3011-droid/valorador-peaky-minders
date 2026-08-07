@@ -829,9 +829,10 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
         <tr><td class="l"><b>Forecasts</b></td>
           <td class="l">Solo <b>2 filas × 5 años</b>: <code>Revenue Forecast (InvestingPro)</code> y
             <code>EBIT Forecast (InvestingPro)</code>. Con eso salen el crecimiento y el margen de
-            los cinco años que proyecta el método. <b>Trae diez columnas y sin fechas</b>, así que
-            el cuadro te pregunta cuál es el primer año — y ojo, del <b>FY+1 en adelante son
-            estimaciones</b>, no datos reales.</td></tr>
+            los cinco años que proyecta el método.<br>
+            <b>Sus columnas van de FY a FY+10</b> — once en total. La primera, <b>FY, es el último
+            año REAL</b>; de <b>FY+1 en adelante son estimaciones</b>. El cuadro te pregunta cuál es
+            ese primer año y te enseña lo que ha entendido antes de aplicar nada.</td></tr>
         <tr><td class="l"><b>Valuation Ratios</b></td>
           <td class="l">Los <b>múltiplos históricos</b> para contrastar el que vas a usar tú.
             Mirar, no pegar.</td></tr>
@@ -956,14 +957,16 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
 
     <div class="pexc">
       <span class="eti">El «Fair Value» de InvestingPro</span>
-      <h4>Un número que no has calculado tú</h4>
-      <p>InvestingPro te da su propia valoración. Está bien mirarla, pero entiende qué es:
-      <b>el resultado de un modelo cuyos supuestos no controlas</b> — no sabes qué crecimiento ha
-      metido ni qué múltiplo ha usado.</p>
-      <p>Tu IDC vale más justamente por eso: <b>sabes exactamente qué has supuesto</b>, y puedes
-      cambiarlo y ver qué pasa.</p>
-      <p style="color:var(--muted-txt)">Lo interesante no es quién acierta. Es <em>qué está
-      suponiendo el otro que yo no</em>.</p>
+      <h4>No es un número: es la media de catorce</h4>
+      <p>Está en la pestaña <i>Overview</i> y parece un dato. No lo es: es <b>el promedio de 14
+      modelos distintos</b> —múltiplos, descuentos de flujos a 5 y a 10 años, descuento de
+      dividendos— y cada uno da una cosa.</p>
+      <p>Despliega <b>«14 models»</b> y míralo. En Alphabet, con la acción a 356 $, el promedio daba
+      <b>347 $</b>… pero los modelos iban de <b>262 a 460 $</b>. <b>Un 75% de diferencia entre el
+      más pesimista y el más optimista</b>, todos calculados sobre la misma empresa el mismo día.</p>
+      <p style="color:var(--muted-txt)">Por eso tu IDC vale más: no porque acierte más, sino porque
+      <b>sabes qué has supuesto</b> y puedes cambiarlo. Lo interesante nunca es quién acierta, es
+      <em>qué está suponiendo el otro que yo no</em>.</p>
     </div>
 
     <div class="pexc ojo">
@@ -2157,6 +2160,27 @@ function pintarPegaGrid(){
   });
 }
 
+/* La cabecera de la tabla trae las fechas de cierre —2016-12-31, 2025-12-31…—
+   aunque las columnas de datos vengan sueltas. Si se pegan, se comprueba que
+   los años coinciden con los configurados arriba: es el error más fácil de
+   cometer y el más difícil de ver, porque los números parecen correctos. */
+function aniosDeLaTabla(txt){
+  const y = [...String(txt).matchAll(/\b(19[89]\d|20[0-5]\d)-\d{2}-\d{2}\b/g)].map(m=>+m[1]);
+  if(y.length < 3) return null;
+  const u = [...new Set(y)].sort((a,b)=>a-b);
+  return {min: u[0], max: u[u.length-1], n: u.length};
+}
+function avisoAnios(txt){
+  const t = aniosDeLaTabla(txt);
+  if(!t) return "";
+  const A = anios(), a0 = A[0], a1 = A[A.length-1];
+  if(t.min === a0 && t.max === a1) return "";
+  return `<div class="warn" style="margin-top:.5rem"><b>Ojo con los años.</b> Esta tabla va de
+    <b>${t.min} a ${t.max}</b>, y arriba tienes configurado <b>${a0} a ${a1}</b>. Los datos se
+    colocan por orden, así que estarían desplazados. Cambia el «último año cerrado» o el número de
+    años, y vuelve a pegar.</div>`;
+}
+
 function leerCaja(g){
   const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
   const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
@@ -2190,12 +2214,13 @@ function leerCaja(g){
   }
   pintarMatriz(); guardarTrabajo();
   const faltan = CONCEPTOS.filter(c=>c.g===g && c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
-  caja.innerHTML = puestas.length
+  const avAnios = avisoAnios((HTML_CAJA[g]||"") + " " + ta.value);
+  caja.innerHTML = avAnios + (puestas.length
     ? `<span class="bien">✓ ${puestas.length} partidas leídas.</span>
        <ul>${puestas.map(p=>`<li>${esc(p.lab)} · último ${p.ult===null?"—":nf(p.ult,0)}</li>`).join("")}</ul>
        ${faltan.length?`<div style="margin-top:.4rem;color:var(--amber)">Falta: ${esc(faltan.join(", "))}</div>`:""}`
     : `<span class="mal">He leído la tabla pero no reconozco sus filas.</span>
-       ¿Es la tabla de ${esc(G[g].toLowerCase())} en inglés?`;
+       ¿Es la tabla de ${esc(G[g].toLowerCase())} en inglés?`);
   pintarPegaGrid();
   $("pegagrid").querySelector(`textarea[data-pega="${g}"]`).value = ta.value;
   $("pegagrid").querySelector(`[data-res="${g}"]`).innerHTML = caja.innerHTML;
