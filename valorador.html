@@ -2107,6 +2107,8 @@ function calcular(){
     const c = CONCEPTOS.find(x=>x.k===k);
     return {lab:c.lab, src:c.src, tab:G[c.g], impide:BLOQUEA[k]||"parte del análisis"};
   });
+  if(typeof R_SEC_EBIT_DERIVADO !== "undefined" && R_SEC_EBIT_DERIVADO)
+    R.aviso.push("El <b>EBIT</b> no lo publica esta empresa con ninguna etiqueta estándar, así que se ha derivado restando los intereses al beneficio antes de impuestos. Sirve para hacerse una idea, pero <b>contrástalo con InvestingPro</b>: ahí el dato viene ya normalizado.");
   if(!has("ventas") && !has("ebitda") && !has("ebit"))
     return {error:"Todavía no hay datos suficientes para empezar. Hace falta al menos las ventas, el EBITDA o el EBIT de algún año — son las tres primeras filas de la cuenta de resultados. Pega esa tabla arriba con el botón «Pegar la tabla entera de Investing», o pulsa «Ejemplo META» para ver cómo funciona."};
 
@@ -2510,7 +2512,7 @@ function montarRail(){
   pasos.forEach(p=>obs.observe(p));
 }
 
-let R_ULT = null, AVISO_FALTAN = "";
+let R_ULT = null, AVISO_FALTAN = "", R_SEC_EBIT_DERIVADO = false;
 function informe(R){
   R_ULT = R;
   const out=$("informe");
@@ -3485,7 +3487,7 @@ const SEC_TAGS = {
   /* cuenta de resultados */
   ventas:    ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet",
               "RevenueFromContractWithCustomerIncludingAssessedTax"],
-  ebit:      ["OperatingIncomeLoss"],
+  ebit:      ["OperatingIncomeLoss", "OperatingIncomeLossIncludingNoncontrollingInterest"],
   impuestos: ["IncomeTaxExpenseBenefit"],
   /* balance */
   caja:      ["CashAndCashEquivalentsAtCarryingValue",
@@ -3514,7 +3516,9 @@ const SEC_TAGS = {
               "PropertyPlantAndEquipmentDepreciationMethodsAmountOfDepreciation"],
   equity:    ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
   acciones:  ["WeightedAverageNumberOfDilutedSharesOutstanding",
-              "WeightedAverageNumberOfDilutedSharesOutstandingBasicAndDiluted"],
+              "WeightedAverageNumberOfDilutedSharesOutstandingBasicAndDiluted",
+              "WeightedAverageNumberOfSharesOutstandingBasic",
+              "WeightedAverageNumberOfShareOutstandingBasicAndDiluted"],
   capex:     ["PaymentsToAcquirePropertyPlantAndEquipment",
               "PaymentsToAcquireProductiveAssets"],
   adquisi:   ["PaymentsToAcquireBusinessesNetOfCashAcquired"],
@@ -3656,6 +3660,25 @@ async function traerSEC(desde){
       A.forEach((a,i) => { if(serie[a] !== undefined){
         D[k][i] = con && con.pos ? Math.abs(Math.round(serie[a])) : Math.round(serie[a]); n++; } });
       if(n) puestas.push({k, lab: con ? con.lab : k, n}); else vacias.push(k);
+    }
+
+    /* Último recurso para el EBIT: hay empresas que no lo publican con ninguna
+       etiqueta estándar (GE, Masco, Exxon). Sí publican el beneficio ANTES de
+       impuestos, y de ahí sale restando los intereses: EBIT = EBT − intereses.
+       No es idéntico —el EBT lleva partidas no operativas— pero es mucho mejor
+       que no poder calcular nada, y queda dicho en el informe. */
+    if(!D.ebit.some(v=>v!==null)){
+      const ebt = await pedir(["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
+        "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments",
+        "IncomeLossFromContinuingOperationsBeforeIncomeTaxesDomestic"], false, "USD");
+      if(ebt){
+        let n = 0;
+        A.forEach((a,i) => { if(ebt[a] !== undefined){
+          D.ebit[i] = Math.round(ebt[a] - (D.interes[i] || 0)); n++; } });
+        if(n){ puestas.push({k:"ebit", lab:"EBIT (derivado: beneficio antes de impuestos − intereses)", n});
+          const j = vacias.indexOf("ebit"); if(j>=0) vacias.splice(j,1);
+          R_SEC_EBIT_DERIVADO = true; }
+      }
     }
 
     /* Hay empresas —Alphabet entre ellas— que no publican una D&A conjunta:
