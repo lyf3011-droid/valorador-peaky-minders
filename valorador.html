@@ -229,6 +229,13 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   color:var(--muted-txt);white-space:nowrap}
 .sug li.no{cursor:default;color:var(--muted-txt);font-size:.8rem}
 
+.esq{display:block;width:100%;height:auto;margin:.7rem 0 .5rem;border-radius:10px}
+.esq-l{margin:.2rem 0 0;padding-left:1.35rem;font-size:.84rem;line-height:1.65;color:var(--soft)}
+.esq-l li{margin:.3rem 0}
+.esq-l li::marker{color:var(--amber);font-family:var(--font-m);font-size:.78rem}
+.esq-d>summary{font-family:var(--font-m);font-size:.66rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--amber);cursor:pointer}
+@media print{.esq-d{display:none!important}}
 .pegagrid{display:grid;grid-template-columns:1fr;gap:1rem}
 /* la tira de los 5 pasos: dónde estoy y qué llevo hecho, de un vistazo */
 .ptira{display:flex;gap:.4rem;flex-wrap:wrap}
@@ -2310,6 +2317,123 @@ function estadoPega(g){
   return {total, hechos, lleno: hechos===total};
 }
 
+/* ══════════════════ EL ESQUEMA DE CADA PASO ══════════════════
+   Explicar con párrafos cómo se selecciona una tabla no funciona: se lee una
+   vez, se olvida, y quien no es de informática se pierde igual. Un dibujo de
+   la pantalla con los puntos numerados encima se entiende sin leer. Es SVG
+   inline, sin dependencias, y no reproduce la interfaz de Investing: es un
+   esquema con su misma disposición. */
+function esquemaPaso(g){
+  const A = "var(--amber)", AF = "var(--amber-strong)", L = "var(--line-strong)",
+        TX = "var(--text)", SF = "var(--soft)", MU = "var(--muted-txt)",
+        BG = "var(--surface)", SEL = "rgba(245,158,11,.16)";
+  const punto = (x,y,n) => `
+    <circle cx="${x}" cy="${y}" r="11" fill="${A}"/>
+    <text x="${x}" y="${y+4}" text-anchor="middle" font-family="var(--font-m)"
+      font-size="12" font-weight="700" fill="#0a0a0a">${n}</text>`;
+  const pill = (x,y,w,t,on) => `
+    <rect x="${x}" y="${y}" width="${w}" height="22" rx="5" fill="${on?SEL:"none"}"
+      stroke="${on?A:L}" stroke-width="1"/>
+    <text x="${x+8}" y="${y+15}" font-family="var(--font-m)" font-size="10"
+      fill="${on?AF:SF}">${t}</text>`;
+  const cab = (x,y,t,fy) => `
+    <text x="${x}" y="${y}" font-family="var(--font-m)" font-size="9" fill="${SF}">${t}</text>
+    <text x="${x}" y="${y+11}" font-family="var(--font-m)" font-size="9" fill="${A}">${fy}</text>`;
+  const fila = (y,t,ancho) => `
+    <text x="18" y="${y}" font-family="var(--font-m)" font-size="10" fill="${TX}">${t}</text>
+    ${[0,1,2,3].map(i=>`<rect x="${232+i*76}" y="${y-8}" width="${ancho||46}" height="7"
+      rx="2" fill="${L}"/>`).join("")}`;
+
+  if(g==="ER") return `
+  <svg viewBox="0 0 640 250" class="esq" role="img"
+    aria-label="Esquema del InvestingPro nuevo: elegir EBITDA Reconciliation en el desplegable y copiar desde el nombre de la primera fila">
+    <rect x="1" y="1" width="638" height="248" rx="10" fill="${BG}" stroke="${L}"/>
+    <text x="18" y="24" font-family="var(--font-m)" font-size="10" fill="${MU}">investing.com/pro/<tspan fill="${AF}">NASDAQGS:TSLA</tspan>/financials/<tspan fill="${AF}">ebitda</tspan></text>
+    <line x1="1" y1="36" x2="639" y2="36" stroke="${L}"/>
+    ${pill(18,48,150,"EBITDA Reconciliation ▾",1)}
+    ${pill(176,48,86,"Fiscal Years ▾")}
+    ${pill(270,48,80,"Ascending ▾")}
+    ${pill(358,48,68,"10 Years ▾")}
+    ${pill(434,48,62,"Millions ▾")}
+    ${punto(168,44,1)}
+    <rect x="12" y="84" width="206" height="150" rx="6" fill="${SEL}" stroke="${A}" stroke-dasharray="4 3"/>
+    <text x="18" y="100" font-family="var(--font-m)" font-size="9" fill="${AF}">ESTA COLUMNA VA CONGELADA</text>
+    ${cab(232,100,"2024-12-31","FY-1")}${cab(308,100,"2025-12-31","FY")}
+    ${fila(130,"Depreciation")}${fila(156,"Amortization")}${fila(182,"EBITDA")}
+    <path d="M24 118 L470 118 L470 214 L24 214 Z" fill="none" stroke="${AF}" stroke-width="2"/>
+    ${punto(24,118,2)}${punto(470,214,3)}
+    <text x="18" y="242" font-family="var(--font-m)" font-size="10" fill="${SF}">
+      Arrastra <tspan fill="${AF}">del 2 al 3</tspan> — empezando por el NOMBRE, no por el número</text>
+  </svg>
+  <ol class="esq-l">
+    <li>En el desplegable elige <b>EBITDA Reconciliation</b> — o <b>Forecasts</b>.</li>
+    <li>Empieza a seleccionar <b>en el nombre de la primera fila</b>. Si empiezas en un número,
+      la columna congelada se queda fuera y solo vienen cifras sueltas.</li>
+    <li>Arrastra hasta la última cifra y pega aquí. O más fácil: clic en la tabla y
+      <kbd>Ctrl</kbd>+<kbd>A</kbd>.</li>
+  </ol>`;
+
+  if(g==="MK") return `
+  <svg viewBox="0 0 640 210" class="esq" role="img"
+    aria-label="Esquema de la pantalla de datos históricos: elegir rango de fechas y frecuencia anual, y copiar la columna de cierre">
+    <rect x="1" y="1" width="638" height="208" rx="10" fill="${BG}" stroke="${L}"/>
+    <text x="18" y="24" font-family="var(--font-m)" font-size="10" fill="${MU}">investing.com/equities/…-<tspan fill="${AF}">historical-data</tspan></text>
+    <line x1="1" y1="36" x2="639" y2="36" stroke="${L}"/>
+    ${pill(18,48,150,"01/01/2016 — 31/12/2025",1)}
+    ${pill(176,48,80,"Anual ▾",1)}
+    ${punto(168,44,1)}${punto(256,44,2)}
+    <text x="18" y="96" font-family="var(--font-m)" font-size="9" fill="${SF}">FECHA</text>
+    <text x="150" y="96" font-family="var(--font-m)" font-size="9" fill="${AF}">CIERRE</text>
+    <text x="250" y="96" font-family="var(--font-m)" font-size="9" fill="${SF}">APERTURA</text>
+    <text x="360" y="96" font-family="var(--font-m)" font-size="9" fill="${SF}">MÁXIMO</text>
+    <rect x="140" y="104" width="76" height="76" rx="5" fill="${SEL}" stroke="${A}" stroke-dasharray="4 3"/>
+    ${[0,1,2,3].map(i=>`
+      <text x="18" y="${122+i*22}" font-family="var(--font-m)" font-size="10" fill="${TX}">31/12/${2022+i}</text>
+      <text x="150" y="${122+i*22}" font-family="var(--font-m)" font-size="10" fill="${AF}">${[123.18,248.48,403.84,483.58][i]}</text>
+      <rect x="250" y="${114+i*22}" width="46" height="7" rx="2" fill="${L}"/>
+      <rect x="360" y="${114+i*22}" width="46" height="7" rx="2" fill="${L}"/>`).join("")}
+    ${punto(216,104,3)}
+    <text x="18" y="200" font-family="var(--font-m)" font-size="10" fill="${SF}">
+      Solo la columna de <tspan fill="${AF}">cierre</tspan>. O pulsa el botón de Yahoo y se traen solos.</text>
+  </svg>
+  <ol class="esq-l">
+    <li>Pon el <b>rango de fechas</b>: los últimos ${N} años.</li>
+    <li>Frecuencia <b>Anual</b> — si solo hay mensual, coge el cierre de cada diciembre.</li>
+    <li>Copia <b>la columna de cierre</b> y pégala aquí.</li>
+  </ol>`;
+
+  return `
+  <svg viewBox="0 0 640 250" class="esq" role="img"
+    aria-label="Esquema de la ficha clásica de Investing: los cuatro desplegables, la moneda, y copiar desde Period Ending hasta el final">
+    <rect x="1" y="1" width="638" height="248" rx="10" fill="${BG}" stroke="${L}"/>
+    <text x="18" y="24" font-family="var(--font-m)" font-size="10" fill="${MU}">investing.com/equities/<tspan fill="${AF}">…-income-statement</tspan></text>
+    <text x="560" y="24" font-family="var(--font-m)" font-size="10" fill="${AF}">EN 🇬🇧</text>
+    ${punto(548,20,1)}
+    <line x1="1" y1="36" x2="639" y2="36" stroke="${L}"/>
+    ${pill(18,48,86,"Fiscal Years ▾",1)}
+    ${pill(112,48,80,"Ascending ▾",1)}
+    ${pill(200,48,68,"10 Years ▾",1)}
+    ${pill(276,48,62,"Millions ▾",1)}
+    ${pill(348,48,52,"USD ▾",1)}
+    ${punto(10,44,2)}${punto(400,44,3)}
+    <rect x="12" y="84" width="616" height="132" rx="6" fill="${SEL}" stroke="${A}" stroke-dasharray="4 3"/>
+    <text x="18" y="100" font-family="var(--font-m)" font-size="10" fill="${AF}">Period Ending</text>
+    ${cab(232,100,"2016-12-31","FY-9")}${cab(308,100,"2024-12-31","FY-1")}${cab(384,100,"2025-12-31","FY")}
+    ${fila(132,"Total Revenues")}${fila(158,"Operating Income")}${fila(184,"Income Tax Expense")}
+    ${punto(18,88,4)}${punto(622,212,5)}
+    <text x="18" y="240" font-family="var(--font-m)" font-size="10" fill="${SF}">
+      Desde <tspan fill="${AF}">«Period Ending»</tspan> hasta la última fila. Los años los detecto yo por
+      <tspan fill="${AF}">FY</tspan>.</text>
+  </svg>
+  <ol class="esq-l">
+    <li>Investing <b>en inglés</b>. El método está escrito con sus nombres de fila.</li>
+    <li>Los cuatro desplegables: <b>Fiscal Years · Ascending · 10 Years · Millions</b>.</li>
+    <li>La <b>moneda que reporta la empresa</b>, no la tuya. En Alphabet, poner euros desvía un 15%.</li>
+    <li>Despliega los grupos y empieza a seleccionar en <b>«Period Ending»</b>.</li>
+    <li>Arrastra hasta la última cifra y pega aquí. Los años <b>no los toques</b>.</li>
+  </ol>`;
+}
+
 function pintarPegaGrid(){
   const T = ($("ticker").value||"").trim().toUpperCase();
   const slug = slugDe(T);
@@ -2342,53 +2466,18 @@ function pintarPegaGrid(){
       <span class="pc-e">${s.hechos}/${s.total}</span></button>`;
   }).join("");
 
-  const ayuda = g==="ER"
-    ? `<b>Esto es OTRA página de InvestingPro</b>, no la de las cuentas. Es el InvestingPro
-       nuevo, el de la dirección <code>investing.com/pro/<b>BOLSA:TICKER</b>/financials/…</code>
-       — por ejemplo <code>…/pro/NASDAQGS:TSLA/financials/ebitda</code>.
-       <details class="mas" style="margin-top:.5rem"><summary>Cómo llegar y qué copiar</summary>
-       <div style="padding:.5rem 0 0">
-         <b>1.</b> Pulsa el enlace de abajo: te lleva al buscador de Investing. Elige la empresa.<br>
-         <b>2.</b> Entra en <b>InvestingPro</b> → <b>Financials</b>.<br>
-         <b>3.</b> En el desplegable de arriba elige <b>EBITDA Reconciliation</b> —ahí está la
-           <code>Depreciation</code> sola, que la ficha clásica no trae— o <b>Forecasts</b>,
-           que trae la proyección de los analistas.<br>
-         <b>4.</b> Comprueba los <b>años</b> igual que antes y copia la tabla entera.<br>
-         <b>5.</b> Pégala aquí: me quedo <b>solo con lo que siga vacío</b> y nunca piso lo tuyo.
-       </div></details>`
+  /* la explicación es el dibujo; el texto se queda en tres líneas */
+  const titu = g==="ER"
+    ? `<b>Esto es OTRA página</b>: el <b>InvestingPro nuevo</b>. Aquí está la
+       <code>Depreciation</code> sola —que la ficha clásica no trae— y la proyección de analistas.`
     : g==="MK"
-    ? `<b>Y esto es una tercera página</b>: los precios no están en las cuentas.
-       Pega los <b>${N} precios de cierre</b>, del más antiguo al más nuevo.
-       <details class="mas" style="margin-top:.5rem"><summary>Dónde están y qué seleccionar</summary>
-       <div style="padding:.5rem 0 0">
-         En la ficha de la empresa, pestaña <b>Datos históricos</b>
-         (<code>…-historical-data</code>). Arriba se elige el <b>rango de fechas</b> y la
-         <b>frecuencia: Mensual o Anual</b>. Copia la columna de <b>cierre</b> de los últimos
-         ${N} años.<br>
-         <b>O más fácil:</b> el botón de Yahoo del paso del precio los trae solos.<br>
-         Vale una línea, una columna o la tabla entera: se reconoce igual.
-       </div></details>`
-    : `Copia la tabla entera desde <b>«Period Ending»</b> hasta el final y pégala aquí.
-       Es la <b>ficha clásica</b> de Investing (<code>investing.com/equities/…</code>).
-       <details class="mas" style="margin-top:.5rem"><summary>Cómo dejar la tabla antes de copiar</summary>
-       <div style="padding:.5rem 0 0">
-         <b>1. Idioma: inglés.</b> El método está escrito con sus nombres de fila. En español
-           también lo reconoce, pero en inglés tu trabajo es comparable con el de cualquier
-           compañero.<br>
-         <b>2. Los cuatro desplegables de arriba:</b>
-           <code>Fiscal Years</code> · <code>Ascending</code> · <code>10 Years</code> ·
-           <code>Millions</code>.<br>
-         <b>3. La moneda: la que reporta la empresa</b>, no la tuya. En Alphabet, poner euros
-           desvía el resultado un 15%.<br>
-         <b>4. Despliega los grupos</b> antes de copiar: lo que esté plegado no se copia.<br>
-         <b>5. Selecciona desde «Period Ending»</b> hasta la última fila y copia.
-         <div class="note" style="margin-top:.6rem"><b>Los años no hay que tocarlos.</b> La
-           cabecera trae <code>FY-9</code> … <code>FY</code> y de ahí sale solo cuál es el último
-           ejercicio real, aunque la empresa no cierre en diciembre.</div>
-       </div></details>`
-      + (g==="CF" ? `<br><span style="color:var(--muted-txt)">Dos se quedarán vacías y no es un
-         fallo: el <b>CapEx de mantenimiento</b> sale del paso 4, y los <b>pagos en acciones</b>
-         Investing no los publica — se traen de la SEC o se dejan, que son informativos.</span>` : "");
+    ? `<b>Y esto es una tercera página</b>: los precios no están en las cuentas.`
+    : `La <b>ficha clásica</b> de Investing. Las tres cuentas se copian enteras, igual que en el Excel.`;
+  const ayuda = titu + `<details class="mas esq-d" open><summary>Cómo se hace, en un vistazo</summary>
+    ${esquemaPaso(g)}</details>`
+    + (g==="CF" ? `<div class="note" style="margin-top:.5rem">Dos partidas se quedarán vacías y no
+       es un fallo: el <b>CapEx de mantenimiento</b> sale del paso 4, y los <b>pagos en acciones</b>
+       Investing no los publica.</div>` : "");
 
   $("pegagrid").innerHTML = `
     <div class="ptira">${tira}</div>
