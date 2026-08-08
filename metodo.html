@@ -127,17 +127,19 @@ footer b{color:var(--soft)}
   <a class="marca" href="index.html">Valoración <b>Peaky Minders</b></a>
   <a href="index.html">Guía</a>
   <a href="valorador.html">Valorador</a>
+  <a href="metodo-facil.html">En cristiano</a>
   <a href="legal.html">Legal</a>
 </nav>
 
 <div class="wrap">
 
 <header>
-  <div class="kicker">El método, explicado</div>
-  <h1>Por qué valoro así</h1>
-  <p class="lead">Un método para saber cuánto vale una empresa <b>sin mirar lo que cuesta</b>
-  hasta el final. Explicado dos veces: como se lo contarías a un niño de diez años, y como se lo
-  defenderías a alguien que lleva veinte en esto.</p>
+  <div class="kicker">Nota metodológica</div>
+  <h1>El método IDC</h1>
+  <p class="lead">Marco de valoración por múltiplos con proyección explícita a cinco años,
+  métrica de caja normalizada según <em>owner earnings</em> y descuento a
+  <b>tasa de rentabilidad exigida</b>. Documento técnico: definiciones, fórmulas, tratamiento
+  estadístico, controles de validación y ámbito de aplicación.</p>
   <div class="firma">
     <b>Francisco González</b> · Escudería 5 · Academia de Inversión<br>
     Elena Hernáez y Juan Luco Cazorla<br>
@@ -146,385 +148,466 @@ footer b{color:var(--soft)}
 </header>
 
 <div class="idx">
-  <div class="idx-t">Lo que vas a leer</div>
+  <div class="idx-t">Contenido</div>
   <ol>
-    <li><a href="#tienda">La idea entera, con una tienda de barrio</a></li>
-    <li><a href="#mantener">Mantener no es crecer — la idea que lo cambia todo</a></li>
-    <li><a href="#buffett">De dónde viene: Buffett, 1986</a></li>
-    <li><a href="#cuentas">Cómo se construye el número, paso a paso</a></li>
-    <li><a href="#analistas">Por qué miro el consenso de analistas con distancia</a></li>
-    <li><a href="#pruebas">Cómo se comprueba que esto no es un cuento</a></li>
-    <li><a href="#limites">Lo que este método NO hace</a></li>
+    <li><a href="#definicion">Definición: qué es el IDC y qué no es</a></li>
+    <li><a href="#metrica">La métrica de caja: <em>owner earnings</em> frente a FCFF</a></li>
+    <li><a href="#capex">Estimación del CapEx de mantenimiento</a></li>
+    <li><a href="#normalizacion">Normalizaciones del balance y de la cuenta</a></li>
+    <li><a href="#proyeccion">Proyección explícita y valor terminal</a></li>
+    <li><a href="#descuento">La tasa de descuento: exigencia, no coste de capital</a></li>
+    <li><a href="#estadistica">Tratamiento estadístico de las series</a></li>
+    <li><a href="#consenso">Uso del consenso de analistas</a></li>
+    <li><a href="#validacion">Validación y controles automáticos</a></li>
+    <li><a href="#ambito">Ámbito de aplicación y limitaciones</a></li>
   </ol>
 </div>
 
-<!-- ════════════════════════════════════════════════════════════ -->
-<section id="tienda">
-  <div class="snum">1 · La idea entera</div>
-  <h2>Imagina que compras la tienda del barrio</h2>
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="definicion">
+  <div class="snum">1 · Definición</div>
+  <h2>Qué es el IDC y qué no es</h2>
 
-  <div class="nino"><span class="t">Para un niño de diez años</span>
-    <p>Imagina que en tu calle hay una panadería y que la dueña, Marta, se jubila y la vende.
-    Tú tienes ahorros y estás pensando en comprarla.</p>
-    <p>¿Qué preguntarías <b>antes</b> de preguntar el precio?</p>
-    <p>Pues lo normal: <b>¿viene más gente cada año?</b> ¿De cada 100 € que entran por la puerta,
-    cuántos le sobran de verdad? Ese dinero que dice que gana, <b>¿está en el cajón</b> o se lo
-    ha comido el horno nuevo? Si mete 1.000 € en la tienda, ¿cuánto le vuelven al año siguiente?
-    ¿Debe dinero al banco?</p>
-    <p>Y solo cuando ya sabes si la tienda es buena, preguntas: <b>«¿y cuánto pides por ella?»</b></p>
-    <p>Eso es todo el método. Seis preguntas, y la del precio es la última. Comprar acciones es
-    exactamente lo mismo, solo que en vez de la panadería entera compras un trocito.</p>
+  <p>El <b>IDC</b> (Índice de Compra) es un <b>precio de reserva</b>: el importe máximo por acción
+  que puede pagarse hoy para obtener una <b>rentabilidad anualizada objetivo</b> —por defecto el
+  15%— bajo un conjunto explícito de supuestos a cinco años.</p>
+
+  <div class="tec"><span class="t">La distinción que hay que fijar primero</span>
+    <p><b>El IDC no es una estimación de valor intrínseco.</b> Un DCF a WACC responde a «¿cuánto
+    vale este negocio para el conjunto de sus proveedores de capital?». El IDC responde a
+    «¿cuánto puedo pagar yo para que mi rentabilidad esperada no baje del umbral que me he
+    fijado?».</p>
+    <p>Formalmente: es un <b>reservation price</b> derivado de un <em>hurdle rate</em>, no un
+    <em>fair value</em>. Confundirlos es el error más común al leer el resultado, y explica por
+    qué el IDC sale sistemáticamente por debajo de cualquier <em>fair value</em> publicado.</p>
   </div>
 
-  <p>Parece de sentido común, y lo es. Lo raro es que casi nadie lo haga.</p>
+<pre>P₅ = ( m × FCF₅ − DN₅ ) / N₅
 
-  <p>Cuando abres cualquier web de bolsa, <b>lo primero que ves es el precio</b>, en grande y en
-  verde o en rojo. Y en cuanto lo ves, tu cabeza ya ha decidido. Todo lo que analices después no
-  sirve para formar una opinión: sirve para <b>darte la razón</b>.</p>
+IDC = P₅ / (1 + r)⁵          con r = 0,15  →  divisor 2,011357
 
-  <div class="tec"><span class="t">Dicho en técnico</span>
-    <p>Es el <b>sesgo de anclaje</b>: el primer número que entra condiciona todos los juicios
-    posteriores, aunque sepas que te está condicionando. No se corrige con voluntad —saberlo no
-    te inmuniza— se corrige con <b>estructura</b>: no viendo el dato hasta que tu juicio ya
-    está formado y escrito.</p>
-    <p>Por eso la herramienta que acompaña a este método <b>no enseña el precio</b> hasta que has
-    escrito qué opinas del negocio. No es un adorno: es la única forma de que la regla se cumpla.</p>
-  </div>
-</section>
-
-<!-- ════════════════════════════════════════════════════════════ -->
-<section id="mantener">
-  <div class="snum">2 · La idea que lo cambia todo</div>
-  <h2>Mantener no es crecer</h2>
-
-  <div class="nino"><span class="t">Para un niño de diez años</span>
-    <p>La panadería de Marta tiene un horno. Cada año el horno se gasta un poco, y algún día habrá
-    que cambiarlo. Eso <b>no es opcional</b>: sin horno no hay pan, y sin pan no hay tienda.</p>
-    <p>Pero este año Marta ha hecho otra cosa: ha comprado <b>una segunda amasadora</b> para hacer
-    el doble de pan y vender también a la cafetería de enfrente. Eso <b>sí es opcional</b>. Podría
-    no haberla comprado y la tienda seguiría funcionando exactamente igual.</p>
-    <p>Ahora la pregunta importante: cuando calculas <b>cuánto dinero gana la tienda de verdad</b>,
-    ¿restas las dos cosas?</p>
-    <p>Yo resto <b>solo el horno</b>. Porque el horno es lo que cuesta seguir donde estás. La
-    amasadora es una apuesta para llegar más lejos, y una apuesta no es un gasto de estar abierto.</p>
-    <p>Si restas las dos, pasa algo absurdo: <b>la tienda parece que vale menos justo el año en que
-    más apuesta por su futuro</b>. Y una tienda que se deja morir sin arreglar nada parecería
-    buenísima.</p>
-  </div>
-
-  <p>Esa distinción tiene nombre. El gasto en reponer lo que se desgasta es el
-  <b>CapEx de mantenimiento</b>. El gasto en construir lo que todavía no existe es el
-  <b>CapEx de expansión</b>. Las webs financieras los suman y restan el total. Yo resto solo el
-  primero.</p>
+Zona de análisis = IDC × 0,85</pre>
 
   <table>
-    <thead><tr><th>&nbsp;</th><th>Qué es</th><th>¿Se puede dejar de hacer?</th></tr></thead>
+    <thead><tr><th>Símbolo</th><th>Definición</th></tr></thead>
     <tbody>
-      <tr><td><b>Mantenimiento</b></td><td>Reponer lo que se desgasta</td>
-          <td>No. Sin esto el negocio muere</td></tr>
-      <tr><td><b>Expansión</b></td><td>Construir lo que aún no existe</td>
-          <td>Sí. Es una apuesta voluntaria</td></tr>
+      <tr><td><code>FCF₅</code></td><td>Flujo de caja del propietario del año 5 proyectado</td></tr>
+      <tr><td><code>m</code></td><td>Múltiplo objetivo EV/FCF, mediana histórica a 10 años ajustada a la baja</td></tr>
+      <tr><td><code>DN₅</code></td><td>Deuda neta proyectada al año 5 (negativa si hay caja neta)</td></tr>
+      <tr><td><code>N₅</code></td><td>Acciones diluidas proyectadas al año 5</td></tr>
+      <tr><td><code>r</code></td><td>Rentabilidad exigida, no coste de capital</td></tr>
     </tbody>
   </table>
 
-  <div class="tec"><span class="t">Dicho en técnico · la fórmula exacta</span>
-    <p>El problema práctico es que <b>ninguna empresa publica cuánto de su inversión es
-    mantenimiento</b>. Hay que estimarlo, y la mejor aproximación pública es la
-    <b>depreciación</b>: es la propia empresa la que declara cuánto se le desgasta al año,
-    siguiendo reglas contables que no elige a conveniencia.</p>
-    <p>Pero con un matiz que casi todo el mundo se salta: <b>la depreciación es el techo, no el
-    importe</b>.</p>
+  <p>El resultado se usa como <b>umbral operativo</b>, no como señal: cruzar la zona de análisis
+  abre el trabajo de diligencia, no lo cierra.</p>
+
+  <div class="tec"><span class="t">Control de sesgo de anclaje</span>
+    <p>La secuencia de análisis está diseñada para que el precio de mercado no se observe hasta
+    completar el juicio cualitativo y fundamental. No es una recomendación de procedimiento: en
+    la herramienta el precio <b>no está en el documento</b> hasta que el analista registra su
+    valoración previa. El sesgo de anclaje no se corrige con advertencias, se corrige impidiendo
+    la exposición al ancla.</p>
   </div>
-
-<pre>CapEx de mantenimiento = <b>MÍNIMO</b>( CapEx realmente gastado , depreciación )</pre>
-
-  <ul>
-    <li>Si la empresa gasta <b>más</b> de lo que se le desgasta, el mantenimiento es la
-    depreciación y el resto es expansión. Es el caso normal de una empresa que crece.</li>
-    <li>Si la empresa gasta <b>menos</b> de lo que se le desgasta, el mantenimiento es
-    <b>lo que gastó de verdad</b>. No se le puede imputar un gasto que no hizo.</li>
-  </ul>
-
-  <p>Ese segundo caso no es una curiosidad técnica: es <b>la señal de una empresa que está
-  sosteniendo el resultado a base de no reponer</b>. Merece una mirada, no un ajuste automático.</p>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════ -->
-<section id="buffett">
-  <div class="snum">3 · De dónde viene</div>
-  <h2>Buffett, 1986</h2>
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="metrica">
+  <div class="snum">2 · La métrica</div>
+  <h2><em>Owner earnings</em> frente a FCFF</h2>
 
-  <p>Esta idea no me la he inventado, y decir de quién es forma parte de defenderla.</p>
+  <p>La métrica de caja no se toma de ninguna fuente: se construye.</p>
 
-  <div class="nino"><span class="t">Para un niño de diez años · quién es este señor</span>
-    <p><b>Warren Buffett</b> nació en Omaha en 1930 y dirige una empresa, Berkshire Hathaway, que
-    se dedica a <b>comprar otras empresas</b>. Empezó en 1965 con una fábrica de telas que se
-    moría y la convirtió en una de las compañías más grandes del mundo.</p>
-    <p>Lo que lo hace importante aquí no es que sea rico. Es que <b>desde 1977 escribe cada año
-    una carta a sus socios</b> contando qué ha hecho y por qué — <b>incluidos sus errores</b>, que
-    es lo raro. Esas cartas son públicas, gratis, y se entienden sin saber finanzas.</p>
+<pre>FCF = EBITDA − CapEx<sub>mant</sub> − |impuestos| + intereses netos − ΔNWC</pre>
+
+  <div class="tec"><span class="t">Diferencias con las métricas estándar</span>
+    <p><b>Frente al FCFF</b>: el FCFF descuenta el CapEx total y no incorpora intereses. Aquí se
+    descuenta <b>solo el CapEx de mantenimiento</b> y los intereses netos entran con su signo, de
+    modo que la métrica se sitúa conceptualmente entre FCFF y FCFE.</p>
+    <p><b>Frente al FCF publicado</b> (<em>levered free cash flow</em> de los proveedores de
+    datos): la diferencia es enteramente el CapEx de expansión. En Meta 2025: 23.432 publicado
+    frente a 57.807 construido.</p>
+    <p><b>El SBC no se deduce</b> del flujo, en coherencia con la plantilla de origen. Se reporta
+    de forma separada como porcentaje de ventas y entra en el bloque de solidez financiera. Es una
+    decisión discutible y conviene declararla: quien considere el SBC un gasto de caja debe
+    ajustar el resultado a la baja.</p>
   </div>
 
-  <p>En la carta de <b>1986</b> hay un apéndice donde explica una idea que es el eje de todo esto.
-  Acababa de comprar una empresa, Scott Fetzer, y aprovecha para señalar un problema:
-  <b>la contabilidad oficial no dice lo que un dueño quiere saber</b>.</p>
-
-  <h3>Su razonamiento, en cuatro pasos</h3>
-  <ul>
-    <li>El <b>beneficio contable</b> incluye gastos que no son salidas de dinero — sobre todo la
-    depreciación, que es un apunte que dice «mis máquinas valen menos que el año pasado».
-    <b>Ese dinero no ha salido de la caja.</b></li>
-    <li>Así que, para saber cuánto dinero genera de verdad, <b>súmale la depreciación de vuelta</b>.</li>
-    <li>Pero entonces te pasas al otro extremo: las máquinas <b>sí</b> se gastan, y algún día habrá
-    que reponerlas. Ese gasto es real aunque no aparezca todos los años.</li>
-    <li>Por eso hay que <b>restar lo que la empresa necesita invertir para seguir como está</b>.
-    No lo que invierte —que puede ser más, si está creciendo— sino <b>lo que necesita para no ir
-    a menos</b>.</li>
-  </ul>
-
-  <p>A eso lo llamó <b>owner earnings</b>: las ganancias del propietario. Su definición, en sus
-  términos: el beneficio declarado, más la depreciación, el agotamiento, la amortización y demás
-  cargos que no son salidas de dinero, menos la inversión media anual en instalaciones y equipo
-  que el negocio necesita para —cita literal—</p>
+  <h3>Origen conceptual</h3>
+  <p>La métrica implementa la definición de <em>owner earnings</em> de Warren Buffett, formulada
+  en el apéndice de la carta anual de Berkshire Hathaway de <b>1986</b>: beneficio declarado, más
+  depreciación, agotamiento, amortización y demás cargos que no suponen salida de caja, menos la
+  inversión media anual en instalaciones y equipo requerida para —cita literal—</p>
 
   <div class="cita">«fully maintain its long-term competitive position and its unit volume»
-    <span class="f">Warren Buffett · carta anual de Berkshire Hathaway, 1986 · apéndice</span></div>
+    <span class="f">Berkshire Hathaway, carta anual de 1986 · apéndice
+    · <a href="https://www.berkshirehathaway.com/letters/1986.html" target="_blank" rel="noopener">texto original, público y gratuito</a></span></div>
 
-  <p>Mantener plenamente su posición competitiva a largo plazo y su volumen de unidades. Las tres
-  palabras que lo deciden todo son <b>maintain</b>, <b>position</b> y <b>volume</b>: lo que hace
-  falta para <b>seguir donde estás vendiendo lo mismo</b>. Todo lo que se gaste por encima persigue
-  otra cosa, y por definición <b>no es un coste de estar donde estás</b>.</p>
+  <p>Los términos operativos son <b>maintain</b>, <b>position</b> y <b>volume</b>: el
+  mantenimiento del volumen de unidades y de la posición competitiva. Todo desembolso por encima
+  de ese umbral persigue expansión y, por definición, no constituye coste de continuidad.</p>
 
-  <h3>Las dos advertencias que él mismo pone</h3>
-  <p>No conviene saltárselas, porque son la respuesta a las dos objeciones más habituales:</p>
-  <ul>
-    <li><b>Es una estimación, no un dato.</b> Buffett lo dice sin rodeos: ese número es
-    <em>«a guess»</em>, una conjetura, y a veces difícil de hacer. Prefiere un número
-    aproximadamente correcto a uno exactamente equivocado.</li>
-    <li><b>El contable no lo puede dar.</b> Registra lo que ya pasó; estimar cuánto hace falta
-    invertir para mantenerse <b>es trabajo del inversor y del gestor</b>. Por eso ninguna web
-    publica este dato, y por eso en mi herramienta esa casilla <b>es editable</b>.</li>
-  </ul>
+  <p>El propio Buffett acota la definición con dos advertencias que conviene reproducir porque son
+  la respuesta a las objeciones habituales: el importe es explícitamente <em>«a guess»</em>, una
+  estimación —no reclama la precisión aparente de la contabilidad—, y <b>no es derivable de los
+  estados financieros</b>: estimarlo corresponde al analista y al gestor, no al auditor. De ahí
+  que ninguna fuente lo publique y que en la implementación sea un campo editable.</p>
 
-  <div class="aviso">
-    <b>Sobre la carta completa.</b> Me has pedido la traducción íntegra y no la voy a poner, y
-    quiero que sepas por qué: <b>la carta es propiedad de Berkshire Hathaway</b>. Reproducirla
-    entera —traducida o en inglés— en un documento tuyo, y más si algún día lo vendes, es
-    exactamente el tipo de cosa que puede volverse en tu contra delante de la persona a la que
-    quieres impresionar.
-    <br><br>
-    Lo que sí es tuyo y nadie te puede discutir es <b>todo lo de arriba</b>: la explicación con tus
-    palabras, con las citas mínimas y atribuidas. Es la forma correcta de citar y es la que usa
-    cualquier trabajo académico serio.
-    <br><br>
-    El original es <b>gratuito y público</b>. Enlázalo y que cada uno lo lea:
-    <a href="https://www.berkshirehathaway.com/letters/1986.html" target="_blank" rel="noopener">berkshirehathaway.com/letters/1986.html</a>
-    — el apéndice está al final, buscando «Owner Earnings».
-  </div>
-
-  <h3>Un camino distinto al suyo, con el mismo punto de partida</h3>
-  <p>Conviene ser honesto en esto: <b>Buffett llega al valor descontando flujos futuros</b>. Yo
-  llego por <b>múltiplos</b>: cuántas veces su propia caja ha pagado el mercado por esta empresa a
-  lo largo de diez años, ajustado a la baja.</p>
-  <p>Son dos caminos y se puede discutir cuál es mejor. Pero <b>el paso previo es idéntico</b>:
-  cómo se lee la contabilidad y qué se considera dinero de verdad. Da igual lo que hagas después
-  con el flujo de caja — primero hay que calcularlo bien, y calcularlo bien significa
-  <b>separar mantener de crecer</b>.</p>
+  <div class="aviso"><b>Nota sobre el texto original.</b> La carta es propiedad de Berkshire
+  Hathaway. Este documento no la reproduce ni traducida ni íntegra: expone la definición con
+  redacción propia, con la cita mínima necesaria atribuida y enlace al original público.</div>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════ -->
-<section id="cuentas">
-  <div class="snum">4 · Las cuentas</div>
-  <h2>Cómo se construye el número</h2>
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="capex">
+  <div class="snum">3 · CapEx de mantenimiento</div>
+  <h2>Estimación y regla de acotación</h2>
 
-  <p>Aquí está la diferencia práctica con cualquier web: <b>el flujo de caja libre no se copia,
-  se construye</b>. Este número no está publicado en ningún sitio.</p>
+  <p>La partida no es observable. Se aproxima por la depreciación, con la depreciación operando
+  como <b>techo</b> y no como valor:</p>
 
-<pre>   Lo que gana operando                    <b>EBITDA</b>
- − lo que cuesta no morir                  CapEx de mantenimiento
- − Hacienda                                impuestos
- ± el banco                                intereses netos
- − lo que se queda atrapado                variación de circulante
- ─────────────────────────────────────────────────────────────────
- = <b>Dinero real del año</b>                     flujo de caja libre</pre>
+<pre>CapEx<sub>neto</sub>  = CapEx total + compra/venta de intangibles + venta de PP&E
 
-  <p>Y con ese número, el precio máximo que puedes pagar:</p>
+CapEx<sub>mant</sub>  = <b>MÍN</b>( |CapEx<sub>neto</sub>| , Depreciación )
 
-<pre> 1 · Proyectas el dinero real a <b>cinco años</b>
- 2 · Lo multiplicas por lo que el mercado ha pagado normalmente  <b>(la mediana a 10 años)</b>
- 3 · Restas la deuda y lo repartes entre las acciones que habrá
- 4 · Y lo traes a hoy dividiendo entre <b>1,15⁵</b>
+CapEx<sub>exp</sub>   = CapEx<sub>neto</sub> − CapEx<sub>mant</sub></pre>
 
- = <b>IDC</b> · el precio máximo que puedes pagar para ganar un 15% anual</pre>
+  <ul>
+    <li><b>Inversión superior a la depreciación</b> → mantenimiento = depreciación; el exceso se
+    clasifica como expansión. Caso modal en compañías en crecimiento.</li>
+    <li><b>Inversión inferior a la depreciación</b> → mantenimiento = desembolso efectivo. No
+    procede imputar un gasto no incurrido.</li>
+  </ul>
 
-  <div class="tec"><span class="t">Dicho en técnico · tres decisiones deliberadas</span>
-    <p><b>1 · La mediana, no la media.</b> En todos los promedios a diez años. La media la mueve un
-    solo año raro, y en cuanto hay ejercicios negativos —justo cuando más falta hace mirar bien—
-    deja de describir nada. Una empresa con un año de EBITDA casi cero puede dar una conversión en
-    caja del −19.000%: la media queda destrozada, la mediana no se entera.</p>
-    <p><b>2 · La escalera decreciente.</b> El crecimiento proyectado se frena cada año en vez de
-    mantenerse plano. Ningún negocio crece al mismo ritmo cinco años seguidos, y esto es además la
-    respuesta a la crítica seria del método: si excluyo del flujo de caja el gasto en crecer, no
-    puedo luego proyectar alegremente el crecimiento que ese gasto produce.</p>
-    <p><b>3 · El 15% es exigencia, no previsión.</b> El IDC no dice lo que la empresa vale: dice
-    <b>lo máximo que puedes pagar para que te salgan las cuentas</b>. Son dos preguntas distintas
-    y la segunda siempre da un número menor.</p>
+  <div class="tec"><span class="t">Lectura del segundo caso</span>
+    <p>Una compañía que invierte de forma sostenida por debajo de su depreciación está
+    <b>sosteniendo el resultado por infrainversión</b>. La regla lo recoge sin penalizarlo
+    automáticamente; la señal es cualitativa y requiere análisis del ciclo de activos.</p>
   </div>
 
-  <h3>Por qué mis números no cuadran con los de las webs — a propósito</h3>
+  <h3>Justificación de la elección de la depreciación como proxy</h3>
+  <p>Es la magnitud que la propia compañía declara conforme a políticas contables que no puede
+  modificar discrecionalmente ejercicio a ejercicio. No es un estimador insesgado —la vida útil
+  contable rara vez coincide con la económica— pero es el mejor dato público disponible y no
+  manipulable a corto plazo. <b>Cuando la dirección publica su propia estimación de CapEx de
+  mantenimiento, prevalece la suya.</b></p>
+
+  <div class="aviso"><b>Disponibilidad del dato.</b> La depreciación aislada no la publican todos
+  los proveedores: algunos solo ofrecen D&amp;A agregada. Si se emplea la D&amp;A total, se
+  incorpora la amortización de intangibles y la estimación resulta <b>conservadora por exceso</b>:
+  el flujo sale menor, nunca inflado. La alternativa es el 10-K o el XBRL del regulador.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="normalizacion">
+  <div class="snum">4 · Normalizaciones</div>
+  <h2>Balance y cuenta de resultados</h2>
+
+<pre>Beneficio neto normalizado = EBIT + intereses netos − |impuestos|
+
+Deuda neta      = deuda CP + deuda LP − caja − inversiones financieras
+                  <b>excluye</b> arrendamientos
+
+Capital invertido = patrimonio neto + deuda CP + deuda LP
+                  + arrendamientos CP + arrendamientos LP
+                  − inversiones financieras
+                  <b>la caja operativa NO se resta</b>
+
+ROIC = EBIT × (1 − t) / capital invertido</pre>
+
+  <div class="tec"><span class="t">El tratamiento asimétrico de los arrendamientos</span>
+    <p>Los arrendamientos se <b>excluyen de la deuda neta</b> pero se <b>incluyen en el capital
+    invertido</b>. No es una inconsistencia: la deuda neta mide apalancamiento financiero exigible
+    y el capital invertido mide la base de activos que el negocio emplea, en la que un activo
+    arrendado es funcionalmente equivalente a uno propio. Es la convención de la plantilla de
+    origen y se mantiene por trazabilidad.</p>
+  </div>
+
+  <h3>Efecto de las normalizaciones · Meta Platforms, 2025 (M USD)</h3>
   <table>
-    <thead><tr><th>Concepto</th><th class="n">Lo que publican</th><th class="n">El mío</th><th>Por qué</th></tr></thead>
+    <thead><tr><th>Concepto</th><th class="n">Publicado</th><th class="n">Normalizado</th><th>Origen de la diferencia</th></tr></thead>
     <tbody>
-      <tr><td><b>Beneficio neto</b></td><td class="n">60.458</td><td class="n">58.760</td>
-          <td>Normalizado: fuera lo no operativo y lo extraordinario</td></tr>
-      <tr><td><b>Flujo de caja libre</b></td><td class="n">23.432</td><td class="n">57.807</td>
-          <td>Solo se resta el CapEx de <b>mantenimiento</b>, no el total</td></tr>
-      <tr><td><b>Deuda neta</b></td><td class="n">85.081</td><td class="n">−22.848</td>
-          <td>Sin alquileres, y restando caja e inversiones</td></tr>
+      <tr><td>Beneficio neto</td><td class="n">60.458</td><td class="n">58.760</td>
+          <td><em>Other Non Operating Expenses</em> + <em>Other Unusual Items</em></td></tr>
+      <tr><td>Flujo de caja libre</td><td class="n">23.432</td><td class="n">57.807</td>
+          <td>CapEx de expansión, no deducido</td></tr>
+      <tr><td>Deuda neta</td><td class="n">85.081</td><td class="n">−22.848</td>
+          <td>Arrendamientos excluidos; caja e inversiones deducidas</td></tr>
     </tbody>
   </table>
-  <p class="soft" style="font-size:.88rem">Cifras de Meta Platforms, ejercicio 2025, en millones de
-  dólares. <b>Las tres diferencias son deliberadas.</b> Si alguien las «arregla», rompe el método.</p>
+  <p class="soft" style="font-size:.88rem">La diferencia en beneficio se ha verificado en tres
+  ejercicios contra las partidas no operativas y extraordinarias, con cuadre al millón
+  (2016: 75 · 2019: 5.078 · 2025: 1.698).</p>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════ -->
-<section id="analistas">
-  <div class="snum">5 · El consenso</div>
-  <h2>Por qué miro a los analistas con distancia</h2>
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="proyeccion">
+  <div class="snum">5 · Proyección</div>
+  <h2>Horizonte explícito y valor terminal</h2>
 
-  <div class="aviso">
-    <b>Primero, una corrección que te hago por tu bien.</b> «Los analistas siempre se equivocan»
-    es una frase que <b>no puedes defender</b> delante de una profesora, porque es falsa y se
-    desmonta con un contraejemplo. Y si te desmontan la frase, te desmontan el método entero
-    aunque el método sea bueno.
-    <br><br>
-    Lo que <b>sí</b> puedes defender, y es más fuerte, es esto: <b>el consenso es un punto de
-    partida, no una autoridad</b>, y hay razones estructurales para tratarlo con distancia. No
-    porque los analistas sean malos —muchos son excelentes— sino por <b>cómo funciona el oficio</b>.
+  <p>El horizonte explícito es de <b>cinco ejercicios</b>. La proyección se realiza
+  <b>por partidas</b>, no aplicando una tasa agregada al flujo:</p>
+
+<pre>ventas<sub>t</sub>    = ventas<sub>t−1</sub> × (1 + g<sub>t</sub>)
+EBIT<sub>t</sub>      = ventas<sub>t</sub> × margen<sub>t</sub>
+D&A<sub>t</sub>       = D&A<sub>t−1</sub> × (1 + g<sub>t</sub>)
+EBITDA<sub>t</sub>    = EBIT<sub>t</sub> + D&A<sub>t</sub>
+CapEx<sub>mant,t</sub> = ventas<sub>t</sub> × (CapEx<sub>mant</sub>/ventas)<sub>t</sub>
+int<sub>t</sub>       = caja<sub>t</sub> × i<sub>activo</sub> − deuda<sub>t</sub> × i<sub>pasivo</sub>
+impuesto<sub>t</sub>  = (EBIT<sub>t</sub> + int<sub>t</sub>) × t<sub>t</sub>
+FCF<sub>t</sub>       = EBITDA<sub>t</sub> − CapEx<sub>mant,t</sub> + int<sub>t</sub> − impuesto<sub>t</sub></pre>
+
+  <p><code>g</code>, <code>margen</code>, <code>t</code>, la asignación de capital y el
+  <code>CapEx/ventas</code> son vectores de cinco posiciones editables por ejercicio. La caja no
+  permanece constante: el flujo no distribuido incrementa la posición de tesorería y reduce la
+  deuda neta, lo que retroalimenta los ingresos financieros del ejercicio siguiente.</p>
+
+  <div class="tec"><span class="t">Los intereses, separados</span>
+    <p>El interés neto agregado subestima el tipo implícito en compañías con caja y deuda
+    simultáneas. Se proyectan por separado el rendimiento del activo financiero y el coste del
+    pasivo, con sus respectivos tipos derivados de <em>Interest And Investment Income</em> e
+    <em>Interest Expense, Total</em>.</p>
   </div>
 
-  <h3>Las cuatro razones estructurales</h3>
+  <h3>Valor terminal</h3>
+  <p>Se emplea <b>múltiplo de salida</b> sobre el flujo del año 5, no crecimiento a perpetuidad.
+  El múltiplo parte de la mediana histórica a diez años del EV/FCF de la propia compañía,
+  ajustada a la baja.</p>
+
+  <div class="aviso"><b>Limitación conocida, y hay que declararla.</b> En un modelo de cinco años
+  con múltiplo de salida, <b>el valor terminal domina el resultado</b>: la práctica totalidad del
+  valor procede de <code>m × FCF₅</code>. El método traslada así el problema del crecimiento a
+  perpetuidad al problema de la estabilidad del múltiplo. Se mitiga anclando el múltiplo en la
+  serie histórica <em>de la propia compañía</em> —no en comparables— y aplicando un ajuste a la
+  baja, pero la sensibilidad sigue siendo elevada y el informe la explicita.</p>
+
+  <h3>Escalera decreciente</h3>
+  <p>En el modo simplificado, el crecimiento del flujo se define en el año 1 y en el año 5 y se
+  interpola, con desvanecimiento por defecto a la mitad. Además de la razón económica —ninguna
+  compañía sostiene la misma tasa cinco ejercicios— responde a la objeción metodológica central:
+  si se excluye del flujo el desembolso de expansión, no puede proyectarse íntegramente el
+  crecimiento que ese desembolso financia. La prudencia no se elimina, se reubica.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="descuento">
+  <div class="snum">6 · Descuento</div>
+  <h2>Exigencia, no coste de capital</h2>
+
+  <p>El descuento se practica a una <b>tasa de rentabilidad exigida</b> fijada por el analista
+  —15% por defecto— y no a un coste medio ponderado de capital.</p>
+
+  <div class="tec"><span class="t">Por qué, y qué se pierde</span>
+    <p><b>Qué se gana.</b> El WACC exige estimar beta, prima de riesgo de mercado y estructura
+    objetivo de capital: tres parámetros con error de estimación relevante que, combinados,
+    producen una precisión aparente muy superior a la real. Fijar la exigencia es una decisión
+    explícita del inversor y perfectamente auditable.</p>
+    <p><b>Qué se pierde.</b> El resultado <b>no es comparable</b> con un <em>fair value</em> de
+    mercado ni entre compañías con perfiles de riesgo distintos: una tasa única aplicada a todo el
+    universo ignora el riesgo idiosincrásico. El método compensa este punto por la vía del
+    <b>filtro cualitativo previo</b> —solo se valoran compañías que han superado cinco bloques de
+    calidad— y por los vetos, no por la tasa.</p>
+    <p>Quien prefiera diferenciar por riesgo puede modificar <code>r</code> por compañía; el campo
+    es editable y el efecto es inmediato sobre el resultado.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="estadistica">
+  <div class="snum">7 · Estadística</div>
+  <h2>Tratamiento de las series históricas</h2>
+
+  <h3>Estimador central: mediana</h3>
+  <p>Todos los promedios sobre series de diez ejercicios —márgenes, conversión, ROIC, múltiplos—
+  emplean la <b>mediana</b>, no la media aritmética. El punto de ruptura de la media es
+  <code>1/n</code>: una única observación extrema la desplaza sin límite. El de la mediana es
+  <code>50%</code>.</p>
+
+  <div class="tec"><span class="t">Caso que motivó la decisión</span>
+    <p>Conversión en caja de una compañía con EBITDA próximo a cero en un ejercicio: la serie
+    contiene una observación de <b>−19.200%</b>. Media aritmética: <b>−3.542%</b>. Mediana:
+    <b>+37%</b>. La media no describe ninguna propiedad de la compañía.</p>
+  </div>
+
+  <h3>Exclusión de observaciones</h3>
+  <p>Se excluye una observación cuando cumple <b>dos condiciones simultáneas</b>:</p>
+<pre>| xᵢ − mediana |  >  máx( 8 × MAD , 2 × |mediana| )        y
+
+| xᵢ | > 5   ∨   ( signo(xᵢ) ≠ signo(mediana)  ∧  |xᵢ| > 3 × |mediana| )</pre>
+
+  <p>La condición estadística por sí sola es insuficiente: en series de baja dispersión —una
+  compañía con conversión estable en el 75% tiene una MAD de 2,4 puntos— el criterio de distancia
+  excluiría ejercicios perfectamente representativos. <b>Excluir observaciones válidas es peor que
+  incluir una anómala</b>, porque mejora el resultado en silencio. La segunda condición exige que
+  el valor sea además <b>absurdo en términos absolutos</b>.</p>
+
+  <p>Toda exclusión se reporta en el informe con el ejercicio afectado y su valor. <b>No se
+  descarta ningún dato sin declararlo.</b></p>
+
+  <h3>Tasas de crecimiento no definidas</h3>
+  <p>El CAGR no está definido cuando el valor inicial es no positivo. En lugar de un valor nulo se
+  reporta la transición absoluta y, cuando existe, la tasa desde el primer ejercicio positivo.</p>
+
+  <h3>Escala de representación gráfica</h3>
+  <p>Las series con observaciones extremas se representan con escala acotada al rango robusto; las
+  observaciones fuera de escala se marcan en el borde con su valor y se declaran bajo el gráfico.
+  El criterio de acotación es un rango total superior a cinco veces el rango robusto.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="consenso">
+  <div class="snum">8 · Consenso</div>
+  <h2>Uso de las estimaciones de analistas</h2>
+
+  <p>El consenso se emplea como <b>input editable</b> para los primeros ejercicios de la
+  proyección, nunca como valor terminal ni como validación del resultado.</p>
+
+  <h3>Fundamento de la cautela</h3>
   <ul>
-    <li><b>El horizonte.</b> Un consenso a doce meses es razonablemente informado. Un consenso a
-    cinco o diez años es una extrapolación, y se presenta con la misma cara de precisión que el
-    de doce meses. En la pestaña de previsiones verás columnas hasta <code>FY+10</code>: mira
-    cuántos analistas contribuyen a cada una. Suelen ser <b>cuarenta en el primer año y dos en el
-    décimo</b>. Ese dato está a la vista y lo dice todo.</li>
-    <li><b>El incentivo.</b> Un analista que cubre una empresa necesita acceso a su directiva. Ser
-    duro con una compañía tiene un coste profesional que ser blando no tiene. Eso no lo hace
-    deshonesto: lo hace <b>humano y previsible</b>.</li>
-    <li><b>El rebaño.</b> Equivocarse solo cuesta el puesto; equivocarse con todos, no. El
-    consenso <b>se agrupa</b>, y por eso la dispersión entre el más optimista y el más pesimista
-    informa más que la media.</li>
-    <li><b>Miden otra cosa.</b> El consenso proyecta ventas, beneficio y EBITDA. <b>Ninguno
-    proyecta el flujo de caja tal como yo lo construyo</b>, porque nadie separa mantenimiento de
-    expansión. Así que aunque acertaran de pleno, seguiría haciendo falta el trabajo de arriba.</li>
+    <li><b>Decaimiento de cobertura.</b> El número de contribuyentes cae abruptamente con el
+    horizonte. Es observable directamente en el campo <code>Contributing Analysts Count</code> de
+    la propia fuente: series típicas del tipo <b>45 · 46 · 47 · 33 · 9 · 9 · 4 · 2 · 2 · 2 · 2</b>
+    para FY+1 a FY+10. La estimación de FY+10 no es un consenso: es la opinión de dos personas,
+    presentada con la misma precisión tipográfica que la de cuarenta y cinco.</li>
+    <li><b>Sesgo de optimismo y asimetría de incentivos.</b> El acceso a la dirección tiene valor
+    profesional y la cobertura negativa tiene un coste que la positiva no tiene. No implica
+    deshonestidad: implica un sesgo sistemático y direccional.</li>
+    <li><b>Comportamiento gregario.</b> El error idiosincrásico penaliza más que el error
+    compartido, lo que comprime la dispersión del consenso. Por eso la <b>dispersión</b> entre
+    estimación alta y baja es más informativa que la central.</li>
+    <li><b>Objeto distinto.</b> El consenso proyecta ventas, EBITDA, EBIT y BPA. Ninguna casa
+    proyecta el flujo del propietario, porque ninguna separa mantenimiento de expansión. La
+    normalización del apartado 2 sigue siendo necesaria aunque el consenso fuera exacto.</li>
   </ul>
 
-  <div class="ok">
-    <b>Y aquí está lo bueno: no tienes que creerme.</b> La herramienta te enseña el dato que lo
-    demuestra. Cuando pegas la pestaña <em>Forecasts</em>, arriba de cada columna aparece
-    <code>Contributing Analysts Count</code>. En una empresa grande verás algo como
-    <b>45 · 46 · 47 · 33 · 9 · 9 · 4 · 2 · 2 · 2 · 2</b>.
-    <br><br>
-    Cuarenta y cinco personas opinan sobre el año que viene. <b>Dos</b> opinan sobre 2035. Y las
-    dos cifras se pintan igual de grandes y con los mismos decimales. Enseña eso en clase y no
-    hace falta decir nada más.
-  </div>
+  <div class="aviso"><b>Precisión necesaria.</b> Afirmar que «los analistas se equivocan siempre»
+  es empíricamente falso y se refuta con un contraejemplo. La proposición defendible es que el
+  consenso presenta <b>sesgo direccional conocido y cobertura decreciente con el horizonte</b>, lo
+  que justifica tratarlo como punto de partida revisable y no como parámetro.</p></div>
 
-  <h3>Entonces, ¿para qué los uso?</h3>
-  <p>Los uso <b>donde son buenos</b>: los dos o tres primeros años, y para partidas donde tienen
-  información que el pasado no puede tener — un contrato firmado, una fábrica en construcción, un
-  producto que aún no se vende.</p>
-  <p>Y los uso <b>como punto de partida editable</b>. En la herramienta, cuando pegas las
-  previsiones, cada año queda en una casilla que puedes cambiar. Eso es exactamente lo que hago en
-  la hoja de cálculo: <b>coger el consenso y ajustarlo a mano</b>.</p>
-  <p>Lo que no hago nunca es <b>proyectar diez años con el consenso y llamarlo análisis</b>.</p>
+  <h3>Partidas utilizadas</h3>
+  <table>
+    <thead><tr><th>Fila de la fuente</th><th>Destino en el modelo</th></tr></thead>
+    <tbody>
+      <tr><td><code>Revenue Forecast</code></td><td>vector de crecimiento <code>g₁…g₅</code></td></tr>
+      <tr><td><code>EBIT Forecast</code></td><td>vector de margen operativo</td></tr>
+      <tr><td><code>Capital Expenditures Forecast</code></td><td>vector CapEx/ventas por ejercicio</td></tr>
+      <tr><td><code>Dividends Per Share Forecast</code></td><td>asignación de capital</td></tr>
+    </tbody>
+  </table>
+  <p>Todos los vectores quedan editables tras la carga. El procedimiento replica el flujo de
+  trabajo en hoja de cálculo: importar consenso y ajustar por ejercicio.</p>
 </section>
 
-<!-- ════════════════════════════════════════════════════════════ -->
-<section id="pruebas">
-  <div class="snum">6 · La comprobación</div>
-  <h2>Cómo se comprueba que esto no es un cuento</h2>
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="validacion">
+  <div class="snum">9 · Validación</div>
+  <h2>Controles y trazabilidad</h2>
 
-  <p>Un método de valoración que no se puede comprobar es una opinión con tablas. Este se comprueba
-  de tres formas, y las tres están a tu alcance.</p>
+  <h3>Contra la plantilla de origen</h3>
+<pre>FCF Meta 2025          <b>57.807</b>   ≡ celda de la plantilla
+FCF Microsoft 2025    <b>113.091</b>   ≡ celda de la plantilla
+IDC Meta, supuestos idénticos      <b>666,31</b>  vs 666,36
+IDC Microsoft, supuestos idénticos <b>385,30</b>  vs 385,33</pre>
+  <p>La divergencia es de redondeo y está localizada. Agregados verificados: CAGR de ventas a 10
+  años, CAGR de BPA, margen EBIT medio, mediana de ROIC y DN/EBITDA.</p>
 
-  <h3>1 · Reproduce la hoja de cálculo, al céntimo</h3>
-  <p>Todas las fórmulas están verificadas contra la plantilla de la que salió el método. No
-  «parecido»: idéntico.</p>
-<pre>Flujo de caja de Meta, 2025      <b>57.807</b>  =  celda de la plantilla
-Flujo de caja de Microsoft, 2025 <b>113.091</b>  =  celda de la plantilla
-IDC de Meta con los mismos supuestos   <b>666,31</b>  frente a 666,36
-IDC de Microsoft                       <b>385,30</b>  frente a 385,33</pre>
-  <p>La diferencia de céntimos es redondeo, y está localizada.</p>
-
-  <h3>2 · Se vigila a sí mismo</h3>
-  <p>La herramienta <b>revisa 26 partidas × 10 años antes de enseñarte nada</b> y avisa de lo que
-  no puede ser: márgenes imposibles, ventas que se multiplican por ocho, un precio que no cuadra
-  con la moneda de las cuentas, previsiones coladas entre los históricos, un ROIC que se dispara
-  solo porque el patrimonio neto es negativo.</p>
-  <p>Esto es lo que <b>una hoja de cálculo no hace</b>. Un Excel nunca «falla» porque un Excel no
-  comprueba nada: si le pegas los datos mal, te da un número equivocado <b>en silencio y con
-  buena cara</b>. Que la herramienta te avise no es que sea frágil: es que mira.</p>
-
-  <h3>3 · Se contrasta contra alguien que no eres tú</h3>
-  <p>En el último paso pones al lado el <b>Fair Value</b> de InvestingPro — dos de sus doce
-  modelos, elegidos por lo que miden y no por lo que dan: <em>EV/EBITDA Multiples</em> y
-  <em>5Y DCF EBITDA Exit</em>, que es el que más se parece a este método.</p>
-  <div class="tec"><span class="t">Y la trampa que hay que evitar</span>
-    <p><b>Elegir el modelo que coincide contigo es sesgo de confirmación</b> — exactamente lo mismo
-    que este método combate al obligarte a mirar el precio el último. El modelo se escoge
-    <b>antes</b> de ver el resultado, por qué mide lo mismo que tú. Si luego coincide, es una
-    señal. Si lo eliges <em>porque</em> coincide, no has comprobado nada.</p>
-  </div>
-</section>
-
-<!-- ════════════════════════════════════════════════════════════ -->
-<section id="limites">
-  <div class="snum">7 · Los límites</div>
-  <h2>Lo que este método no hace</h2>
-
-  <p>Decir dónde no llega es lo que separa un método de un truco.</p>
+  <h3>Controles automáticos sobre los datos de entrada</h3>
+  <p>Antes de emitir resultado se ejecutan diez comprobaciones de plausibilidad sobre 26 partidas
+  × 10 ejercicios. Cada excepción identifica el ejercicio y la causa más probable:</p>
   <ul>
-    <li><b>No vale para bancos ni aseguradoras.</b> Su negocio <em>es</em> el dinero: la deuda no
-    es una carga, es su materia prima. El flujo de caja libre y la deuda neta no significan aquí
-    lo que significan en cualquier otra empresa.</li>
-    <li><b>No vale para inmobiliarias patrimonialistas</b> (REITs, SOCIMIs). Su beneficio está
-    distorsionado por la amortización de inmuebles que no pierden valor, y el CapEx de
-    mantenimiento no se puede aproximar con la depreciación.</li>
-    <li><b>No vale para empresas que queman caja.</b> Multiplicar un número negativo no da un
-    precio, da un sinsentido. Que no se pueda poner precio <b>es la conclusión</b>, no un fallo.</li>
-    <li><b>No es un cribador.</b> No busca empresas: analiza una, despacio.</li>
-    <li><b>No decide.</b> Produce un diagnóstico. Decide una persona.</li>
+    <li>Márgenes operativos fuera de rango admisible</li>
+    <li>Discontinuidades en ventas superiores a un factor 8</li>
+    <li><b>Inconsistencia de escala entre el precio corriente y las cotizaciones históricas</b> —
+    típicamente, mezcla de divisas. Es el fallo más peligroso: no deja huecos y produce un informe
+    internamente coherente con múltiplos de cinco cifras</li>
+    <li>Variaciones del número de acciones compatibles con desdoblamiento</li>
+    <li>Ratios sobre denominadores próximos a cero</li>
+    <li>Capital invertido reducido o negativo, con la advertencia de que el ROIC deja de ser
+    interpretable por contracción del denominador y no por mejora operativa</li>
+    <li>Ejercicios con ventas nulas</li>
   </ul>
 
-  <div class="tec"><span class="t">La objeción seria, y qué contesto</span>
-    <p>«Si excluyes del flujo de caja el gasto en crecer pero luego proyectas el crecimiento que
-    ese gasto produce, te quedas con el premio sin pagar la entrada.» Es la crítica buena a este
-    enfoque y conviene adelantarse a ella.</p>
-    <p>Se cierra por dos sitios: la <b>escalera decreciente</b>, que frena el crecimiento cada año
-    precisamente porque crecer no sale gratis, y el <b>múltiplo objetivo</b>, que se toma por
-    debajo de la mediana histórica. La prudencia no desaparece: <b>cambia de sitio</b>. Meterla dos
-    veces no es ser prudente, es no saber qué estás midiendo.</p>
+  <div class="tec"><span class="t">Diferencia respecto a una hoja de cálculo</span>
+    <p>Una hoja de cálculo no valida: ante un dato mal introducido devuelve un resultado erróneo
+    de forma silenciosa y con apariencia normal. La detección queda enteramente a cargo del
+    criterio del analista. El sistema descrito no elimina el error, pero lo <b>declara</b>.</p>
   </div>
 
-  <div class="nino"><span class="t">Y en una frase, para acabar</span>
-    <p>Esto no es la caja que la empresa puede repartir mañana en dividendos.
-    Es <b>la capacidad de generar dinero del negocio que ya está construido</b>.</p>
-    <p>Son dos preguntas distintas, y para valorar interesa la segunda.</p>
+  <h3>Contraste externo</h3>
+  <p>El informe incorpora el <em>Fair Value</em> de proveedor externo, restringido a los dos
+  modelos metodológicamente comparables: <b>EV/EBITDA Multiples</b> y <b>5Y DCF EBITDA Exit</b>.
+  La selección se realiza <em>ex ante</em> por afinidad metodológica, no <em>ex post</em> por
+  proximidad de resultado —que constituiría sesgo de confirmación—. Se excluyen explícitamente
+  Price/Book, por inaplicabilidad a compañías con activos intangibles dominantes, y los precios
+  objetivo de analistas, por estar anclados al precio corriente.</p>
+
+  <h3>Regresión automatizada</h3>
+  <p>89 comprobaciones automáticas cubren lectura de cifras en ambas convenciones decimales,
+  detección de ejercicios, reproducción de la plantilla, robustez estadística, control de
+  coherencia interna del resultado y comportamiento ante compañías con ejercicios negativos,
+  patrimonio neto negativo, desdoblamientos y datos en escalas inconsistentes.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section id="ambito">
+  <div class="snum">10 · Ámbito</div>
+  <h2>Aplicación y limitaciones</h2>
+
+  <h3>No aplicable</h3>
+  <ul>
+    <li><b>Entidades financieras.</b> El pasivo es materia prima y no carga; el flujo de caja
+    libre y la deuda neta carecen de la interpretación habitual. Marco alternativo: ROE y
+    Price/Book.</li>
+    <li><b>Vehículos inmobiliarios patrimonialistas.</b> La amortización de inmuebles distorsiona
+    el resultado contable y el CapEx de mantenimiento no es aproximable por depreciación. Marco
+    alternativo: FFO/AFFO y valoración de activos. <b>No implementado</b>: no se publica método
+    para lo que no se ha desarrollado.</li>
+    <li><b>Compañías con flujo negativo.</b> El producto de un múltiplo por una magnitud negativa
+    carece de significado. La imposibilidad de valorar es el resultado, no un fallo.</li>
+  </ul>
+
+  <h3>Limitaciones declaradas del marco</h3>
+  <ul>
+    <li>Dominancia del valor terminal (apartado 5)</li>
+    <li>Tasa de exigencia única, sin diferenciación por riesgo (apartado 6)</li>
+    <li>CapEx de mantenimiento estimado, no observado (apartado 3)</li>
+    <li>SBC no deducido del flujo (apartado 2)</li>
+    <li>Múltiplo anclado en la historia de la propia compañía: inaplicable con menos de 10
+    ejercicios o tras un cambio estructural del modelo de negocio</li>
+  </ul>
+
+  <div class="tec"><span class="t">La objeción central</span>
+    <p>Excluir el desembolso de expansión del flujo y proyectar simultáneamente el crecimiento que
+    dicho desembolso financia incorpora el beneficio sin su coste. Es la crítica sustantiva al
+    enfoque de <em>owner earnings</em> aplicado a valoración.</p>
+    <p>Se mitiga por dos vías: desvanecimiento del crecimiento proyectado y ajuste a la baja del
+    múltiplo objetivo respecto a la mediana histórica. <b>No se elimina.</b> Duplicar el margen de
+    seguridad en la métrica y en la proyección sería doble contabilización de prudencia.</p>
+  </div>
+
+  <p style="margin-top:2.5rem">El resultado es un diagnóstico con umbrales operativos. No
+  constituye señal de compra ni de venta: la decisión corresponde a una persona.</p>
+</section>
+
+<section style="border-bottom:0">
+  <div class="ok" style="margin:0">
+    <b>¿Buscas la versión sin tecnicismos?</b><br>
+    La misma metodología explicada con una panadería de barrio, sin una sola fórmula, está en
+    <a href="metodo-facil.html">El método en cristiano</a>. Es la versión que uso para explicárselo
+    a quien empieza — y para explicármelo a mí mismo cuando dudo.
   </div>
 </section>
 
 <footer>
-  <b>Valoración Peaky Minders</b> · Por qué valoro así<br>
+  <b>Valoración Peaky Minders</b> · Nota metodológica del método IDC<br>
   Creada bajo los derechos de <b>Francisco González</b> para <b>Escudería 5 · Academia de
   Inversión</b> · <b>Elena Hernáez</b> y <b>Juan Luco Cazorla</b>.<br><br>
-  El sistema, el código, los textos y la didáctica son obra propia. La idea de <em>owner
-  earnings</em> es de Warren Buffett y así consta, con cita atribuida y enlace al original
-  público y gratuito.<br><br>
+  El sistema, la implementación, los textos y la didáctica son obra propia. La definición de
+  <em>owner earnings</em> es de Warren Buffett y consta atribuida, con cita mínima y enlace al
+  original público.<br><br>
   ⚠️ Material formativo. <b>No constituye asesoramiento financiero</b> ni recomendación de compra
-  o venta. Quien lo publica no es asesor financiero registrado.
+  o venta. Quien lo publica no es asesor financiero registrado ni está autorizado por la CNMV.
   <a href="legal.html">Aviso legal completo →</a>
 </footer>
 
