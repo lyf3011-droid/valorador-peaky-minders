@@ -4154,6 +4154,14 @@ function calcular(){
     R.v.accA = accA; R.v.wcv = wcv; R.v.wcvHist = wcvHist;
     /* las acciones del año 5 salen del vector, como en la plantilla */
     R.v.accPlantilla = accA[4];
+    /* Y el divisor de verdad. La línea de arriba del fichero calcula acc5 con
+       la dilución ANTES de que este bloque exista, así que aquí hay que
+       pisarla: si el usuario ha puesto las acciones año a año —como hace la
+       plantilla—, el año 5 es el suyo. Sin esto, Mastercard (que recompra un
+       2,3% anual) salía un 10,8% por debajo de la plantilla y Amazon (que
+       diluye un 1%) un 5,1% por encima: las acciones del año 5 son la celda
+       naranja que más mueve el resultado después del múltiplo. */
+    R.v.acc5 = accA[4];
     R.v.fcf5 = u.fcf; R.v.ebitda5 = u.ebitda; R.v.ebit5 = u.ebit;
     R.v.neto5 = u.ebit + pint - u.impuesto;
     R.v.cagrEquivF = der.fcf[L] > 0 ? Math.pow(u.fcf/der.fcf[L], 1/5) - 1 : null;
@@ -7484,7 +7492,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.afdda82";
+const APP_VERSION = "2026-08-08.bea3e4c";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
