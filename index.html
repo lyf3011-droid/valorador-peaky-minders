@@ -1127,40 +1127,25 @@ Partida en 100 participaciones (+5 prometidas al panadero jefe)</div>
   </div></details>
 </div></section>
 
-<!-- ══════════ VERIFICAR CON IA ══════════ -->
+<!-- ══════════ EL VIGILANTE (antes: verificar con IA) ══════════ -->
 <section><div class="wrap">
   <div class="snum">Control de calidad</div>
-  <h2>Comprueba los datos con una IA</h2>
-  <p class="sub">Transcribir 230 números es donde se cuela el error. Se caza en dos minutos con una captura y cualquier IA que acepte imágenes.</p>
-  <details class="mas plegable"><summary>Ver cómo se hace</summary><div class="dbody">
-
+  <h2>La herramienta revisa los datos por ti</h2>
+  <p class="sub">Un dato mal copiado produce un análisis impecable y falso. Por eso el valorador
+  lleva un <b>vigilante</b> que revisa las 26 partidas × 10 años antes de enseñarte nada.</p>
   <div class="pasos">
-    <div class="paso"><div class="p">1</div><div class="h">Captura la fuente</div>
-      <div class="t">En <b>InvestingPro</b>, haz una captura de la tabla anual completa de
-      <b>Cuenta de resultados</b>. Repite con <b>Balance</b> y <b>Flujo de caja</b>.</div></div>
-    <div class="paso"><div class="p">2</div><div class="h">Captura lo que has metido</div>
-      <div class="t">En el valorador, pulsa <b>«Verificar con IA»</b> en la pestaña correspondiente:
-      te copia al portapapeles la tabla de lo que has introducido, ya formateada.</div></div>
-    <div class="paso"><div class="p">3</div><div class="h">Pásaselo a la IA</div>
-      <div class="t">Adjunta las capturas, pega la tabla y el texto de abajo. Te devuelve las celdas
-      que no cuadran, con el valor correcto.</div></div>
+    <div class="paso"><div class="p">1</div><div class="h">Vigila lo imposible</div>
+      <div class="t">Márgenes que no pueden ser, ventas que se multiplican por ocho, un precio que
+      no cuadra con la moneda de las cuentas, previsiones coladas entre los históricos. Si algo no
+      puede ser, <b>lo dice arriba del informe</b> con el año y la causa probable.</div></div>
+    <div class="paso"><div class="p">2</div><div class="h">Nunca descarta en silencio</div>
+      <div class="t">Si un año se aparta de un promedio —porque su denominador es casi cero y el
+      ratio no significa nada— el informe dice <b>qué año</b> y <b>por qué</b>. Los números que no
+      existen, como un crecimiento desde pérdidas, se explican en vez de dejarse en blanco.</div></div>
+    <div class="paso"><div class="p">3</div><div class="h">Y si quieres otra opinión</div>
+      <div class="t">El botón <b>?</b> del valorador copia todo tu contexto —datos, supuestos,
+      avisos— listo para pegarlo en cualquier IA y preguntar lo que quieras.</div></div>
   </div>
-
-  <div class="ia">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.8rem">
-      <div style="font-weight:800">Texto para pegarle a la IA</div>
-      <button class="b1" id="copiar">Copiar el texto</button>
-    </div>
-    <div class="iap" id="prompt"></div>
-    <div class="note" style="margin-top:.9rem">Fíjate en que el texto le prohíbe explícitamente
-    <b>rellenar huecos por su cuenta</b>. Una IA a la que le pides que verifique una tabla tiende a
-    «arreglarla» inventando lo que no ve en la captura. Esto lo corta.</div>
-  </div>
-
-  <div class="warn"><b>Esto verifica la transcripción, no el análisis.</b> Que los 230 números estén
-  bien copiados no significa que la empresa sea buena ni que tus supuestos de crecimiento tengan
-  sentido. Eso sigue siendo tuyo.</div>
-  </div></details>
 </div></section>
 
 <!-- ══════════ CTA ══════════ -->
@@ -1449,8 +1434,11 @@ MI TABLA:
 }
 
 /* ══ eventos ══ */
-$("tk").addEventListener("input", ()=>{ pintarBloques(); $("prompt").textContent = prompt(); });
-$("copiar").onclick = async () => {
+/* estos controles eran de la sección «verificar con IA», que ya no existe:
+   la sustituyó el vigilante de datos del valorador. Se guarda el código por si
+   vuelve, pero solo se engancha si sus elementos están en la página. */
+if($("tk")) $("tk").addEventListener("input", ()=>{ pintarBloques(); $("prompt").textContent = prompt(); });
+if($("copiar")) $("copiar").onclick = async () => {
   try{ await navigator.clipboard.writeText(prompt()); $("copiar").textContent = "✓ Copiado"; }
   catch(e){ const r=document.createRange(); r.selectNode($("prompt"));
     getSelection().removeAllRanges(); getSelection().addRange(r); $("copiar").textContent = "Selecciónalo y copia"; }
@@ -1517,7 +1505,7 @@ document.addEventListener("keydown", e => {
   if(e.key==="Escape") clCierra();
 });
 if($("abrirClase")) $("abrirClase").onclick = clAbre;
-$("prompt").textContent = prompt();
+if($("prompt")) $("prompt").textContent = prompt();
 </script>
 
 <dialog id="lupa" aria-label="Vista ampliada">
