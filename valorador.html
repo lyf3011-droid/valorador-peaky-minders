@@ -1733,9 +1733,36 @@ function vetoSector(){
 
 /* Regla del método: no vale para bancos, aseguradoras ni inmobiliarias
    patrimonialistas. Antes entraban y calculaban sin decir nada. */
+/* ── Financieras que SÍ se valoran con el método ──────────────────────────
+   El GICS mete en «Financials» dos negocios que no se parecen en nada:
+   · Los que ganan CON EL BALANCE —bancos, aseguradoras, holdings—: prestan o
+     aseguran, la deuda es su materia prima, y el FCF no significa lo normal.
+     Sus plantillas (Berkshire, American Express, CME) tienen OTRA estructura.
+   · Los que COBRAN COMISIONES sin balance bancario: redes de pago, agencias
+     de rating, índices. Funcionan como cualquier empresa de servicios.
+     Sus plantillas (Mastercard, Visa, Moody's) usan LA MISMA estructura que
+     Apple, y las tres se reproducen al céntimo con el método estándar.
+   La lista es deliberadamente corta: en la duda, se avisa. */
+const FIN_OK = new Set([
+  "V","MA","MCO","SPGI","MSCI","FDS",                    /* pagos, rating, índices */
+  "PYPL","GPN","FIS","FISV","CPAY","JKHY","BR",          /* procesadores de pago */
+  "MRSH","AON","AJG","BRO","WTW"                         /* brokers de seguros (comisión, no riesgo) */
+]);
+
 function avisarSector(e){
   const caja = $("idinfo");
   if(!e){ return; }
+  if(e.s === "F" && FIN_OK.has(e.t)){
+    caja.innerHTML = `<div class="idcard"><div class="n">${esc(e.n)}</div>
+      <div class="m">${esc(e.b)} · Financiera <b>de servicios</b> · ${esc(e.t)}</div>
+      <div class="m" style="margin-top:.5rem;color:var(--soft)">El GICS la clasifica como
+      financiera, pero <b>no gana con el balance</b>: cobra comisiones, como cualquier empresa de
+      servicios. No presta dinero ni asegura riesgos, así que su flujo de caja y su deuda neta
+      significan lo de siempre y <b>el método sí aplica</b>.
+      <span style="color:var(--muted-txt)">La señal práctica: la plantilla de Mastercard, Visa o
+      Moody's usa la misma estructura que la de Apple. La de un banco, no.</span></div></div>`;
+    return;
+  }
   if(e.s === "F" || e.s === "R"){
     const q = e.s === "F" ? "una <b>financiera</b> (banco, aseguradora o similar)"
                           : "una <b>inmobiliaria patrimonialista</b> (tipo REIT o SOCIMI)";
@@ -4034,6 +4061,10 @@ function calcular(){
        de las celdas naranjas de la plantilla y hasta ahora la rellenábamos
        con el pasado sin decirlo. */
     const pcxA = Array.isArray(VAL.pcxA) && VAL.pcxA.length === 5 ? VAL.pcxA : null;
+    /* D&A como % de ventas, año a año. Por defecto la D&A crece con las ventas
+       —que es lo que hacen casi todas las plantillas— pero Cintas la proyecta
+       por su propio camino, y este vector permite reproducir cualquiera. */
+    const pdaA = Array.isArray(VAL.pdaA) && VAL.pdaA.length === 5 ? VAL.pdaA : null;
 
     /* ── Las dos celdas naranjas que faltaban, según la plantilla real ──────
        ACCIONES año a año (1.IS fila 25): la plantilla las pone a mano por
@@ -4133,7 +4164,8 @@ function calcular(){
       vt  = vt * (1+g);
       dat = dat * (1+g);
       const ebt   = vt * (pm[i]/100);
-      const ebtda = ebt + Math.abs(dat);
+      const daT   = pdaA ? vt * pdaA[i]/100 : Math.abs(dat);
+      const ebtda = ebt + daT;
       const cxm   = vt * (pcxA ? pcxA[i]/100 : capexRatio);
       /* intereses del año: lo que cobra por su caja menos lo que paga por su deuda */
       const intAno = VAL.pint!==null && VAL.pint!==undefined ? +VAL.pint
@@ -4149,7 +4181,7 @@ function calcular(){
       const queda = fcf * (1 - rep);          /* lo que no se reparte ni se reinvierte */
       cajaT = cajaT + queda;
       dnT   = dnT - queda;                    /* baja la deuda neta en lo mismo */
-      filas.push({anio: A[L]+i+1, ventas:vt, ebit:ebt, da:Math.abs(dat), ebitda:ebtda,
+      filas.push({anio: A[L]+i+1, ventas:vt, ebit:ebt, da:daT, ebitda:ebtda,
                   capexMant:cxm, interes:intAno, impuesto:imp, dwc:dWC, fcf, reparto:rep,
                   neto: ebt + intAno - imp, acc: accA[i], dn:dnT});
     }
@@ -5329,27 +5361,21 @@ function resumenEntrada(R){
 function cierrePrecio(R){
   const v = R.v;
   const nn = k => (VAL[k]!==null && VAL[k]!==undefined && isFinite(VAL[k])) ? +VAL[k] : null;
-  const fvEb = nn("fvEb"), fvDcf = nn("fvDcf"), fv = nn("fv"), idcX = nn("idcX");
-  const externos = [fvEb, fvDcf].filter(x => x!==null);
-  const ref = externos.length ? externos.reduce((a,b)=>a+b,0)/externos.length : fv;
+  const fv = nn("fv");
 
-  const filas = [
-    ["Tu IDC · este informe", v.idc, "amber", "Exige un "+nf(v.obj*100,0)+"% anual. Es un precio de entrada"],
-    ["Zona de análisis", v.zona, "", "El IDC con un 15% de colchón"],
-    externos.length ? ["Modelos comparables de InvestingPro", ref, "blue",
-      externos.length===2 ? "Media de EV/EBITDA y 5Y DCF" : "El que has puesto"] : null,
-    idcX!==null ? ["Tu Excel", idcX, "", "El mismo método, a mano"] : null,
-    ["Lo que pide hoy el mercado", R.precio, "", "El único que no es una opinión"],
-  ].filter(Boolean);
-
-  if(!externos.length && idcX===null){
-    return `<div class="note">Escribe arriba el <b>Fair Value</b> de InvestingPro y aquí
-      aparecerá la comparación de los tres números y con cuál quedarte.</div>`;
+  if(fv === null){
+    return `<div class="note">Escribe arriba el <b>Fair Value</b> («Average») de InvestingPro y
+      aquí aparecerá la comparación final y con qué número quedarte.</div>`;
   }
 
-  const rel = ref ? v.idc/ref - 1 : null;
-  const cerca = rel !== null && Math.abs(rel) <= 0.20;
-  const bajo  = Math.min(...filas.filter(f=>f[0]!=="Lo que pide hoy el mercado").map(f=>f[1]));
+  const rel = v.idc/fv - 1;
+  const filas = [
+    ["Tu IDC", v.idc, "amber", "Exige un "+nf(v.obj*100,0)+"% anual · precio de entrada"],
+    ["Zona de análisis", v.zona, "", "El IDC con un 15% de colchón"],
+    ["Fair Value de Investing", fv, "blue", "Su tasación: la media de 12 modelos"],
+    ["Lo que pide hoy el mercado", R.precio, "", "El único que no es una opinión"],
+  ];
+  const bajo = Math.min(v.idc, fv);
 
   return `<div class="panel cierre">
     <div class="tw"><table class="rs">
@@ -5361,27 +5387,22 @@ function cierrePrecio(R){
       </tbody></table></div>
 
     <div class="db" style="margin-top:1.1rem"><span class="t">Y con cuál me quedo</span>
-      ${cerca
-        ? `Tu número y el de fuera <b style="color:var(--green)">se parecen</b> —${
-            rel>=0?"+":"−"}${pc(Math.abs(rel))}—, y eso es lo mejor que puede pasar: dos caminos
-           muy distintos llegan casi al mismo sitio. No demuestra que el número sea correcto, pero
-           sí que <b>no has metido la pata en los datos</b>.`
-        : rel !== null && rel < 0
-        ? `Tu número es <b>${pc(Math.abs(rel))} más bajo</b>, y eso es lo normal: tú exiges un
-           ${nf(v.obj*100,0)}% anual y ellos no exigen nada. Si la diferencia pasara del 40%,
-           revisa el crecimiento y el múltiplo.`
-        : `Tu número es <b style="color:var(--amber-strong)">${pc(Math.abs(rel||0))} más alto</b>, y
-           eso sí merece una parada. Exigiendo un ${nf(v.obj*100,0)}% deberías salir <em>por
-           debajo</em> de una tasación normal. Revisa los dos supuestos que decides tú.`}
+      ${rel < -0.05
+        ? `Tu IDC está <b>${pc(Math.abs(rel))} por debajo</b> del Fair Value, y así debe ser: tú
+           exiges un ${nf(v.obj*100,0)}% anual y ellos no exigen nada. <b>Todo en orden.</b>`
+        : rel <= 0.05
+        ? `Tu IDC y su tasación <b style="color:var(--green)">casi coinciden</b>. Con la exigencia
+           del ${nf(v.obj*100,0)}% deberías salir por debajo — revisa que el crecimiento y el
+           múltiplo no estén demasiado alegres.`
+        : `Tu IDC está <b style="color:var(--amber-strong)">por encima de su tasación</b>, y eso
+           merece una parada: exigiendo un ${nf(v.obj*100,0)}% deberías salir por debajo. Uno de
+           tus dos supuestos —crecimiento o múltiplo— probablemente va suelto.`}
       <br><br>
-      <b>La regla:</b> quédate con <b>el más bajo de los tres</b> —hoy, ${mo(bajo)}— y trabaja
-      desde ahí. No porque sea el correcto, sino porque <b>ninguna valoración es un número: es un
-      rango</b>, y el borde bajo del rango es el único que te protege si te equivocas. Los otros
-      dos te dicen cuánto margen tienes antes de estar solo en tu opinión.
+      <b>La regla:</b> trabaja con <b>el más bajo</b> —hoy, ${mo(bajo)}—. Ninguna valoración es un
+      número: es un rango, y el borde bajo es el único que te protege si te equivocas.
       <br><br>
-      <span style="color:var(--muted-txt)">Y una última cosa: llegar a ese precio no significa
-      comprar. Significa que el precio ha dejado de ser el obstáculo y que ahora empieza el
-      trabajo de verdad.</span>
+      <span style="color:var(--muted-txt)">Llegar a ese precio no significa comprar. Significa que
+      el precio ha dejado de ser el obstáculo y que ahora empieza el trabajo de verdad.</span>
     </div>
   </div>`;
 }
@@ -5389,120 +5410,51 @@ function cierrePrecio(R){
 function cuadroFairValue(R){
   const v = R.v;
   const nn = k => (VAL[k]!==null && VAL[k]!==undefined && isFinite(VAL[k])) ? +VAL[k] : null;
-  const fv = nn("fv"), fvEb = nn("fvEb"), fvDcf = nn("fvDcf"), idcX = nn("idcX");
-  /* de los doce modelos de InvestingPro solo se piden dos, y elegidos por lo que
-     miden, no por lo que dan: el EV/EBITDA es de la familia del EV/FCF que ya
-     calcula el método, y el 5Y DCF EBITDA Exit ES el método (proyectar cinco años
-     y aplicar un múltiplo de salida) con otro tipo de descuento. */
-  const refs = [fvEb, fvDcf].filter(x => x!==null);
-  const ref  = refs.length ? refs.reduce((a,b)=>a+b,0)/refs.length : fv;
+  const fv = nn("fv");
 
-  const fila = (et, val, nota) => `<tr><td class="l">${et}</td>
-    <td class="n"><b style="color:var(--amber-strong)">${val===null?"—":mo(val)}</b></td>
-    <td class="l" style="font-size:.82rem;color:var(--soft)">${nota}</td></tr>`;
-
-  const dif = (a,b) => (a===null||b===null||!b) ? "—"
-    : `${a/b-1>=0?"+":"−"}${pc(Math.abs(a/b-1))}`;
+  /* El esquema de dónde está: un dibujo del panel de InvestingPro con la media
+     señalada. No reproduce su interfaz: es la disposición, para encontrarla. */
+  const esquema = `
+  <svg viewBox="0 0 640 150" class="esq" role="img"
+    aria-label="Dónde está el Fair Value en InvestingPro: pestaña Overview, el número grande junto a Average">
+    <rect x="1" y="1" width="638" height="148" rx="10" fill="var(--surface)" stroke="var(--line-strong)"/>
+    <text x="18" y="26" font-family="var(--font-m)" font-size="11" fill="var(--muted-txt)">investing.com/pro/BOLSA:TICKER · pestaña <tspan fill="var(--amber-strong)">Overview</tspan></text>
+    <line x1="1" y1="38" x2="639" y2="38" stroke="var(--line)"/>
+    <text x="18" y="66" font-family="var(--font-h),sans-serif" font-size="15" font-weight="800" fill="var(--text)">Fair Value</text>
+    <rect x="14" y="78" width="150" height="52" rx="7" fill="rgba(245,158,11,.14)" stroke="var(--amber)" stroke-width="1.5"/>
+    <text x="24" y="97" font-family="var(--font-m)" font-size="10" fill="var(--soft)">Average</text>
+    <text x="24" y="121" font-family="var(--font-m)" font-size="19" font-weight="700" fill="var(--amber-strong)">239.60</text>
+    <circle cx="164" cy="78" r="11" fill="var(--amber)"/>
+    <text x="164" y="82" text-anchor="middle" font-family="var(--font-m)" font-size="12" font-weight="700" fill="#0a0a0a">1</text>
+    ${[["Downside","-27.0%"],["Uncertainty","MED"],["Spread","167-288"]].map((x,i)=>`
+      <rect x="${186+i*150}" y="78" width="140" height="52" rx="7" fill="none" stroke="var(--line)"/>
+      <text x="${196+i*150}" y="97" font-family="var(--font-m)" font-size="10" fill="var(--muted-txt)">${x[0]}</text>
+      <text x="${196+i*150}" y="119" font-family="var(--font-m)" font-size="13" fill="var(--soft)">${x[1]}</text>`).join("")}
+  </svg>`;
 
   return `
   <div class="panel" style="margin-top:1.2rem">
-    <h3 style="margin-top:0">Contrasta tu número con InvestingPro</h3>
-    <p class="step-w">Antes de fiarte de un precio objetivo, ponlo al lado de otro que no hayas
-      calculado tú. En InvestingPro, pestaña <b>Overview</b>, está el <b>Fair Value</b>: un
-      promedio de <b>12 modelos</b>, y puedes desplegarlos uno a uno. <b>Míralo y escríbelo
-      aquí.</b> No lo trae la herramienta a propósito: verlo con tus ojos y anotarlo
-      <em>es</em> parte del ejercicio.</p>
+    <h3 style="margin-top:0">Apunta el Fair Value de InvestingPro</h3>
+    <p class="step-w">En la pestaña <b>Overview</b> de la empresa, el número grande junto a
+      <b>«Average»</b>. Solo ese: es la media de sus doce modelos. Escríbelo aquí y sigue —
+      la comparación con tu número sale al final, cuando lo tengas.</p>
+    ${esquema}
     ${(()=>{ const T=($("ticker").value||"").trim().toUpperCase();
-      return (BOLSA_PRO && T)
-        ? `<a class="th-link" href="https://www.investing.com/pro/${BOLSA_PRO}:${T}"
-             target="_blank" rel="noopener">abrir el Fair Value de ${esc(T)} ↗</a>`
-        : `<div class="note">Pulsa <b>Buscar</b> en el paso 1 y aquí aparecerá el enlace directo
-             a la página del Fair Value.</div>`; })()}
-
-    <div class="db" style="margin:.9rem 0"><span class="t">De los 12 modelos, solo estos dos</span>
-      Y elegidos por <b>lo que miden</b>, no por lo que dan:<br>
-      <b>· EV / EBITDA Multiples</b> — es un múltiplo sobre valor de empresa, la misma familia que
-        tu EV/FCF. De hecho ya lo calculas tú, arriba.<br>
-      <b>· 5Y DCF EBITDA Exit</b> — es <b>tu método</b>: proyecta cinco años y aplica un múltiplo
-        de salida sobre el EBITDA. Lo único distinto es que ellos descuentan al coste del capital
-        y tú exiges un ${nf(v.obj*100,0)}% anual.
-      <details class="mas" style="margin-top:.6rem"><summary>Y por qué NO los otros diez</summary>
-        <div style="padding:.5rem 0 0">
-          <b>Price / Book Multiples: no.</b> Compara contra el valor contable, y en una empresa
-          moderna el valor contable no recoge ni la marca, ni las patentes, ni las recompras.
-          Además es el múltiplo que <b>este mismo método reserva para las financieras</b>, que son
-          justo las empresas donde el IDC no vale. Si se parece a tu número, es casualidad.<br>
-          <b>Analyst Targets: tampoco.</b> No son una valoración: son <b>precios objetivo a 12
-          meses</b>, anclados al precio de hoy. Usarlos rompe lo único que sostiene este método —
-          que el precio se mira el último.<br>
-          <b>Y la trampa de fondo:</b> elegir el modelo que <em>coincide</em> contigo es sesgo de
-          confirmación. El modelo se escoge <b>antes</b> de ver el resultado. Si luego coincide,
-          es una señal; si lo eliges porque coincide, no has comprobado nada.
-        </div></details></div>
-
-    <div class="vgrid">
-      <div><label>EV / EBITDA Multiples (${esc(MON)})</label>
-        <input class="vin" data-v="fvEb" type="number" step="any" placeholder="p. ej. 251.93"
-          value="${fvEb!==null?fvEb:""}"></div>
-      <div><label>5Y DCF EBITDA Exit (${esc(MON)})</label>
-        <input class="vin" data-v="fvDcf" type="number" step="any" placeholder="p. ej. 226.27"
-          value="${fvDcf!==null?fvDcf:""}"></div>
-      <div><label>Fair Value · el promedio de los 12</label>
+      return (typeof BOLSA_PRO!=="undefined" && BOLSA_PRO && T)
+        ? `<a class="ab-b" style="margin-top:.6rem" href="https://www.investing.com/pro/${BOLSA_PRO}:${T}"
+             target="_blank" rel="noopener"><span class="ab-n">1</span> Abre el Fair Value de <b>${esc(T)}</b> aquí ↗</a>`
+        : `<div class="note">Pulsa <b>Buscar</b> en el paso 1 y aquí saldrá el enlace directo.</div>`; })()}
+    <div class="vgrid" style="margin-top:.9rem;max-width:20rem">
+      <div><label>Fair Value · Average (${esc(MON)})</label>
         <input class="vin" data-v="fv" type="number" step="any" placeholder="p. ej. 239.60"
           value="${fv!==null?fv:""}"></div>
-      <div><label>IDC de tu plantilla de Excel (opcional)</label>
-        <input class="vin" data-v="idcX" type="number" step="any" placeholder="si lo has calculado"
-          value="${idcX!==null?idcX:""}"></div>
     </div>
-
-    <div class="tw" style="margin-top:.9rem"><table class="rs">
-      <thead><tr><th>De dónde sale</th><th style="text-align:right">Precio</th><th>Qué mide</th></tr></thead>
-      <tbody>
-        ${fila("<b>Tu IDC</b> · este informe", v.idc,
-          `Proyecta 5 años y te exige un <b>${nf(v.obj*100,0)}% anual</b>. Es un precio de entrada, no una tasación.`)}
-        ${fila("EV / EBITDA Multiples · InvestingPro", fvEb,
-          "La misma familia que tu EV/FCF: múltiplo sobre valor de empresa.")}
-        ${fila("5Y DCF EBITDA Exit · InvestingPro", fvDcf,
-          "Cinco años proyectados y múltiplo de salida. Es tu método con otro descuento.")}
-        ${fila("Fair Value · promedio de los 12", fv,
-          "Contexto. Mete dentro modelos que aquí no aplican, como el Price/Book.")}
-        ${idcX!==null ? fila("IDC · tu Excel", idcX, "El mismo método, calculado a mano en la plantilla.") : ""}
-        <tr><td class="l">Lo que pide hoy el mercado</td>
-          <td class="n"><b>${mo(R.precio)}</b></td>
-          <td class="l" style="font-size:.82rem;color:var(--soft)">El único dato que no es una opinión.</td></tr>
-      </tbody></table></div>
-
-    ${ref===null ? `<div class="note" style="margin-top:.8rem">En cuanto escribas al menos uno de
-       los dos modelos, aquí aparece la comparación y qué significa que se parezcan o no.</div>` : (()=>{
-      const rel = v.idc/ref - 1;
-      const cerca = Math.abs(rel) <= 0.15;
-      return `<div class="db" style="margin-top:1rem"><span class="t">Y esto qué significa</span>
-        Tu IDC está un <b>${dif(v.idc,ref)}</b> respecto a ${refs.length===2
-          ? "la media de los dos modelos comparables"
-          : "el modelo comparable que has puesto"}
-        ${idcX!==null?`, y un <b>${dif(v.idc,idcX)}</b> respecto al de tu Excel`:""}.
-        ${cerca
-          ? `<b style="color:var(--green)">Están cerca</b>, y eso es buena señal: dos caminos muy
-             distintos llegan casi al mismo sitio. No demuestra que el número sea correcto —los dos
-             podrían equivocarse igual—, pero sí que <b>no has metido la pata en los datos</b>.`
-          : rel < 0
-          ? `<b>Tu número es bastante más bajo.</b> Es lo normal y no es un error: tú exiges un
-             ${nf(v.obj*100,0)}% anual durante cinco años y ellos no exigen nada. Si la diferencia
-             pasa del 40%, mira igualmente el crecimiento y el múltiplo que has puesto.`
-          : `<b>Tu número es bastante más alto</b>, y eso sí merece una parada. Con el descuento del
-             ${nf(v.obj*100,0)}% deberías salir <em>por debajo</em> de una tasación normal. Revisa el
-             crecimiento del paso 6 y el múltiplo del 7: probablemente uno de los dos va suelto.`}
-      </div>`;
-    })()}
-
-    <div class="note" style="margin-top:.8rem"><b>No son el mismo cálculo y no tienen que coincidir.</b>
-      El Fair Value contesta «¿cuánto vale?». El IDC contesta «¿cuánto puedo pagar hoy para ganar un
-      ${nf(v.obj*100,0)}% anual?». Son dos preguntas distintas, y la segunda siempre da un número menor.</div>
+    <div class="note" style="margin-top:.7rem">Es <b>una tasación</b>: qué cree Investing que vale.
+      Tu IDC contesta otra pregunta —cuánto puedes pagar exigiendo un ${nf(v.obj*100,0)}% anual—
+      así que <b>tu número saldrá más bajo, y debe salir más bajo</b>.</div>
   </div>`;
 }
 
-/* Resumen cuando no hay precio objetivo: el semáforo del negocio sí se puede
-   dar, y con un veto activo es justo lo que hay que leer. */
 function resumenSinPrecio(R){
   const nom = ($("nombre").value||$("ticker").value||"la empresa").trim();
   const filas = Object.keys(ESC).filter(k=>R.V[k]!==null && R.V[k]!==undefined && isFinite(R.V[k]))
@@ -7507,7 +7459,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.3df7e5a";
+const APP_VERSION = "2026-08-08.9d1a506";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
