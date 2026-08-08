@@ -3908,13 +3908,16 @@ function calcular(){
   /* ── VALORACIÓN ── */
   const precio = parseNum($("precio").value);
   R.precio = precio;
-  if(precio===null){ R.sinPrecio = true; return R; }
-  if(!(der.fcf[L] > 0) || !acciones[L]){ R.sinVal = true; return R; }
+  /* Los atajos también puntúan y también vigilan: una empresa sin precio o que
+     quema caja no deja de tener un negocio que juzgar, y es de las que más
+     falta hace revisar los datos. */
+  if(precio===null){ R.sinPrecio = true; puntuar(R); R.raros = vigilarDatos(R); return R; }
+  if(!(der.fcf[L] > 0) || !acciones[L]){ R.sinVal = true; puntuar(R); R.raros = vigilarDatos(R); return R; }
 
   const accHoy = acciones[L];
   const multObj = VAL.mult!==null ? VAL.mult : (R.cMult.evFcf.v!==null ? Math.round(R.cMult.evFcf.v*10)/10 : null);
   const gF = (VAL.g!==null ? VAL.g : (R.cagrF!==null ? Math.round(R.cagrF*1000)/10 : null));
-  if(multObj===null || gF===null){ R.sinVal = true; R.raros = vigilarDatos(R); return R; }
+  if(multObj===null || gF===null){ R.sinVal = true; puntuar(R); R.raros = vigilarDatos(R); return R; }
   const gB = VAL.gb!==null ? VAL.gb : gF;
   /* ESCALERA DECRECIENTE: ningún negocio crece al mismo ritmo cinco años seguidos.
      Se define el crecimiento del año 1 y el del año 5; los intermedios se interpolan.
@@ -4104,9 +4107,21 @@ function calcular(){
     : {n:"REVISAR IDC",c:"r",m:"Más de un 50% por encima del IDC: probablemente la valoración está desfasada."};
 
   /* score · ya con los tres indicadores de valoración, que antes iban en null */
-  const V = Object.assign(R.V, {
-    relMul:R.v.relMul, margSeg:R.v.margSeg, retorno:R.v.retorno
-  });
+  Object.assign(R.V, {relMul:R.v.relMul, margSeg:R.v.margSeg, retorno:R.v.retorno});
+  puntuar(R);
+  R.raros = vigilarDatos(R);
+  return R;
+}
+
+/* ══════════════════ LA NOTA ══════════════════
+   Vive aparte para poder darla SIEMPRE. Antes se calculaba al final del todo,
+   así que cualquier empresa que se saliera por un atajo —sin precio, o con el
+   flujo de caja en negativo— se quedaba sin nota y sin vigilante. Justo las
+   que más falta hace mirar con lupa.
+   Que no se pueda poner precio no impide juzgar el negocio: los tres primeros
+   bloques se puntúan igual y el de valoración se queda fuera del reparto. */
+function puntuar(R){
+  const V = R.V;
   const BL = [
     {lab:"Calidad del negocio", p:.35, ks:["mEbitda","mEbit","mNeto","mFcf","conv","roic","roe"]},
     {lab:"Crecimiento",         p:.20, ks:["cagrV","cagrB","cagrF"]},
@@ -4122,8 +4137,9 @@ function calcular(){
   });
   R.score = pw>0 ? acc/pw : null;
   R.etiqueta = R.score===null?"—":R.score>=85?"Excepcional":R.score>=70?"Muy sólido":R.score>=55?"Correcto":R.score>=40?"Débil":"Descartar";
-  /* lo último: revisar que ningún número sea imposible */
-  R.raros = vigilarDatos(R);
+  /* si el bloque de valoración se ha quedado fuera hay que decirlo: una nota
+     de tres bloques no es comparable con una de cuatro */
+  R.notaParcial = R.bloques.some(b => b.lab === "Valoración" && b.s === null);
   return R;
 }
 
@@ -4701,6 +4717,10 @@ function informe(R){
 
   /* El vigilante va ARRIBA del todo. Si algo no puede ser, hay que verlo antes
      de leer un solo número, no al final en letra pequeña. */
+  const parcial = R.notaParcial ? `<div class="note" style="margin:0 0 1rem">
+      <b>Esta nota es sobre tres bloques, no cuatro.</b> No hay valoración —falta el precio o la
+      empresa no genera caja— así que el bloque de <b>Valoración</b> se queda fuera del reparto.
+      Juzga el negocio, no lo que cuesta.</div>` : "";
   const raros = (R.raros && R.raros.length) ? `
     <div class="warn" style="margin:0 0 1.2rem">
       <b>⚠️ Hay ${R.raros.length} ${R.raros.length===1?"dato que no cuadra":"datos que no cuadran"}.</b>
@@ -4744,7 +4764,7 @@ function informe(R){
         })()}
        </div>` : "";
 
-  out.innerHTML = cab + tuyo + `<div id="coherencia"></div>` + raros + H +
+  out.innerHTML = cab + tuyo + `<div id="coherencia"></div>` + raros + parcial + H +
     `<div class="cta-print" style="text-align:center;padding:1.5rem 0 0">
      <button class="b2" onclick="window.print()">🖨 Guardar el informe como PDF</button>
      <div class="marca-pie">Valoración Peaky Minders · material formativo</div></div>`;
@@ -7203,7 +7223,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.585c72a";
+const APP_VERSION = "2026-08-08.1e5fbb9";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
