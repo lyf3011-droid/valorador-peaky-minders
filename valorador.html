@@ -459,6 +459,24 @@ svg.esq,svg.ch,svg.dg{cursor:zoom-in}
 #ayudaPanel .ap-b button.pri{background:var(--amber);border-color:var(--amber);color:#0a0a0a;font-weight:700}
 #ayudaPanel .ap-v{font-family:var(--font-m);font-size:.62rem;color:var(--muted-txt);margin-top:.7rem}
 @media print{#ayudaBtn,#ayudaPanel,#avisoNueva{display:none!important}}
+/* la barra de «dónde cae tu empresa» respecto al listón del método */
+.bref{position:relative;height:.85rem;border-radius:5px;border:1px solid var(--line)}
+.bref-m{position:absolute;top:-3px;width:3px;height:calc(100% + 6px);background:var(--amber-strong);
+  border-radius:2px;transform:translateX(-50%);box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+.bref-g{position:absolute;top:0;width:1px;height:100%;background:rgba(250,250,248,.55);
+  transform:translateX(-50%)}
+/* lo que solo tiene sentido en papel: en pantalla ya se ve en su sitio */
+.solo-papel{display:none}
+@media print{
+  .solo-papel{display:block!important;border:1px solid #8a5a00!important;border-radius:8px;
+    padding:.9rem 1.1rem;margin:0 0 1.1rem;break-inside:avoid}
+  .bref{border-color:#bbb!important}
+  .bref-m{background:#8a5a00!important}
+}
+/* el aviso de los años que se salen de la escala de una gráfica */
+.ch-fuera{font-size:.76rem;color:var(--muted-txt);line-height:1.5;margin-top:.4rem;
+  padding-top:.4rem;border-top:1px solid var(--line)}
+.ch-fuera b{color:#f87171}
 /* la tira de los 5 pasos: dónde estoy y qué llevo hecho, de un vistazo */
 .ptira{display:flex;gap:.4rem;flex-wrap:wrap}
 .pchip{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--font-m);font-size:.7rem;
@@ -1904,12 +1922,37 @@ function chart(cfg){
   const W = movil?420:560, FS = movil?11:10, PL=52, PR=14, PT=16, PB=26, IW=W-PL-PR, IH=h-PT-PB;
   const all = series.flatMap(s=>s.data).filter(v=>v!==null&&isFinite(v)).concat(refs.map(r=>r.v));
   if(!all.length) return `<p style="color:var(--muted);font-size:.8rem">Sin datos suficientes.</p>`;
-  let lo=Math.min(0,...all), hi=Math.max(...all);
+  /* ── ESCALA A PRUEBA DE AÑOS IMPOSIBLES ────────────────────────────────
+     Un solo año absurdo aplasta a los demás. La conversión en caja de Tesla
+     en 2017 fue del -19.200% —ganó 4 millones de EBITDA— y con ese año dentro
+     de la escala los otros nueve se dibujaban como una raya recta: la gráfica
+     dejaba de contar nada, justo la que más tenía que contar.
+     No se esconde el año, que sería mentir: se saca de la ESCALA, se marca en
+     el borde con una punta de flecha y su valor, y se dice debajo. */
+  const nums = all.filter(v => isFinite(v));
+  const med = mediana(nums);
+  const mad = mediana(nums.map(v => Math.abs(v - med)));
+  const banda = Math.max(mad * 6, Math.abs(med) * 3, 1e-9);
+  const buenos = nums.filter(v => Math.abs(v - med) <= banda);
+  const rango = Math.max(...nums) - Math.min(...nums);
+  const rangoBueno = buenos.length >= 3 ? Math.max(...buenos) - Math.min(...buenos) : rango;
+  /* solo se recorta si de verdad hay una desproporción: 5 veces el rango sano */
+  const recorta = buenos.length >= 3 && rango > rangoBueno * 5 && rangoBueno > 0;
+  const base = recorta ? buenos : nums;
+
+  let lo=Math.min(0,...base), hi=Math.max(...base);
   if(hi===lo) hi=lo+1;
   const pad=(hi-lo)*0.12; hi+=pad; if(lo<0) lo-=pad;
   const X = i => PL + (IW/labels.length)*(i+0.5);
-  const Y = v => PT + IH - ((v-lo)/(hi-lo))*IH;
+  /* fuera de escala: se pega al borde, no se sale del dibujo */
+  const dentro = v => v <= hi && v >= lo;
+  const Y = v => PT + IH - ((Math.max(lo, Math.min(hi, v))-lo)/(hi-lo))*IH;
   const y0 = Y(0);
+  /* los años que se han quedado fuera, para contarlo debajo */
+  const fuera = [];
+  if(recorta) series.forEach(se => se.data.forEach((v,i)=>{
+    if(v!==null && isFinite(v) && !dentro(v)) fuera.push({i, v, name: se.name});
+  }));
   let s = `<svg class="ch" viewBox="0 0 ${W} ${h}" role="img" aria-label="${esc(cfg.aria||"gráfica")}">`;
 
   /* rejilla recesiva */
@@ -1963,6 +2006,19 @@ function chart(cfg){
     if(labels.length>7 && i%2===1 && i!==labels.length-1) return;
     s += `<text x="${X(i).toFixed(1)}" y="${(h-8)}" text-anchor="middle" font-size="${FS}" font-family="ui-monospace,monospace" fill="rgba(250,250,248,.50)">${l}</text>`;
   });
+  /* los que se salen de la escala: punta de flecha en el borde, para que se
+     vea QUE existen y hacia dónde, sin destrozar la escala de los demás */
+  fuera.forEach(f => {
+    const x = X(f.i), arriba = f.v > hi;
+    const y = arriba ? PT + 5 : PT + IH - 5;
+    const d = arriba ? `${x-5},${y+7} ${x+5},${y+7} ${x},${y-1}`
+                     : `${x-5},${y-7} ${x+5},${y-7} ${x},${y+1}`;
+    s += `<polygon points="${d}" fill="var(--red,#f87171)" opacity=".92">`
+       + `<title>${labels[f.i]} · ${esc(f.name)}: ${fmt(f.v)} — se sale de la escala</title></polygon>`;
+    s += `<text x="${x}" y="${arriba ? y+19 : y-11}" text-anchor="middle" font-size="${FS-1}" `
+       + `font-family="ui-monospace,monospace" fill="var(--red,#f87171)">${fmt(f.v)}</text>`;
+  });
+
   /* ── el foco ─────────────────────────────────────────────────────────────
      Una zona invisible por año: al pasar el ratón se ilumina la columna y un
      rótulo dice el año y el valor exacto de cada serie. Las gráficas pequeñas
@@ -1975,12 +2031,27 @@ function chart(cfg){
     }).join("  ·  ");
     s += `<rect class="hz" x="${(PL+slotHz*i).toFixed(1)}" y="${PT}" width="${slotHz.toFixed(1)}" height="${IH}" fill="transparent" data-tip="${tip.replace(/"/g,"&quot;")}"/>`;
   });
-  return s+"</svg>";
+  s += "</svg>";
+  /* el aviso viaja pegado al SVG: figura() lo separa y lo pinta debajo */
+  if(fuera.length){
+    const cuales = [...new Set(fuera.map(f => labels[f.i]))];
+    s += `<!--AVISO:La escala deja fuera ${cuales.length===1?"el año":"los años"} `
+       + `<b>${cuales.join(" y ")}</b> (${[...new Set(fuera.map(f=>fmt(f.v)))].join(" · ")}), `
+       + `marcado${cuales.length===1?"":"s"} con una punta roja. `
+       + `${cuales.length===1?"Ese año se sale":"Esos años se salen"} tanto que, dentro de la escala, `
+       + `aplastaba${cuales.length===1?"":"n"} a los demás hasta convertirlos en una línea recta. `
+       + `Suele pasar cuando el denominador de ese año es casi cero.-->`;
+  }
+  return s;
 }
 function figura(titulo, sub, cfg){
   const leg = cfg.series.length>1
     ? `<div class="leg">${cfg.series.map((se,i)=>`<span><i style="background:${i?"var(--d2)":"var(--d1)"}"></i>${esc(se.name)}</span>`).join("")}</div>` : "";
-  return `<figure><figcaption>${esc(titulo)}</figcaption><div class="fsub">${sub}</div>${chart(cfg)}${leg}</figure>`;
+  const dibujo = chart(cfg);
+  const m = dibujo.match(/<!--AVISO:([\s\S]*?)-->/);
+  const svg = dibujo.replace(/<!--AVISO:[\s\S]*?-->/, "");
+  const aviso = m ? `<div class="ch-fuera">${m[1]}</div>` : "";
+  return `<figure><figcaption>${esc(titulo)}</figcaption><div class="fsub">${sub}</div>${svg}${leg}${aviso}</figure>`;
 }
 
 
@@ -3988,6 +4059,73 @@ function kpiSinTasa(que, x){
     <div class="d">${pie}</div></div>`;
 }
 
+/* ══════════════════ DÓNDE ESTÁ EL LISTÓN ══════════════════
+   Un número solo no dice si es bueno. «ROIC 44,9%» no significa nada hasta que
+   sabes que por encima de 20 ya es excelente. Estos umbrales no me los invento:
+   son los del método —los de la plantilla con la que Francisco aprendió— y los
+   marcados con candado no se tocan.
+
+   Lo que NO hago, y conviene decirlo: poner aquí la mediana real del S&P 500 o
+   de cada sector. Eso exigiría una fuente de datos de pago y actualizada, y
+   escribir una cifra a ojo sería justo lo contrario de lo que hace esta
+   herramienta. El listón del método es exigente a propósito: si una empresa lo
+   pasa, lo pasa de verdad. */
+function bandaReferencia(R){
+  const FILAS = [
+    ["cagrV",  R.cagrV,          "Crece de verdad si supera el 10% al año"],
+    ["mEbit",  R.c.mEbit.v,      "Un 20% sostenido es la huella de una ventaja competitiva"],
+    ["conv",   R.c.conv.v,       "Por debajo del 45% hay que preguntarse dónde se queda el dinero"],
+    ["roic",   R.c.roic.v,       "🔒 El ratio rey. Por debajo del 10% el método enciende una alarma"],
+    ["deuda",  R.der.dnEbitda[R.L], "🔒 Más de 2,5 años de beneficio en deuda es bandera roja"],
+    ["dil",    R.c.dil.v,        "Si es negativo, recompra: tu trozo crece sin hacer nada"],
+  ].filter(x => x[1] !== null && x[1] !== undefined && isFinite(x[1]));
+  if(!FILAS.length) return "";
+
+  const barra = (k, v) => {
+    const e = ESC[k]; if(!e) return "";
+    const bueno = e.g, medio = e.y, sube = e.dir > 0;
+    /* la escala del dibujo abarca lo suficiente para que el valor quepa */
+    const tope = sube ? Math.max(bueno * 1.6, v * 1.15, medio * 2)
+                      : Math.max(medio * 1.8, v * 1.15, bueno * 3);
+    const suelo = Math.min(0, v * 1.1);
+    const px = x => Math.max(0, Math.min(100, ((x - suelo) / (tope - suelo)) * 100));
+    const gv = px(bueno), yv = px(medio), vv = px(v);
+    /* verde donde el método dice que está bien; rojo donde enciende alarma */
+    const izq = sube ? `linear-gradient(90deg, rgba(248,113,113,.30) 0 ${yv}%,
+        rgba(250,204,21,.28) ${yv}% ${gv}%, rgba(74,222,128,.30) ${gv}% 100%)`
+      : `linear-gradient(90deg, rgba(74,222,128,.30) 0 ${gv}%,
+        rgba(250,204,21,.28) ${gv}% ${yv}%, rgba(248,113,113,.30) ${yv}% 100%)`;
+    return `<div class="bref" style="background:${izq}">
+      <span class="bref-m" style="left:${vv}%"></span>
+      <span class="bref-g" style="left:${gv}%" title="listón del método"></span>
+    </div>`;
+  };
+
+  return `
+  <h3>¿Y esto es bueno? · dónde está el listón</h3>
+  <p class="step-w">Un número solo no dice nada hasta que sabes con qué compararlo. Estos son los
+    umbrales del método: la marca <b>ámbar</b> es dónde está tu empresa y la línea fina, el listón.</p>
+  <div class="tw"><table class="rs">
+    <thead><tr><th>Indicador</th><th style="text-align:right">Tu empresa</th>
+      <th style="width:34%">Dónde cae</th><th>El listón</th></tr></thead>
+    <tbody>${FILAS.map(([k, v, txt]) => {
+      const e = ESC[k], sem2 = sem(k, v);
+      const col = sem2==="g" ? "var(--green)" : sem2==="y" ? "var(--yellow)" : "var(--red)";
+      return `<tr>
+        <td class="l">${esc(e.lab)}</td>
+        <td class="n"><b style="color:${col}">${e.f(v)}</b></td>
+        <td>${barra(k, v)}</td>
+        <td class="l" style="font-size:.8rem;color:var(--soft)">${txt}
+          <span style="color:var(--muted-txt)">· bien ${e.f(e.g)} · regular ${e.f(e.y)}</span></td>
+      </tr>`;
+    }).join("")}</tbody></table></div>
+  <div class="note">Los umbrales con <b>🔒</b> vienen de la plantilla original y no se tocan.
+    <b>No son la media del S&amp;P 500</b>: son el listón de un método exigente a propósito —
+    si una empresa lo pasa, lo pasa de verdad. Poner aquí la mediana real de cada sector exigiría
+    una fuente de datos de pago y actualizada; escribirla a ojo sería lo contrario de lo que hace
+    esta herramienta.</div>`;
+}
+
 function cardConservador(c, fmt, nombre){
   if(c.v===null) return "";
   const cual = c.cual==="ambas" ? "las dos coinciden"
@@ -4434,7 +4572,23 @@ function informe(R){
       ${R.raros.length>8?`<div class="note" style="margin-top:.5rem">Y ${R.raros.length-8} más.</div>`:""}
     </div>` : "";
 
-  out.innerHTML = cab + `<div id="coherencia"></div>` + raros + H +
+  /* ── EL PDF ────────────────────────────────────────────────────────────
+     En papel el informe es el registro del trabajo, así que lo tuyo —tu juicio
+     antes de ver el precio y el precio que pusiste— tiene que estar arriba,
+     junto al negocio, y no enterrado a mitad del documento. En pantalla no
+     hace falta: ahí lo ves donde toca, al cruzar la puerta. */
+  const tuyo = (VAL.juicio || (VAL.miPrecio !== null && VAL.miPrecio !== undefined))
+    ? `<div class="solo-papel">
+        <h3 style="margin-top:0">Tu análisis, antes de ver el precio</h3>
+        ${VAL.juicio ? `<p style="font-style:italic">“${esc(VAL.juicio)}”</p>` : ""}
+        ${(VAL.miPrecio!==null && VAL.miPrecio!==undefined && isFinite(VAL.miPrecio))
+          ? `<p><b>Tu precio:</b> ${mo(+VAL.miPrecio)}${
+              (R.v && R.v.idc) ? ` · el del método ${mo(R.v.idc)} · diferencia
+              <b>${VAL.miPrecio/R.v.idc-1>=0?"+":"−"}${pc(Math.abs(VAL.miPrecio/R.v.idc-1))}</b>` : ""}</p>`
+          : ""}
+       </div>` : "";
+
+  out.innerHTML = cab + tuyo + `<div id="coherencia"></div>` + raros + H +
     `<div class="cta-print" style="text-align:center;padding:1.5rem 0 0">
      <button class="b2" onclick="window.print()">🖨 Guardar el informe como PDF</button>
      <div class="marca-pie">Valoración Peaky Minders · material formativo</div></div>`;
@@ -4610,7 +4764,15 @@ function pasoValoracion(R){
         "Cuántos años de dinero real ha costado (EV/FCF)",
         "La línea de puntos es el nivel conservador que usamos como referencia.",
         {series:[{name:"EV/FCF",data:d.evFcf}],labels:A,type:"line",fmt:v2=>nf(v2,0)+"x",
-         refs:[{v:R.cMult.evFcf.v,label:"nuestro múltiplo",color:"rgba(245,158,11,.65)"}],aria:"EV sobre FCF histórico"})}</div>`:""}
+         refs:[{v:R.cMult.evFcf.v,label:"nuestro múltiplo",color:"rgba(245,158,11,.65)"}],aria:"EV sobre FCF histórico"})}
+        ${d.per.some(x=>x!==null) ? figura(
+          "Cuántos años de beneficio ha costado (PER)",
+          "El otro múltiplo de siempre. Si hoy está muy por encima de su propia línea, el mercado espera algo que antes no esperaba.",
+          {series:[{name:"PER",data:d.per}],labels:A,type:"line",fmt:v2=>nf(v2,0)+"x",
+           refs:[{v:R.cMult.per.v,label:"su normal",color:"rgba(14,143,191,.7)"}],aria:"PER histórico"}) : ""}
+        </div>`:""}
+
+     ${bandaReferencia(R)}
 
      <h3>Tus dos decisiones</h3>
      <div class="note">De toda la cadena de cálculo, <b>solo hay dos números que decides tú</b>:
@@ -6817,7 +6979,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.4e621bc";
+const APP_VERSION = "2026-08-08.875aae2";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
