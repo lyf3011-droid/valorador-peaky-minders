@@ -229,6 +229,36 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   color:var(--muted-txt);white-space:nowrap}
 .sug li.no{cursor:default;color:var(--muted-txt);font-size:.8rem}
 
+/* Las dos vías de datos. InvestingPro manda visualmente —es la del método— y
+   la SEC va al lado, sin esconderse: quien no tenga suscripción tiene que ver
+   desde el primer momento que puede trabajar igual */
+.vias{border:1px solid var(--amber-line);background:var(--amber-muted);border-radius:12px;
+  padding:1.1rem 1.2rem;margin:1.1rem 0}
+.via-g{display:grid;grid-template-columns:1.35fr 1fr;gap:.9rem}
+@media(max-width:820px){.via-g{grid-template-columns:1fr}}
+.via{position:relative;border:1px solid var(--line-strong);background:var(--surface);
+  border-radius:10px;padding:1.05rem 1.1rem}
+.via-pro{border-color:var(--amber);box-shadow:inset 0 0 0 1px rgba(245,158,11,.12)}
+.via-b{font-family:var(--font-m);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted-txt);margin-bottom:.3rem}
+.via-pro .via-b{color:var(--amber)}
+.via-h{font-family:var(--font-h);font-weight:800;font-size:1.15rem;color:var(--text);line-height:1.1}
+.via-pro .via-h{color:var(--amber-strong)}
+.via-s{font-family:var(--font-m);font-size:.68rem;color:var(--soft);margin:.3rem 0 .55rem}
+.via-d{font-size:.85rem;line-height:1.6;color:var(--soft)}
+.via-dos{display:grid;gap:.55rem;margin:.75rem 0 0}
+.via-p{position:relative;border-left:2px solid var(--amber-line);padding:.1rem 0 .1rem .7rem;
+  font-size:.8rem;line-height:1.55;color:var(--soft)}
+.via-p b{color:var(--text);display:block}
+.via-p code{display:block;font-family:var(--font-m);font-size:.68rem;color:var(--amber-strong);
+  margin:.1rem 0 .2rem;word-break:break-all}
+.via-n{position:absolute;left:-.55rem;top:.15rem;width:1.05rem;height:1.05rem;border-radius:50%;
+  background:var(--amber);color:#0a0a0a;font-family:var(--font-m);font-size:.6rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+.via-x{font-size:.79rem;color:var(--muted-txt);margin-top:.75rem;padding-top:.65rem;
+  border-top:1px solid var(--line);line-height:1.55}
+.via-pie{font-size:.82rem;color:var(--soft);margin-top:.85rem;padding-top:.75rem;
+  border-top:1px solid var(--amber-line)}
 /* El botón que abre el modo guiado. Antes era uno más de una fila de botones y
    nadie sabía que había que pulsarlo: ahora tiene su propio bloque */
 .puerta{border:1px solid var(--amber);background:var(--amber-muted);border-radius:12px;
@@ -854,29 +884,54 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   <!-- Lo primero que hay que entender, y lo que más confusión ha causado:
        Investing no es una pantalla, son dos, y los datos del método están
        repartidos entre las dos. Va arriba del todo y sin desplegable. -->
-  <div class="dospatas">
-    <div class="dp-t">Antes de nada · Investing tiene dos sitios, y vas a usar los dos</div>
-    <div class="dp-g">
-      <div class="dp-c">
-        <div class="dp-n">1</div>
-        <div class="dp-h">La ficha de la empresa</div>
-        <div class="dp-u">investing.com/equities/…</div>
-        <div class="dp-d">De aquí sale <b>casi todo</b>: la cuenta de resultados, el balance y
-          el flujo de caja. Son las tablas que empiezan por <b>«Period Ending»</b>.
-          <br><b>Tres copias y ya está.</b></div>
+  <!-- La eleccion de fuente va ANTES que nada. InvestingPro es la fuente del
+       metodo; la SEC es la puerta gratis. Que se entienda que son dos caminos
+       enteros, no un boton de rescate. -->
+  <div class="vias">
+    <div class="dp-t">De dónde salen los datos · elige tu camino</div>
+    <div class="via-g">
+
+      <div class="via via-pro">
+        <div class="via-b">Recomendado · el del método</div>
+        <div class="via-h">InvestingPro</div>
+        <div class="via-s">De pago · <b>todo el mundo</b> · 10 años</div>
+        <div class="via-d">Es <b>la fuente principal</b>. El método está escrito con sus nombres de
+          fila, las escalas están calibradas con sus datos y la plantilla de la que sale todo esto
+          se rellena desde aquí. Si tienes cuenta —y en la academia la tenéis—, <b>este es el
+          camino</b>.</div>
+        <div class="via-dos">
+          <div class="via-p"><span class="via-n">A</span>
+            <b>La ficha de la empresa</b>
+            <code>investing.com/equities/…</code>
+            De aquí sale <b>casi todo</b>: resultados, balance y flujo de caja. Las tablas que
+            empiezan por «Period Ending». <b>Tres copias.</b></div>
+          <div class="via-p"><span class="via-n">B</span>
+            <b>El apartado Pro</b>
+            <code>investing.com/<b>pro</b>/BOLSA:TICKER/…</code>
+            Las <b>cuatro cosas que la ficha no trae</b>: la depreciación sola, las previsiones de
+            analistas, los múltiplos históricos y el <b>Fair Value</b>. Se entra al final.</div>
+        </div>
+        <div class="via-x">Son la misma web y la misma suscripción: cambia la dirección y el
+          diseño de las tablas. Cada paso te dice a cuál de las dos ir.</div>
       </div>
-      <div class="dp-c dp-pro">
-        <div class="dp-n">2</div>
-        <div class="dp-h">El apartado <b>Pro</b></div>
-        <div class="dp-u">investing.com/<b>pro</b>/BOLSA:TICKER/…</div>
-        <div class="dp-d">Aquí están las <b>cuatro cosas que la ficha no trae</b>: la
-          <b>depreciación sola</b> —la que el método necesita—, las <b>previsiones de los
-          analistas</b>, los <b>múltiplos históricos</b> y el <b>Fair Value</b>.
-          <br><b>Se entra al final</b>, en los pasos 4 y 6.</div>
+
+      <div class="via via-sec">
+        <div class="via-b">Alternativa · gratis</div>
+        <div class="via-h">La SEC</div>
+        <div class="via-s">Gratis, sin cuenta · <b>solo EE. UU.</b> · 10.398 empresas</div>
+        <div class="via-d">Las cuentas <b>oficiales</b> que las empresas americanas presentan al
+          regulador. Un botón las trae solas: en Microsoft rellena <b>22 de 26</b> partidas sin
+          copiar ni pegar nada.</div>
+        <div class="via-x"><b>Lo que no cubre:</b> solo Estados Unidos, no trae previsiones de
+          analistas ni Fair Value, y algunas empresas etiquetan sus cuentas de forma rara y dejan
+          huecos. Para una clase entera o para empezar, <b>sobra</b>. Para trabajar en serio, se
+          acaba volviendo a Investing.</div>
       </div>
+
     </div>
-    <div class="dp-p">Son la misma web y la misma suscripción: cambia la dirección y el diseño de
-      las tablas. Por eso cada paso te dice <b>a cuál de las dos</b> tiene que ir.</div>
+    <div class="via-pie"><b>Y se pueden mezclar.</b> Lo normal es empezar por donde tengas acceso
+      y rellenar los huecos con el otro: la SEC <b>nunca pisa</b> lo que ya has metido, y el
+      contador de cada paso te dice qué falta.</div>
   </div>
 
   <details>
@@ -986,11 +1041,12 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
   <div class="bar-actions" style="margin-bottom:.6rem">
     <button class="b2" id="btnSECtop" style="border-color:var(--amber-line);color:var(--amber-strong)">
-      🏛 Rellenar desde la SEC (empresas de EE. UU.)</button>
+      🏛 Rellenar gratis desde la SEC · EE. UU.</button>
     <button class="b2" id="btn10K">📄 Ver los informes anuales</button>
     <button class="b2" id="btnEU">🇪🇺 Cuentas oficiales europeas</button>
     <span style="font-size:.8rem;color:var(--soft);align-self:center">
-      Solo para lo que Investing no publica. Nunca pisa lo que ya has metido.</span>
+      La <b>vía gratuita</b>, y también el rescate cuando a Investing le falte algo.
+      <b>Nunca pisa</b> lo que ya has metido.</span>
   </div>
   <div class="pr" id="resSECtop" style="margin-bottom:.8rem"></div>
   <div class="pr" id="res10K" style="margin-bottom:.8rem"></div>
