@@ -229,6 +229,40 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   color:var(--muted-txt);white-space:nowrap}
 .sug li.no{cursor:default;color:var(--muted-txt);font-size:.8rem}
 
+/* ── LA PUERTA ──────────────────────────────────────────────────────────
+   El precio no está en el documento hasta que el alumno escribe su juicio.
+   Visualmente tiene que parecer un corte, no una sección más: por eso ocupa
+   el ancho, va en ámbar y lo de debajo desaparece de verdad. */
+.puerta-g{border:2px solid var(--amber);background:linear-gradient(180deg,
+  var(--amber-muted),rgba(245,158,11,.03));border-radius:14px;
+  padding:1.8rem 1.6rem;margin:2.2rem 0 1.4rem;text-align:center}
+.pg-k{font-family:var(--font-m);font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:.7rem}
+.pg-h{font-family:var(--font-h);font-weight:800;font-size:clamp(1.4rem,3.6vw,2rem);
+  margin:0 0 .8rem;letter-spacing:-.02em;color:var(--text)}
+.pg-p{max-width:40rem;margin:0 auto 1.3rem;color:var(--soft);font-size:.94rem;line-height:1.7}
+.pg-l{display:block;max-width:40rem;margin:0 auto .5rem;font-size:.85rem;color:var(--amber-strong);
+  text-align:left;line-height:1.55}
+.pg-t{display:block;max-width:40rem;margin:0 auto;min-height:5.5rem;width:100%;
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;
+  padding:.8rem .9rem;color:var(--text);font-family:inherit;font-size:.9rem;line-height:1.6;
+  resize:vertical}
+.pg-t:focus{outline:none;border-color:var(--amber)}
+.pg-b{margin-top:1.1rem;display:flex;flex-direction:column;align-items:center;gap:.6rem}
+.pg-b .b1{font-size:1rem;padding:.9rem 1.6rem}
+.pg-x{font-size:.78rem;color:var(--muted-txt)}
+#trasPuerta.cerrado{display:none}
+/* una vez cruzada, queda la constancia de lo que pensabas antes */
+.puerta-x{border-left:3px solid var(--green);background:rgba(74,222,128,.05);
+  border-radius:0 10px 10px 0;padding:1rem 1.2rem;margin:2rem 0 1.2rem}
+.px-t{font-family:var(--font-m);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--green);margin-bottom:.5rem}
+.px-n{font-size:.92rem;color:var(--text);line-height:1.65;font-style:italic;margin-bottom:.6rem}
+.px-n span{display:block;font-style:normal;font-size:.72rem;color:var(--muted-txt);
+  font-family:var(--font-m);margin-bottom:.25rem}
+.px-d{font-size:.84rem;color:var(--soft);line-height:1.6}
+/* al imprimir se ve todo: el PDF es el registro del trabajo terminado */
+@media print{#trasPuerta.cerrado{display:block!important} .puerta-g{break-inside:avoid}}
 /* Las dos vías de datos. InvestingPro manda visualmente —es la del método— y
    la SEC va al lado, sin esconderse: quien no tenga suscripción tiene que ver
    desde el primer momento que puede trabajar igual */
@@ -820,7 +854,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
 <!-- ═══════════ 1b · MODELO DE NEGOCIO ═══════════ -->
 <section id="f1">
-  <div class="sec-num">Paso 1 de 4 · Cualitativo</div>
+  <div class="sec-num">Paso 1 de 4 · Cualitativo <span style="color:var(--muted-txt)">— a ciegas, sin mirar el precio</span></div>
   <h2>¿A qué se dedica esta empresa?</h2>
   <p class="sub" style="margin-bottom:1rem">Va primero por un motivo: <b>si no sabes de qué vive una empresa, sus números no significan nada</b>. Un margen del 40% es excelente en software y sospechoso en una constructora. Esto es lo que te dice cuál de las dos estás mirando.</p>
   <p class="sub">Antes de mirar un solo número hay que saber <b>de dónde sale cada euro de ventas</b>:
@@ -876,7 +910,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
 <!-- ═══════════ 2 · DATOS ═══════════ -->
 <section id="f2">
-  <div class="sec-num">Paso 2 de 4 · Fundamental</div>
+  <div class="sec-num">Paso 2 de 4 · Fundamental <span style="color:var(--muted-txt)">— a ciegas, sin mirar el precio</span></div>
   <h2>Mete los datos de los últimos años</h2>
   <p class="sub">Todo sale de <b>InvestingPro</b>, siempre en modo <code>Annual</code>.
   Debajo del nombre de cada fila tienes el nombre <em>literal</em> que hay que buscar.</p>
@@ -1138,7 +1172,7 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
 
 <!-- ═══════════ PASO 3 · EL PRECIO ═══════════ -->
 <section id="f3">
-  <div class="sec-num">Paso 3 de 4 · Precio</div>
+  <div class="sec-num">Paso 3 de 4 · Precio <span style="color:var(--muted-txt)">— solo después de cruzar la puerta</span></div>
   <h2>¿Cuánto vale y cuánto cuesta?</h2>
   <p class="sub">Son dos preguntas distintas y mucha gente las confunde. <b>Cuánto cuesta</b> lo dice
   el mercado y lo sabe todo el mundo. <b>Cuánto vale</b> lo decides tú, y por eso hay que hacer los
@@ -1542,6 +1576,8 @@ const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:n
   prepA:null,
   /* el contraste externo: Fair Value de InvestingPro y el IDC del Excel */
   fv:null, fvEb:null, fvDcf:null, idcX:null,
+  /* la puerta: el precio no se enseña hasta que escribes tu juicio */
+  puertaAbierta:false, juicio:null,
   /* de dónde salen los supuestos: null, "analistas" o "forecast" */
   origen:null};
 
@@ -3593,6 +3629,50 @@ function animarInforme(){
   }),{rootMargin:"0px 0px -8% 0px"});
   document.querySelectorAll("#informe .step").forEach(s=>{s.classList.add("rv");obsStep.observe(s);});
 }
+/* ══════════════════ LA PUERTA ══════════════════
+   Las cinco primeras preguntas se contestan SIN haber visto el precio. Hasta
+   ahora eso era una recomendación —«míralo el último»— y bastaba con bajar
+   scroll para saltársela. Ahora es una puerta: el precio no está en el
+   documento hasta que escribes tu juicio y la abres.
+
+   No es un adorno. Todo el método se apoya en que el precio no contamine el
+   análisis, y una recomendación que se puede ignorar con la rueda del ratón no
+   protege de nada. Además deja constancia de lo que pensabas ANTES, que es lo
+   único que luego se puede contrastar honestamente.
+
+   La nota se guarda con el resto del trabajo, así que sobrevive a recargar. */
+function puerta(R){
+  const nom = esc($("nombre").value || "esta empresa");
+  const abierta = !!VAL.puertaAbierta;
+  const nota = VAL.juicio || "";
+  if(abierta) return `
+    <div class="puerta-x" id="puerta">
+      <div class="px-t">✓ Ya has cruzado la puerta</div>
+      ${nota ? `<div class="px-n"><span>Lo que pensabas antes de ver el precio:</span>
+        “${esc(nota)}”</div>` : ""}
+      <div class="px-d">A partir de aquí ya conoces el precio. Si algo de lo de abajo te hace
+        cambiar de opinión, <b>pregúntate por qué</b>: ¿es un dato nuevo, o es que el número te
+        está gustando?</div>
+    </div>`;
+  return `
+  <div class="puerta-g" id="puerta">
+    <div class="pg-k">Alto · aquí termina el análisis del negocio</div>
+    <h3 class="pg-h">Hasta aquí no has visto el precio</h3>
+    <p class="pg-p">Y eso es lo más valioso que tienes ahora mismo. Lo que pienses de
+      <b>${nom}</b> en este momento es lo único que <b>no está contaminado</b> por lo que cueste.
+      En cuanto veas el precio, tu cabeza empezará a buscarle razones — a favor si es barato, en
+      contra si es caro. Es automático y le pasa a todo el mundo.</p>
+    <label class="pg-l" for="juicioTxt">Escríbelo antes de seguir. Dos líneas bastan:
+      ¿comprarías esta empresa entera si fuera tuya, sin saber lo que cuesta? ¿Y qué es lo que
+      más te chirría?</label>
+    <textarea id="juicioTxt" class="pg-t" placeholder="Por ejemplo: sí, crece y convierte muy bien en caja, pero depende demasiado de un solo producto…">${esc(nota)}</textarea>
+    <div class="pg-b">
+      <button type="button" class="b1" id="abrirPuerta">🔓 Ya tengo mi juicio · enséñame el precio</button>
+      <span class="pg-x">No hay vuelta atrás en este informe. Es a propósito.</span>
+    </div>
+  </div>`;
+}
+
 /* ══════════════════ GUARDIÁN DE COHERENCIA ══════════════════
    El IDC se imprime en nueve sitios del informe. Todos salen del mismo
    R.v.idc, así que en un dibujado normal es imposible que discrepen — pero
@@ -3731,11 +3811,30 @@ function informe(R){
      contable</b>; la caja es un <b>hecho</b>. Una empresa puede inventarse el beneficio durante
      años — no puede inventarse la caja durante años.`,
     `<div class="kpis">
-      ${kpi("Conversión en caja", pc(R.c.conv.v), "De cada 100 € que dice ganar, cuántos son dinero real", sem("conv",R.c.conv.v), true)}
+      ${kpi("Dinero real del último año", d.fcf[L]===null?"—":nf(d.fcf[L],0)+" M",
+            `Flujo de caja libre de ${A[L]}. Construido, no copiado`, null, true)}
+      ${kpi("Conversión en caja", pc(R.c.conv.v), "De cada 100 € que dice ganar, cuántos son dinero real", sem("conv",R.c.conv.v))}
       ${kpi("Margen de caja libre", pc(R.c.mFcf.v), "Céntimos de dinero real por euro vendido", sem("mFcf",R.c.mFcf.v))}
       ${kpi("Coste de no morir", pc(R.c.capexV.v), "Lo que cuesta mantener el negocio, sobre ventas", sem("capexV",R.c.capexV.v))}
      </div>
      ${cardConservador(R.c.conv, pc, nom)}
+     ${d.fcf[L]!==null ? `<div class="tw" style="margin-top:1rem"><table class="rs">
+       <thead><tr><th>Cómo se construye el dinero real de ${A[L]}</th>
+         <th style="text-align:right">Millones</th></tr></thead><tbody>
+       <tr><td class="l">Lo que gana operando <span style="color:var(--muted-txt)">· EBITDA</span></td>
+         <td class="n">${nf(R.ebitda[L],0)}</td></tr>
+       <tr><td class="l">− lo que cuesta no morir <span style="color:var(--muted-txt)">· CapEx de mantenimiento</span></td>
+         <td class="n">− ${nf(d.capexMant[L],0)}</td></tr>
+       <tr><td class="l">− Hacienda</td><td class="n">− ${nf(R.impuestos[L],0)}</td></tr>
+       <tr><td class="l">${R.interes[L]>=0?"+":"−"} el banco <span style="color:var(--muted-txt)">· intereses netos</span></td>
+         <td class="n">${R.interes[L]>=0?"+":"−"} ${nf(Math.abs(R.interes[L]),0)}</td></tr>
+       <tr><td class="l">${d.cwc[L]>=0?"−":"+"} lo que se queda atrapado <span style="color:var(--muted-txt)">· circulante</span></td>
+         <td class="n">${d.cwc[L]>=0?"−":"+"} ${nf(Math.abs(d.cwc[L]),0)}</td></tr>
+       <tr style="border-top:1px solid var(--line-strong)"><td class="l"><b>= Dinero real del año</b></td>
+         <td class="n"><b style="color:var(--amber-strong)">${nf(d.fcf[L],0)}</b></td></tr>
+       </tbody></table></div>
+       <div class="note" style="margin-top:.6rem">Este número <b>no está publicado en ninguna web</b>:
+       se construye. Es la diferencia entre este método y mirar un dato en una pantalla.</div>` : ""}
      <div class="charts">
       ${figura("Dinero real (FCF) frente a beneficio contable","Si las barras azules van muy por encima de las ámbar, el beneficio no llega al cajón.",
         {series:[{name:"Dinero real (FCF)",data:d.fcf},{name:"Beneficio contable",data:d.neto}],labels:A,
@@ -3816,11 +3915,14 @@ function informe(R){
       ${R.c.dil.v!==null && R.c.dil.v<0 ? ` Además <b>recompra acciones</b>: tu participación crece un ${pc(Math.abs(R.c.dil.v))} al año sin que hagas nada.`:""}
      </div>`,"p5","Riesgo");
 
-  /* ── PASO 6 · valoración ── */
-  H += pasoValoracion(R);
+  /* ── LA PUERTA · aquí termina el análisis a ciegas ── */
+  H += puerta(R);
 
-  /* ── PASO 7 · resumen ── */
+  /* ── TRAMO 2 y 3 · el precio y el contraste, detrás de la puerta ── */
+  H += `<div id="trasPuerta"${VAL.puertaAbierta ? "" : ' class="cerrado"'}>`;
+  H += pasoValoracion(R);
   H += resumen(R);
+  H += `</div>`;
   H += AVISO_FALTAN;      /* lo que falta, al final y en voz baja */
 
   /* ── P5 · portada del informe, delante de todo ── */
@@ -4710,6 +4812,20 @@ function enlazarValoracion(){
       informe(calcular()); guardarTrabajo();
     };
   });
+  /* la puerta: guarda el juicio y descubre el precio */
+  if($("juicioTxt")) $("juicioTxt").oninput = () => { VAL.juicio = $("juicioTxt").value; guardarTrabajo(); };
+  if($("abrirPuerta")) $("abrirPuerta").onclick = () => {
+    VAL.juicio = ($("juicioTxt").value||"").trim();
+    if(!VAL.juicio){
+      $("juicioTxt").focus();
+      $("juicioTxt").style.borderColor = "var(--amber)";
+      const av = $("puerta").querySelector(".pg-x");
+      if(av) av.innerHTML = "<b style=\"color:var(--amber-strong)\">Escribe algo primero</b>, aunque sean cinco palabras. Ese es el ejercicio.";
+      return;
+    }
+    VAL.puertaAbierta = true; guardarTrabajo(); informe(calcular());
+    setTimeout(()=>{ const t=$("trasPuerta"); if(t) t.scrollIntoView({behavior:modoScroll(),block:"start"}); }, 120);
+  };
   if($("promptAnalistas")) $("promptAnalistas").onclick = pedirAnalistas;
   if($("btnForecast")) $("btnForecast").onclick = pedirForecast;
   if($("modoPartidas")) $("modoPartidas").onclick = () => {
