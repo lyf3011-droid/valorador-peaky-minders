@@ -1489,7 +1489,7 @@ const BLOQUEA = {
 const SIN = {
  ventas:["total revenues","total revenue","revenue","revenues","ingresos","ventas",
          "ingresos totales"],
- ebitda:["ebitda"],
+ ebitda:["ebitda","ebitda, total"],
  ebit:["operating income","ebit","operating income (loss)","beneficio operativo",
        "ingreso operativo","resultado de explotación","margen neto"],
  interes:["net interest expenses","net interest expense","net interest expense (income)",
@@ -1526,7 +1526,8 @@ const SIN = {
            "ingresos diferidos"],
  da:["depreciation & amortization, total","depreciation and amortization",
      "depreciation & amortization","d&a",
-     "total de la depreciación y amortización","depreciación y amortización"],
+     "total de la depreciación y amortización","depreciación y amortización",
+     "depreciación y amortización, total","dotación a la amortización"],
  capexMant:["capex mantenimiento","capex de mantenimiento","maintenance capex","depreciation",
             "depreciación"],
  capex:["capital expenditure","capital expenditures","capex",
@@ -3117,9 +3118,25 @@ function leerCaja(g){
        no se arrastra con las demás. Sin etiqueta no hay nada que reconocer, y
        decir «copia desde Period Ending» ahí no ayuda: manda a otra página. */
     const lineas = ta.value.trim().split(/\r?\n/).filter(x=>x.trim());
-    const soloNum = lineas.length >= 3 &&
-      lineas.filter(x => /^[\s(]*[-−+]?[\d.,]+[\s)%]*$/.test(x.trim())).length >= lineas.length*0.7;
-    caja.innerHTML = soloNum
+    /* La trampa de este mensaje: en el formato vertical el 90% de las líneas
+       SON números aunque los nombres estén, así que contar números no vale
+       para acusar de que faltan. Lo que decide es si hay líneas que PARECEN
+       nombres de fila: si las hay y aun así no se ha leído nada, el problema
+       es que no las reconozco — y entonces hay que enseñarlas, no culpar al
+       usuario de un copiado que hizo bien. Así el error se diagnostica solo. */
+    const esNum = x => /^[\s(]*[-\u2212+]?[\d.,]+[\s)%x]*$/.test(x.trim()) || /^[-\u2013\u2014]$/.test(x.trim());
+    const nombres = lineas.filter(x => !esNum(x))
+      .map(x => x.trim()).filter(x => x.length > 2 && x.length < 70)
+      .filter(x => !/all rights reserved|terms of use|usd in|eur in/i.test(x));
+    const soloNum = lineas.length >= 3 && nombres.length === 0;
+    caja.innerHTML = (!soloNum && nombres.length)
+      ? `<span class="mal">He leído la tabla pero no reconozco ninguna de sus filas.</span>
+         Los nombres que veo: ${nombres.slice(0,6).map(n=>`<code>${esc(n)}</code>`).join(" · ")}${
+           nombres.length>6?` y ${nombres.length-6} más`:""}.<br>
+         Puede que la tabla esté en un idioma o con unos nombres que no conozco todavía.
+         <b>Haz una captura de esto y mándala</b> — se añade el diccionario y queda arreglado
+         para todos. Mientras, puedes escribir esas cifras a mano en su casilla de arriba.`
+      : soloNum
       ? `<span class="mal">Han venido los números, pero sin los nombres de las filas.</span>
          Sin el nombre no puedo saber cuál es cuál.<br>
          <b>Lo que ha pasado:</b> en las tablas de InvestingPro la <b>primera columna va
@@ -3226,7 +3243,11 @@ function leerTextoPlano(txt){
   const L = txt.split(/\n/).map(x=>x.trim());
   for(let i=0;i<L.length;i++){
     if(!L[i]) continue;
-    const bajo = L[i].toLowerCase().replace(/\s+/g," ");
+    /* normalize("NFC"): la «ó» puede venir compuesta o como o + tilde suelta.
+       Se ven IGUALES y no son iguales, y según de dónde copies Investing entrega
+       una u otra. Sin esto, ninguna fila española casaba y el mensaje de error
+       acusaba de otra cosa. */
+    const bajo = L[i].normalize("NFC").toLowerCase().replace(/\s+/g," ");
     /* ── EL FILTRO QUE IMPIDE MEZCLAR FUTURO CON PASADO ───────────────────
        «Revenue Forecast (InvestingPro)» empieza por «revenue», que es sinónimo
        de ventas. Antes casaba, y pegar la pestaña Forecasts con la hoja vacía
@@ -3271,7 +3292,8 @@ function leerTextoPlano(txt){
 
 /* normaliza una etiqueta de Investing para poder buscarla en los sinónimos */
 function normEt(s){
-  return String(s).toLowerCase().replace(/\s+/g," ").replace(/\*+$/,"").trim();
+  /* NFC por lo mismo que arriba: la tilde puede venir en dos codificaciones */
+  return String(s).normalize("NFC").toLowerCase().replace(/\s+/g," ").replace(/\*+$/,"").trim();
 }
 function procesarHTML(){
   let filas;
@@ -3334,7 +3356,7 @@ function procesarBloque(){
   const halladas=[], perdidas=[];
   const usadas = new Set();
   for(let i=0;i<lineas.length;i++){
-    const L = lineas[i].toLowerCase().replace(/\s+/g," ");
+    const L = lineas[i].normalize("NFC").toLowerCase().replace(/\s+/g," ");
     if(!L) continue;
     let key=null, resto=null;
     for(const [k,alts] of Object.entries(SIN)){
