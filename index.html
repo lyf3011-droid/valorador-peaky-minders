@@ -1519,5 +1519,39 @@ document.addEventListener("keydown", e => {
 if($("abrirClase")) $("abrirClase").onclick = clAbre;
 $("prompt").textContent = prompt();
 </script>
+
+<dialog id="lupa" aria-label="Vista ampliada">
+  <div class="lupa-t"><span id="lupaTit">Vista ampliada</span>
+    <button type="button" onclick="this.closest('dialog').close()">Cerrar ✕</button></div>
+  <div id="lupaCuerpo"></div>
+</dialog>
+<style>
+.dg{cursor:zoom-in}.dg:hover{filter:brightness(1.07)}
+dialog#lupa{border:1px solid rgba(245,158,11,.32);border-radius:14px;background:#080808;
+  padding:1rem;max-width:min(94vw,1100px);width:94vw;color:#FAFAF8}
+dialog#lupa::backdrop{background:rgba(0,0,0,.82);backdrop-filter:blur(3px)}
+#lupa svg{width:100%;height:auto;display:block}
+#lupa .lupa-t{font-family:ui-monospace,monospace;font-size:.7rem;letter-spacing:.12em;
+  text-transform:uppercase;color:#F59E0B;margin-bottom:.6rem;display:flex;
+  justify-content:space-between;align-items:center;gap:1rem}
+#lupa .lupa-t button{font-family:ui-monospace,monospace;font-size:.72rem;
+  border:1px solid rgba(255,255,255,.15);background:transparent;color:rgba(250,250,248,.62);
+  border-radius:7px;padding:.4rem .8rem;cursor:pointer}
+</style>
+<script>
+/* los diagramas de la guía se amplían con un clic: el desplegable los deja
+   pequeños y había que poder verlos de cerca */
+document.addEventListener("click", e => {
+  const svg = e.target.closest && e.target.closest("svg.dg, svg[viewBox]");
+  if(!svg || svg.closest("#lupa")) return;
+  if(svg.getBoundingClientRect().width < 90) return;   /* iconos no */
+  const d = document.getElementById("lupa");
+  if(!d || !d.showModal) return;
+  document.getElementById("lupaTit").textContent = svg.getAttribute("aria-label") || "Vista ampliada";
+  const c = document.getElementById("lupaCuerpo");
+  c.innerHTML = ""; c.appendChild(svg.cloneNode(true));
+  d.showModal();
+});
+</script>
 </body>
 </html>
