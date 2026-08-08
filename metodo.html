@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Por qué valoro así — Valoración Peaky Minders</title>
+<meta name="description" content="El método IDC explicado desde cero: por qué el flujo de caja se construye, de dónde viene la idea, y por qué el consenso de analistas se mira con distancia.">
+<style>
+:root{
+  --bg:#080808; --raised:#101010; --surface:#161616; --line:rgba(255,255,255,.09);
+  --line-strong:rgba(255,255,255,.16); --txt:#FAFAF8; --soft:#C9C7C2; --muted:#8C8A85;
+  --muted-txt:#6F6D69; --amber:#F59E0B; --amber-strong:#FBBF24; --amber-line:rgba(245,158,11,.35);
+  --amber-muted:rgba(245,158,11,.07); --green:#4ade80; --red:#f87171; --blue:#0E8FBF;
+  --font-m:ui-monospace,"JetBrains Mono","SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--txt);line-height:1.75;
+  font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:46rem;margin:0 auto;padding:0 1.3rem}
+
+nav{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:1.1rem;
+  padding:.8rem 1.3rem;background:rgba(8,8,8,.93);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line)}
+nav .marca{font-weight:800;font-size:1rem;color:var(--txt);margin-right:auto;text-decoration:none}
+nav .marca b{color:var(--amber)}
+nav a{color:var(--soft);text-decoration:none;font-size:.8rem}
+nav a:hover,nav a:focus-visible{color:var(--amber-strong)}
+
+header{padding:4.5rem 0 3rem;border-bottom:1px solid var(--line)}
+.kicker{font-family:var(--font-m);font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:1rem}
+h1{font-size:clamp(2.1rem,6vw,3.4rem);line-height:1.08;letter-spacing:-.03em;margin:0 0 1.1rem;
+  font-weight:800}
+.lead{font-size:1.12rem;color:var(--soft);margin:0}
+.lead b{color:var(--txt)}
+.firma{margin-top:2rem;font-family:var(--font-m);font-size:.72rem;color:var(--muted-txt);
+  line-height:1.9}
+.firma b{color:var(--soft)}
+
+.idx{margin:2.5rem 0 0;border:1px solid var(--line);border-radius:12px;padding:1.2rem 1.4rem;
+  background:var(--raised)}
+.idx-t{font-family:var(--font-m);font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:.8rem}
+.idx ol{margin:0;padding-left:1.4rem;color:var(--soft);font-size:.92rem;line-height:2}
+.idx a{color:var(--soft);text-decoration:none}
+.idx a:hover{color:var(--amber-strong)}
+
+section{padding:3.5rem 0;border-bottom:1px solid var(--line)}
+.snum{font-family:var(--font-m);font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:.7rem}
+h2{font-size:clamp(1.5rem,4vw,2.15rem);line-height:1.15;letter-spacing:-.02em;margin:0 0 1.2rem;
+  font-weight:800}
+h3{font-size:1.14rem;margin:2.2rem 0 .7rem;letter-spacing:-.01em;color:var(--amber-strong)}
+p{margin:1.1rem 0}
+.soft{color:var(--soft)}
+strong,b{color:var(--txt)}
+em{color:var(--soft)}
+a{color:var(--amber-strong)}
+
+.nino{border-left:3px solid var(--amber);background:var(--amber-muted);
+  border-radius:0 12px 12px 0;padding:1.3rem 1.5rem;margin:1.8rem 0}
+.nino .t{font-family:var(--font-m);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--amber);display:block;margin-bottom:.6rem}
+.nino p{margin:.7rem 0;font-size:1.02rem}
+.nino p:first-of-type{margin-top:0}
+.nino p:last-child{margin-bottom:0}
+
+.tec{border:1px solid var(--line-strong);border-radius:12px;padding:1.2rem 1.4rem;margin:1.8rem 0;
+  background:var(--raised)}
+.tec .t{font-family:var(--font-m);font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--blue);display:block;margin-bottom:.6rem}
+.tec p{margin:.6rem 0;font-size:.94rem;color:var(--soft)}
+.tec p:last-child{margin-bottom:0}
+
+.cita{border-left:2px solid var(--amber-line);padding:.2rem 0 .2rem 1.3rem;margin:1.6rem 0;
+  font-style:italic;color:var(--soft)}
+.cita .f{display:block;font-style:normal;font-family:var(--font-m);font-size:.7rem;
+  color:var(--muted-txt);margin-top:.6rem}
+
+pre{background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:1.1rem 1.2rem;overflow-x:auto;font-family:var(--font-m);font-size:.82rem;
+  line-height:1.9;color:var(--soft);margin:1.4rem 0;max-width:100%}
+/* en móvil el bloque de código se desplaza dentro de su caja, nunca la página */
+table{display:block;overflow-x:auto}
+@media(max-width:640px){pre{font-size:.72rem;padding:.9rem}}
+pre b{color:var(--amber-strong);font-weight:700}
+code{font-family:var(--font-m);font-size:.86em;background:var(--surface);
+  border:1px solid var(--line);border-radius:4px;padding:.1rem .35rem;color:var(--amber-strong)}
+
+table{width:100%;border-collapse:collapse;margin:1.4rem 0;font-size:.9rem}
+th{text-align:left;font-family:var(--font-m);font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line-strong);
+  padding:.5rem .6rem}
+td{padding:.6rem;border-bottom:1px solid var(--line);color:var(--soft);vertical-align:top}
+td b{color:var(--txt)}
+.n{text-align:right;font-family:var(--font-m)}
+
+ul{color:var(--soft);padding-left:1.3rem}
+li{margin:.6rem 0}
+li::marker{color:var(--amber)}
+
+.aviso{border:1px solid rgba(248,113,113,.32);background:rgba(248,113,113,.05);
+  border-radius:11px;padding:1.1rem 1.3rem;margin:1.6rem 0;font-size:.93rem;color:var(--soft)}
+.aviso b{color:var(--red)}
+.ok{border:1px solid rgba(74,222,128,.3);background:rgba(74,222,128,.05);
+  border-radius:11px;padding:1.1rem 1.3rem;margin:1.6rem 0;font-size:.93rem;color:var(--soft)}
+.ok b{color:var(--green)}
+
+footer{padding:3rem 0 5rem;font-size:.8rem;color:var(--muted-txt);line-height:1.9}
+footer b{color:var(--soft)}
+
+@media print{
+  nav{display:none}
+  *{color:#111!important;background:#fff!important;box-shadow:none!important}
+  body{font-size:10.5pt}
+  h1,h2,h3,.snum,.kicker,.nino .t{color:#8a5a00!important}
+  .nino,.tec,pre,.aviso,.ok,.idx{border:1px solid #ccc!important;break-inside:avoid}
+  section{break-inside:auto;border-bottom:1px solid #ddd}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="marca" href="index.html">Valoración <b>Peaky Minders</b></a>
+  <a href="index.html">Guía</a>
+  <a href="valorador.html">Valorador</a>
+  <a href="legal.html">Legal</a>
+</nav>
+
+<div class="wrap">
+
+<header>
+  <div class="kicker">El método, explicado</div>
+  <h1>Por qué valoro así</h1>
+  <p class="lead">Un método para saber cuánto vale una empresa <b>sin mirar lo que cuesta</b>
+  hasta el final. Explicado dos veces: como se lo contarías a un niño de diez años, y como se lo
+  defenderías a alguien que lleva veinte en esto.</p>
+  <div class="firma">
+    <b>Francisco González</b> · Escudería 5 · Academia de Inversión<br>
+    Elena Hernáez y Juan Luco Cazorla<br>
+    Material formativo. No constituye asesoramiento financiero.
+  </div>
+</header>
+
+<div class="idx">
+  <div class="idx-t">Lo que vas a leer</div>
+  <ol>
+    <li><a href="#tienda">La idea entera, con una tienda de barrio</a></li>
+    <li><a href="#mantener">Mantener no es crecer — la idea que lo cambia todo</a></li>
+    <li><a href="#buffett">De dónde viene: Buffett, 1986</a></li>
+    <li><a href="#cuentas">Cómo se construye el número, paso a paso</a></li>
+    <li><a href="#analistas">Por qué miro el consenso de analistas con distancia</a></li>
+    <li><a href="#pruebas">Cómo se comprueba que esto no es un cuento</a></li>
+    <li><a href="#limites">Lo que este método NO hace</a></li>
+  </ol>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<section id="tienda">
+  <div class="snum">1 · La idea entera</div>
+  <h2>Imagina que compras la tienda del barrio</h2>
+
+  <div class="nino"><span class="t">Para un niño de diez años</span>
+    <p>Imagina que en tu calle hay una panadería y que la dueña, Marta, se jubila y la vende.
+    Tú tienes ahorros y estás pensando en comprarla.</p>
+    <p>¿Qué preguntarías <b>antes</b> de preguntar el precio?</p>
+    <p>Pues lo normal: <b>¿viene más gente cada año?</b> ¿De cada 100 € que entran por la puerta,
+    cuántos le sobran de verdad? Ese dinero que dice que gana, <b>¿está en el cajón</b> o se lo
+    ha comido el horno nuevo? Si mete 1.000 € en la tienda, ¿cuánto le vuelven al año siguiente?
+    ¿Debe dinero al banco?</p>
+    <p>Y solo cuando ya sabes si la tienda es buena, preguntas: <b>«¿y cuánto pides por ella?»</b></p>
+    <p>Eso es todo el método. Seis preguntas, y la del precio es la última. Comprar acciones es
+    exactamente lo mismo, solo que en vez de la panadería entera compras un trocito.</p>
+  </div>
+
+  <p>Parece de sentido común, y lo es. Lo raro es que casi nadie lo haga.</p>
+
+  <p>Cuando abres cualquier web de bolsa, <b>lo primero que ves es el precio</b>, en grande y en
+  verde o en rojo. Y en cuanto lo ves, tu cabeza ya ha decidido. Todo lo que analices después no
+  sirve para formar una opinión: sirve para <b>darte la razón</b>.</p>
+
+  <div class="tec"><span class="t">Dicho en técnico</span>
+    <p>Es el <b>sesgo de anclaje</b>: el primer número que entra condiciona todos los juicios
+    posteriores, aunque sepas que te está condicionando. No se corrige con voluntad —saberlo no
+    te inmuniza— se corrige con <b>estructura</b>: no viendo el dato hasta que tu juicio ya
+    está formado y escrito.</p>
+    <p>Por eso la herramienta que acompaña a este método <b>no enseña el precio</b> hasta que has
+    escrito qué opinas del negocio. No es un adorno: es la única forma de que la regla se cumpla.</p>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<section id="mantener">
+  <div class="snum">2 · La idea que lo cambia todo</div>
+  <h2>Mantener no es crecer</h2>
+
+  <div class="nino"><span class="t">Para un niño de diez años</span>
+    <p>La panadería de Marta tiene un horno. Cada año el horno se gasta un poco, y algún día habrá
+    que cambiarlo. Eso <b>no es opcional</b>: sin horno no hay pan, y sin pan no hay tienda.</p>
+    <p>Pero este año Marta ha hecho otra cosa: ha comprado <b>una segunda amasadora</b> para hacer
+    el doble de pan y vender también a la cafetería de enfrente. Eso <b>sí es opcional</b>. Podría
+    no haberla comprado y la tienda seguiría funcionando exactamente igual.</p>
+    <p>Ahora la pregunta importante: cuando calculas <b>cuánto dinero gana la tienda de verdad</b>,
+    ¿restas las dos cosas?</p>
+    <p>Yo resto <b>solo el horno</b>. Porque el horno es lo que cuesta seguir donde estás. La
+    amasadora es una apuesta para llegar más lejos, y una apuesta no es un gasto de estar abierto.</p>
+    <p>Si restas las dos, pasa algo absurdo: <b>la tienda parece que vale menos justo el año en que
+    más apuesta por su futuro</b>. Y una tienda que se deja morir sin arreglar nada parecería
+    buenísima.</p>
+  </div>
+
+  <p>Esa distinción tiene nombre. El gasto en reponer lo que se desgasta es el
+  <b>CapEx de mantenimiento</b>. El gasto en construir lo que todavía no existe es el
+  <b>CapEx de expansión</b>. Las webs financieras los suman y restan el total. Yo resto solo el
+  primero.</p>
+
+  <table>
+    <thead><tr><th>&nbsp;</th><th>Qué es</th><th>¿Se puede dejar de hacer?</th></tr></thead>
+    <tbody>
+      <tr><td><b>Mantenimiento</b></td><td>Reponer lo que se desgasta</td>
+          <td>No. Sin esto el negocio muere</td></tr>
+      <tr><td><b>Expansión</b></td><td>Construir lo que aún no existe</td>
+          <td>Sí. Es una apuesta voluntaria</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tec"><span class="t">Dicho en técnico · la fórmula exacta</span>
+    <p>El problema práctico es que <b>ninguna empresa publica cuánto de su inversión es
+    mantenimiento</b>. Hay que estimarlo, y la mejor aproximación pública es la
+    <b>depreciación</b>: es la propia empresa la que declara cuánto se le desgasta al año,
+    siguiendo reglas contables que no elige a conveniencia.</p>
+    <p>Pero con un matiz que casi todo el mundo se salta: <b>la depreciación es el techo, no el
+    importe</b>.</p>
+  </div>
+
+<pre>CapEx de mantenimiento = <b>MÍNIMO</b>( CapEx realmente gastado , depreciación )</pre>
+
+  <ul>
+    <li>Si la empresa gasta <b>más</b> de lo que se le desgasta, el mantenimiento es la
+    depreciación y el resto es expansión. Es el caso normal de una empresa que crece.</li>
+    <li>Si la empresa gasta <b>menos</b> de lo que se le desgasta, el mantenimiento es
+    <b>lo que gastó de verdad</b>. No se le puede imputar un gasto que no hizo.</li>
+  </ul>
+
+  <p>Ese segundo caso no es una curiosidad técnica: es <b>la señal de una empresa que está
+  sosteniendo el resultado a base de no reponer</b>. Merece una mirada, no un ajuste automático.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<section id="buffett">
+  <div class="snum">3 · De dónde viene</div>
+  <h2>Buffett, 1986</h2>
+
+  <p>Esta idea no me la he inventado, y decir de quién es forma parte de defenderla.</p>
+
+  <div class="nino"><span class="t">Para un niño de diez años · quién es este señor</span>
+    <p><b>Warren Buffett</b> nació en Omaha en 1930 y dirige una empresa, Berkshire Hathaway, que
+    se dedica a <b>comprar otras empresas</b>. Empezó en 1965 con una fábrica de telas que se
+    moría y la convirtió en una de las compañías más grandes del mundo.</p>
+    <p>Lo que lo hace importante aquí no es que sea rico. Es que <b>desde 1977 escribe cada año
+    una carta a sus socios</b> contando qué ha hecho y por qué — <b>incluidos sus errores</b>, que
+    es lo raro. Esas cartas son públicas, gratis, y se entienden sin saber finanzas.</p>
+  </div>
+
+  <p>En la carta de <b>1986</b> hay un apéndice donde explica una idea que es el eje de todo esto.
+  Acababa de comprar una empresa, Scott Fetzer, y aprovecha para señalar un problema:
+  <b>la contabilidad oficial no dice lo que un dueño quiere saber</b>.</p>
+
+  <h3>Su razonamiento, en cuatro pasos</h3>
+  <ul>
+    <li>El <b>beneficio contable</b> incluye gastos que no son salidas de dinero — sobre todo la
+    depreciación, que es un apunte que dice «mis máquinas valen menos que el año pasado».
+    <b>Ese dinero no ha salido de la caja.</b></li>
+    <li>Así que, para saber cuánto dinero genera de verdad, <b>súmale la depreciación de vuelta</b>.</li>
+    <li>Pero entonces te pasas al otro extremo: las máquinas <b>sí</b> se gastan, y algún día habrá
+    que reponerlas. Ese gasto es real aunque no aparezca todos los años.</li>
+    <li>Por eso hay que <b>restar lo que la empresa necesita invertir para seguir como está</b>.
+    No lo que invierte —que puede ser más, si está creciendo— sino <b>lo que necesita para no ir
+    a menos</b>.</li>
+  </ul>
+
+  <p>A eso lo llamó <b>owner earnings</b>: las ganancias del propietario. Su definición, en sus
+  términos: el beneficio declarado, más la depreciación, el agotamiento, la amortización y demás
+  cargos que no son salidas de dinero, menos la inversión media anual en instalaciones y equipo
+  que el negocio necesita para —cita literal—</p>
+
+  <div class="cita">«fully maintain its long-term competitive position and its unit volume»
+    <span class="f">Warren Buffett · carta anual de Berkshire Hathaway, 1986 · apéndice</span></div>
+
+  <p>Mantener plenamente su posición competitiva a largo plazo y su volumen de unidades. Las tres
+  palabras que lo deciden todo son <b>maintain</b>, <b>position</b> y <b>volume</b>: lo que hace
+  falta para <b>seguir donde estás vendiendo lo mismo</b>. Todo lo que se gaste por encima persigue
+  otra cosa, y por definición <b>no es un coste de estar donde estás</b>.</p>
+
+  <h3>Las dos advertencias que él mismo pone</h3>
+  <p>No conviene saltárselas, porque son la respuesta a las dos objeciones más habituales:</p>
+  <ul>
+    <li><b>Es una estimación, no un dato.</b> Buffett lo dice sin rodeos: ese número es
+    <em>«a guess»</em>, una conjetura, y a veces difícil de hacer. Prefiere un número
+    aproximadamente correcto a uno exactamente equivocado.</li>
+    <li><b>El contable no lo puede dar.</b> Registra lo que ya pasó; estimar cuánto hace falta
+    invertir para mantenerse <b>es trabajo del inversor y del gestor</b>. Por eso ninguna web
+    publica este dato, y por eso en mi herramienta esa casilla <b>es editable</b>.</li>
+  </ul>
+
+  <div class="aviso">
+    <b>Sobre la carta completa.</b> Me has pedido la traducción íntegra y no la voy a poner, y
+    quiero que sepas por qué: <b>la carta es propiedad de Berkshire Hathaway</b>. Reproducirla
+    entera —traducida o en inglés— en un documento tuyo, y más si algún día lo vendes, es
+    exactamente el tipo de cosa que puede volverse en tu contra delante de la persona a la que
+    quieres impresionar.
+    <br><br>
+    Lo que sí es tuyo y nadie te puede discutir es <b>todo lo de arriba</b>: la explicación con tus
+    palabras, con las citas mínimas y atribuidas. Es la forma correcta de citar y es la que usa
+    cualquier trabajo académico serio.
+    <br><br>
+    El original es <b>gratuito y público</b>. Enlázalo y que cada uno lo lea:
+    <a href="https://www.berkshirehathaway.com/letters/1986.html" target="_blank" rel="noopener">berkshirehathaway.com/letters/1986.html</a>
+    — el apéndice está al final, buscando «Owner Earnings».
+  </div>
+
+  <h3>Un camino distinto al suyo, con el mismo punto de partida</h3>
+  <p>Conviene ser honesto en esto: <b>Buffett llega al valor descontando flujos futuros</b>. Yo
+  llego por <b>múltiplos</b>: cuántas veces su propia caja ha pagado el mercado por esta empresa a
+  lo largo de diez años, ajustado a la baja.</p>
+  <p>Son dos caminos y se puede discutir cuál es mejor. Pero <b>el paso previo es idéntico</b>:
+  cómo se lee la contabilidad y qué se considera dinero de verdad. Da igual lo que hagas después
+  con el flujo de caja — primero hay que calcularlo bien, y calcularlo bien significa
+  <b>separar mantener de crecer</b>.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<section id="cuentas">
+  <div class="snum">4 · Las cuentas</div>
+  <h2>Cómo se construye el número</h2>
+
+  <p>Aquí está la diferencia práctica con cualquier web: <b>el flujo de caja libre no se copia,
+  se construye</b>. Este número no está publicado en ningún sitio.</p>
+
+<pre>   Lo que gana operando                    <b>EBITDA</b>
+ − lo que cuesta no morir                  CapEx de mantenimiento
+ − Hacienda                                impuestos
+ ± el banco                                intereses netos
+ − lo que se queda atrapado                variación de circulante
+ ─────────────────────────────────────────────────────────────────
+ = <b>Dinero real del año</b>                     flujo de caja libre</pre>
+
+  <p>Y con ese número, el precio máximo que puedes pagar:</p>
+
+<pre> 1 · Proyectas el dinero real a <b>cinco años</b>
+ 2 · Lo multiplicas por lo que el mercado ha pagado normalmente  <b>(la mediana a 10 años)</b>
+ 3 · Restas la deuda y lo repartes entre las acciones que habrá
+ 4 · Y lo traes a hoy dividiendo entre <b>1,15⁵</b>
+
+ = <b>IDC</b> · el precio máximo que puedes pagar para ganar un 15% anual</pre>
+
+  <div class="tec"><span class="t">Dicho en técnico · tres decisiones deliberadas</span>
+    <p><b>1 · La mediana, no la media.</b> En todos los promedios a diez años. La media la mueve un
+    solo año raro, y en cuanto hay ejercicios negativos —justo cuando más falta hace mirar bien—
+    deja de describir nada. Una empresa con un año de EBITDA casi cero puede dar una conversión en
+    caja del −19.000%: la media queda destrozada, la mediana no se entera.</p>
+    <p><b>2 · La escalera decreciente.</b> El crecimiento proyectado se frena cada año en vez de
+    mantenerse plano. Ningún negocio crece al mismo ritmo cinco años seguidos, y esto es además la
+    respuesta a la crítica seria del método: si excluyo del flujo de caja el gasto en crecer, no
+    puedo luego proyectar alegremente el crecimiento que ese gasto produce.</p>
+    <p><b>3 · El 15% es exigencia, no previsión.</b> El IDC no dice lo que la empresa vale: dice
+    <b>lo máximo que puedes pagar para que te salgan las cuentas</b>. Son dos preguntas distintas
+    y la segunda siempre da un número menor.</p>
+  </div>
+
+  <h3>Por qué mis números no cuadran con los de las webs — a propósito</h3>
+  <table>
+    <thead><tr><th>Concepto</th><th class="n">Lo que publican</th><th class="n">El mío</th><th>Por qué</th></tr></thead>
+    <tbody>
+      <tr><td><b>Beneficio neto</b></td><td class="n">60.458</td><td class="n">58.760</td>
+          <td>Normalizado: fuera lo no operativo y lo extraordinario</td></tr>
+      <tr><td><b>Flujo de caja libre</b></td><td class="n">23.432</td><td class="n">57.807</td>
+          <td>Solo se resta el CapEx de <b>mantenimiento</b>, no el total</td></tr>
+      <tr><td><b>Deuda neta</b></td><td class="n">85.081</td><td class="n">−22.848</td>
+          <td>Sin alquileres, y restando caja e inversiones</td></tr>
+    </tbody>
+  </table>
+  <p class="soft" style="font-size:.88rem">Cifras de Meta Platforms, ejercicio 2025, en millones de
+  dólares. <b>Las tres diferencias son deliberadas.</b> Si alguien las «arregla», rompe el método.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<section id="analistas">
+  <div class="snum">5 · El consenso</div>
+  <h2>Por qué miro a los analistas con distancia</h2>
+
+  <div class="aviso">
+    <b>Primero, una corrección que te hago por tu bien.</b> «Los analistas siempre se equivocan»
+    es una frase que <b>no puedes defender</b> delante de una profesora, porque es falsa y se
+    desmonta con un contraejemplo. Y si te desmontan la frase, te desmontan el método entero
+    aunque el método sea bueno.
+    <br><br>
+    Lo que <b>sí</b> puedes defender, y es más fuerte, es esto: <b>el consenso es un punto de
+    partida, no una autoridad</b>, y hay razones estructurales para tratarlo con distancia. No
+    porque los analistas sean malos —muchos son excelentes— sino por <b>cómo funciona el oficio</b>.
+  </div>
+
+  <h3>Las cuatro razones estructurales</h3>
+  <ul>
+    <li><b>El horizonte.</b> Un consenso a doce meses es razonablemente informado. Un consenso a
+    cinco o diez años es una extrapolación, y se presenta con la misma cara de precisión que el
+    de doce meses. En la pestaña de previsiones verás columnas hasta <code>FY+10</code>: mira
+    cuántos analistas contribuyen a cada una. Suelen ser <b>cuarenta en el primer año y dos en el
+    décimo</b>. Ese dato está a la vista y lo dice todo.</li>
+    <li><b>El incentivo.</b> Un analista que cubre una empresa necesita acceso a su directiva. Ser
+    duro con una compañía tiene un coste profesional que ser blando no tiene. Eso no lo hace
+    deshonesto: lo hace <b>humano y previsible</b>.</li>
+    <li><b>El rebaño.</b> Equivocarse solo cuesta el puesto; equivocarse con todos, no. El
+    consenso <b>se agrupa</b>, y por eso la dispersión entre el más optimista y el más pesimista
+    informa más que la media.</li>
+    <li><b>Miden otra cosa.</b> El consenso proyecta ventas, beneficio y EBITDA. <b>Ninguno
+    proyecta el flujo de caja tal como yo lo construyo</b>, porque nadie separa mantenimiento de
+    expansión. Así que aunque acertaran de pleno, seguiría haciendo falta el trabajo de arriba.</li>
+  </ul>
+
+  <div class="ok">
+    <b>Y aquí está lo bueno: no tienes que creerme.</b> La herramienta te enseña el dato que lo
+    demuestra. Cuando pegas la pestaña <em>Forecasts</em>, arriba de cada columna aparece
+    <code>Contributing Analysts Count</code>. En una empresa grande verás algo como
+    <b>45 · 46 · 47 · 33 · 9 · 9 · 4 · 2 · 2 · 2 · 2</b>.
+    <br><br>
+    Cuarenta y cinco personas opinan sobre el año que viene. <b>Dos</b> opinan sobre 2035. Y las
+    dos cifras se pintan igual de grandes y con los mismos decimales. Enseña eso en clase y no
+    hace falta decir nada más.
+  </div>
+
+  <h3>Entonces, ¿para qué los uso?</h3>
+  <p>Los uso <b>donde son buenos</b>: los dos o tres primeros años, y para partidas donde tienen
+  información que el pasado no puede tener — un contrato firmado, una fábrica en construcción, un
+  producto que aún no se vende.</p>
+  <p>Y los uso <b>como punto de partida editable</b>. En la herramienta, cuando pegas las
+  previsiones, cada año queda en una casilla que puedes cambiar. Eso es exactamente lo que hago en
+  la hoja de cálculo: <b>coger el consenso y ajustarlo a mano</b>.</p>
+  <p>Lo que no hago nunca es <b>proyectar diez años con el consenso y llamarlo análisis</b>.</p>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<section id="pruebas">
+  <div class="snum">6 · La comprobación</div>
+  <h2>Cómo se comprueba que esto no es un cuento</h2>
+
+  <p>Un método de valoración que no se puede comprobar es una opinión con tablas. Este se comprueba
+  de tres formas, y las tres están a tu alcance.</p>
+
+  <h3>1 · Reproduce la hoja de cálculo, al céntimo</h3>
+  <p>Todas las fórmulas están verificadas contra la plantilla de la que salió el método. No
+  «parecido»: idéntico.</p>
+<pre>Flujo de caja de Meta, 2025      <b>57.807</b>  =  celda de la plantilla
+Flujo de caja de Microsoft, 2025 <b>113.091</b>  =  celda de la plantilla
+IDC de Meta con los mismos supuestos   <b>666,31</b>  frente a 666,36
+IDC de Microsoft                       <b>385,30</b>  frente a 385,33</pre>
+  <p>La diferencia de céntimos es redondeo, y está localizada.</p>
+
+  <h3>2 · Se vigila a sí mismo</h3>
+  <p>La herramienta <b>revisa 26 partidas × 10 años antes de enseñarte nada</b> y avisa de lo que
+  no puede ser: márgenes imposibles, ventas que se multiplican por ocho, un precio que no cuadra
+  con la moneda de las cuentas, previsiones coladas entre los históricos, un ROIC que se dispara
+  solo porque el patrimonio neto es negativo.</p>
+  <p>Esto es lo que <b>una hoja de cálculo no hace</b>. Un Excel nunca «falla» porque un Excel no
+  comprueba nada: si le pegas los datos mal, te da un número equivocado <b>en silencio y con
+  buena cara</b>. Que la herramienta te avise no es que sea frágil: es que mira.</p>
+
+  <h3>3 · Se contrasta contra alguien que no eres tú</h3>
+  <p>En el último paso pones al lado el <b>Fair Value</b> de InvestingPro — dos de sus doce
+  modelos, elegidos por lo que miden y no por lo que dan: <em>EV/EBITDA Multiples</em> y
+  <em>5Y DCF EBITDA Exit</em>, que es el que más se parece a este método.</p>
+  <div class="tec"><span class="t">Y la trampa que hay que evitar</span>
+    <p><b>Elegir el modelo que coincide contigo es sesgo de confirmación</b> — exactamente lo mismo
+    que este método combate al obligarte a mirar el precio el último. El modelo se escoge
+    <b>antes</b> de ver el resultado, por qué mide lo mismo que tú. Si luego coincide, es una
+    señal. Si lo eliges <em>porque</em> coincide, no has comprobado nada.</p>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<section id="limites">
+  <div class="snum">7 · Los límites</div>
+  <h2>Lo que este método no hace</h2>
+
+  <p>Decir dónde no llega es lo que separa un método de un truco.</p>
+  <ul>
+    <li><b>No vale para bancos ni aseguradoras.</b> Su negocio <em>es</em> el dinero: la deuda no
+    es una carga, es su materia prima. El flujo de caja libre y la deuda neta no significan aquí
+    lo que significan en cualquier otra empresa.</li>
+    <li><b>No vale para inmobiliarias patrimonialistas</b> (REITs, SOCIMIs). Su beneficio está
+    distorsionado por la amortización de inmuebles que no pierden valor, y el CapEx de
+    mantenimiento no se puede aproximar con la depreciación.</li>
+    <li><b>No vale para empresas que queman caja.</b> Multiplicar un número negativo no da un
+    precio, da un sinsentido. Que no se pueda poner precio <b>es la conclusión</b>, no un fallo.</li>
+    <li><b>No es un cribador.</b> No busca empresas: analiza una, despacio.</li>
+    <li><b>No decide.</b> Produce un diagnóstico. Decide una persona.</li>
+  </ul>
+
+  <div class="tec"><span class="t">La objeción seria, y qué contesto</span>
+    <p>«Si excluyes del flujo de caja el gasto en crecer pero luego proyectas el crecimiento que
+    ese gasto produce, te quedas con el premio sin pagar la entrada.» Es la crítica buena a este
+    enfoque y conviene adelantarse a ella.</p>
+    <p>Se cierra por dos sitios: la <b>escalera decreciente</b>, que frena el crecimiento cada año
+    precisamente porque crecer no sale gratis, y el <b>múltiplo objetivo</b>, que se toma por
+    debajo de la mediana histórica. La prudencia no desaparece: <b>cambia de sitio</b>. Meterla dos
+    veces no es ser prudente, es no saber qué estás midiendo.</p>
+  </div>
+
+  <div class="nino"><span class="t">Y en una frase, para acabar</span>
+    <p>Esto no es la caja que la empresa puede repartir mañana en dividendos.
+    Es <b>la capacidad de generar dinero del negocio que ya está construido</b>.</p>
+    <p>Son dos preguntas distintas, y para valorar interesa la segunda.</p>
+  </div>
+</section>
+
+<footer>
+  <b>Valoración Peaky Minders</b> · Por qué valoro así<br>
+  Creada bajo los derechos de <b>Francisco González</b> para <b>Escudería 5 · Academia de
+  Inversión</b> · <b>Elena Hernáez</b> y <b>Juan Luco Cazorla</b>.<br><br>
+  El sistema, el código, los textos y la didáctica son obra propia. La idea de <em>owner
+  earnings</em> es de Warren Buffett y así consta, con cita atribuida y enlace al original
+  público y gratuito.<br><br>
+  ⚠️ Material formativo. <b>No constituye asesoramiento financiero</b> ni recomendación de compra
+  o venta. Quien lo publica no es asesor financiero registrado.
+  <a href="legal.html">Aviso legal completo →</a>
+</footer>
+
+</div>
+</body>
+</html>
