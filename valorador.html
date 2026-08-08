@@ -467,6 +467,14 @@ svg.esq,svg.ch,svg.dg{cursor:zoom-in}
 .neg-r{font-size:.92rem;color:var(--text);margin:.35rem 0 .4rem;line-height:1.5}
 .neg-x{font-size:.79rem;color:var(--muted-txt);display:flex;align-items:center;gap:.5rem;
   flex-wrap:wrap}
+/* la barra de mantener vs crecer: una idea, un dibujo */
+.dosbar{display:flex;height:2.3rem;border-radius:8px;overflow:hidden;border:1px solid var(--line-strong)}
+.dosbar>div{display:flex;align-items:center;justify-content:center;min-width:0}
+.dosbar span{font-family:var(--font-m);font-size:.72rem;white-space:nowrap;padding:0 .5rem;
+  overflow:hidden;text-overflow:ellipsis}
+.db-m{background:rgba(255,255,255,.07);color:var(--soft)}
+.db-c{background:rgba(245,158,11,.24);color:var(--amber-strong);font-weight:700}
+.via2ok{border-color:rgba(74,222,128,.3)}
 /* el mapa de precios no baja de 560 px: por debajo el texto deja de leerse y es
    preferible que la caja se deslice, como ya hacen las tablas anchas */
 .mapa-p{min-width:560px}
@@ -5242,72 +5250,88 @@ function pasoValoracion(R){
 
      ${bandaReferencia(R)}
 
-     ${tramo(1,"Antes de calcular nada, mira lo que dicen otros",
-       `Ya sabes lo que ha pagado el mercado por esta empresa históricamente. Antes de montar tu
-        propia valoración, <b>mira la de InvestingPro</b>: te da una referencia y evita que tu
-        número salga de la nada. Luego harás el tuyo y los compararás.`)}
+     ${(() => { const via2 = viaAnalistas(); return `
+
+     ${tramo(1,"El precio que ya está calculado",
+       `Valorar una empresa entera es un trabajo de horas. <b>Empieza por leer el que ya existe</b>:
+        InvestingPro publica su tasación y la de los analistas que la cubren. Con eso solo ya
+        puedes cerrar un análisis honesto.`)}
      ${cuadroFairValue(R)}
 
-     ${tramo(2,"Ahora mete tus supuestos",
-       `Aquí es donde tú decides. Puedes traer el consenso de analistas de la pestaña
-        <b>Forecasts</b> —lo normal— o poner los números a mano.`)}
-     ${resumenEntrada(R)}
+     ${tramo(2,"¿Quieres calcularlo tú? · opcional",
+       `Esto ya es el método completo, y <b>no hace falta para aprobar el análisis</b>. Si te
+        apetece, pega <b>una sola pestaña</b> y el precio sale solo.`)}
 
-     <h3>Tus dos decisiones</h3>
-     ${VAL.modo !== "partidas" ? `<div class="warn">
-       <b>Ojo: esto es el modo simplificado.</b> El crecimiento del FCF de aquí abajo está
-       <b>extrapolado del pasado</b> — no es lo que hace la plantilla original.
-       <br><br>El método de verdad <b>no proyecta el flujo de caja de un tirón</b>: proyecta
-       <b>partida por partida</b> —ventas, margen, impuesto, CapEx— y el flujo de caja
-       <em>sale</em> de ahí. Pulsa <b>«Proyectar por partidas»</b> abajo, o pega la pestaña
-       <b>Forecasts</b> y se monta sola con el consenso de analistas.
-       <div class="note" style="margin-top:.6rem;background:transparent;border:0;padding:0">
-         El modo simplificado sirve para una primera idea rápida y para empresas sin consenso.
-         Para un análisis que quieras defender, usa el de partidas.</div>
-     </div>` : ""}
-     <div class="note">De toda la cadena de cálculo, <b>solo hay dos números que decides tú</b>:
-       cuánto crecerá y cuánto es justo pagar. Todo lo demás es aritmética. Vienen precargados
-       con el valor conservador — cámbialos y el resultado se recalcula solo.</div>
-     <div class="vgrid">
-       <div><label>Crecimiento del FCF · año 1 (%)</label><input class="vin" data-v="g" type="number" step="any" value="${nf(v.gF,1).replace(",",".")}"></div>
-       <div><label>Crecimiento del FCF · año 5 (%)</label><input class="vin" data-v="g5" type="number" step="any" value="${nf(v.gF5,1).replace(",",".")}"></div>
-       <div><label>Múltiplo objetivo EV/FCF</label><input class="vin" data-v="mult" type="number" step="any" value="${nf(v.multObj,1).replace(",",".")}"></div>
-     </div>
-     <div class="note" style="margin-top:.2rem">
-       <b>La escalera:</b> ${v.pasosF.map(g=>nf(g,1)+"%").join(" → ")}
-       &nbsp;·&nbsp; equivale a un <b>${pc(v.cagrEquivF)}</b> anual compuesto.
-       &nbsp;·&nbsp; <b style="color:${VAL.origen||VAL.g!==null?"var(--green)":"var(--amber-strong)"}">${
-         VAL.origen==="forecast" ? "del consenso de InvestingPro"
-         : VAL.origen==="analistas" ? "del consenso de analistas"
-         : VAL.g!==null ? "supuesto tuyo" : "extrapolado del pasado"}</b>
-       <span style="color:var(--muted-txt)">Ningún negocio crece al mismo ritmo cinco años seguidos. Por eso el
-       crecimiento se va frenando en vez de mantenerse plano — es lo que hace la plantilla original, y es
-       la diferencia entre una proyección optimista y una prudente.</span>
+     <div class="panel${via2 ? " via2ok" : ""}" style="margin-top:1rem">
+       ${via2 ? `<div class="ok" style="margin:0 0 .9rem">✓ <b>Hecho.</b> Las estimaciones están
+         cargadas y abajo tienes tu propio precio, calculado con ellas.</div>` : ""}
+       <h3 style="margin-top:0">La pestaña <b>Forecasts</b>, y nada más</h3>
+       <p class="step-w">Es <b>otra página distinta</b> de las tres que ya has pegado: no está en
+         las cuentas, está en <b>Financials → Forecasts</b>. Ahí los analistas dicen qué esperan
+         que venda y gane la empresa los próximos años. <b>Copia la tabla entera y pégala</b> —
+         no tienes que elegir filas ni tocar ningún número.</p>
+
+       <svg viewBox="0 0 640 150" class="esq" role="img"
+         aria-label="Dónde está la pestaña Forecasts en InvestingPro y qué filas se usan">
+         <rect x="1" y="1" width="638" height="148" rx="10" fill="var(--surface)" stroke="var(--line-strong)"/>
+         <text x="18" y="25" font-family="var(--font-m)" font-size="10.5" fill="var(--muted-txt)">investing.com/pro/BOLSA:TICKER/financials/<tspan fill="var(--amber-strong)" font-weight="700">forecasts</tspan></text>
+         <line x1="1" y1="37" x2="639" y2="37" stroke="var(--line)"/>
+         ${["Income Statement","Balance Sheet","Cash Flow","Forecasts"].map((t,k)=>`
+           <text x="${18+k*128}" y="58" font-family="var(--font-b),sans-serif" font-size="11.5"
+             font-weight="${k===3?"700":"400"}" fill="${k===3?"var(--amber-strong)":"var(--muted-txt)"}">${t}</text>
+           ${k===3?`<line x1="${18+k*128}" y1="64" x2="${74+k*128}" y2="64" stroke="var(--amber)" stroke-width="2.5"/>`:""}`).join("")}
+         ${["2026e","2027e","2028e","2029e","2030e"].map((a,k)=>`
+           <text x="${300+k*66}" y="87" text-anchor="middle" font-family="var(--font-m)" font-size="9.5" fill="var(--muted-txt)">${a}</text>`).join("")}
+         ${["Revenue Forecast","EBIT Forecast","Capital Expenditures"].map((t,k)=>`
+           <rect x="14" y="${94+k*17}" width="612" height="15" rx="4" fill="rgba(245,158,11,.09)"/>
+           <text x="22" y="${105+k*17}" font-family="var(--font-m)" font-size="9.5" fill="var(--soft)">${t}</text>
+           ${[0,1,2,3,4].map(c=>`<rect x="${278+c*66}" y="${98+k*17}" width="46" height="7" rx="3.5" fill="var(--d2)" fill-opacity=".33"/>`).join("")}`).join("")}
+       </svg>
+
+       ${(()=>{ const u = (typeof urlPro==="function") ? urlPro("forecasts") : null;
+         return u ? `<a class="ab-b" href="${u}" target="_blank" rel="noopener"><span class="ab-n">↗</span>
+             Abre la pestaña <b>Forecasts</b> de ${esc(($("ticker").value||"").toUpperCase())}</a>`
+           : `<div class="note">Escribe el <b>ticker</b> en el paso 1 y aquí saldrá el enlace directo.</div>`; })()}
+
+       <div class="bar-actions" style="margin-top:.8rem">
+         <button type="button" class="b2" id="btnForecast" style="border-color:var(--amber);
+           color:var(--amber-strong);font-weight:700">📋 Pegar la pestaña Forecasts</button>
+         <button type="button" class="b2" id="promptAnalistas">📊 Pedírselas a una IA</button>
+       </div>
+       <div id="analistasBox" class="pegagrid hide" style="margin-top:.8rem"></div>
+       <div id="fcBox" class="pegagrid hide" style="margin-top:.8rem"></div>
+
+       <details class="noimp" style="margin-top:.9rem"><summary>Modo manual · si esta empresa no
+         tiene consenso de analistas</summary><div class="dbody">
+         <div class="note" style="margin-top:0">Aquí los números los pones tú, y el resultado vale
+           lo que valgan tus supuestos. <b>Vienen extrapolados del pasado</b>, que es una muleta,
+           no un método: úsalo para una primera idea, no para defender un análisis.</div>
+         <div class="vgrid">
+           <div><label>Crecimiento del FCF · año 1 (%)</label><input class="vin" data-v="g" type="number" step="any" value="${nf(v.gF,1).replace(",",".")}"></div>
+           <div><label>Crecimiento del FCF · año 5 (%)</label><input class="vin" data-v="g5" type="number" step="any" value="${nf(v.gF5,1).replace(",",".")}"></div>
+           <div><label>Múltiplo objetivo EV/FCF</label><input class="vin" data-v="mult" type="number" step="any" value="${nf(v.multObj,1).replace(",",".")}"></div>
+           <div><label>Crecim. beneficios · año 1 (%)</label><input class="vin" data-v="gb" type="number" step="any" value="${nf(v.gB,1).replace(",",".")}"></div>
+           <div><label>Crecim. beneficios · año 5 (%)</label><input class="vin" data-v="gb5" type="number" step="any" value="${nf(v.gB5,1).replace(",",".")}"></div>
+           <div><label>Retorno anual que quieres (%)</label><input class="vin" data-v="obj" type="number" step="any" value="${nf(v.obj*100,0)}"></div>
+           <div><label>Deuda neta dentro de 5 años</label><input class="vin" data-v="dn5" type="number" step="any" value="${nf(v.dn5,0).replace(/\./g,"")}"></div>
+           <div><label>Dilución anual (%)</label><input class="vin" data-v="dil" type="number" step="any" value="${nf(v.dil*100,2).replace(",",".")}"></div>
+         </div>
+         <button type="button" class="b2" id="modoPartidas" style="margin-top:.6rem;
+           border-color:${VAL.modo==="partidas"?"var(--amber)":"var(--line-strong)"};
+           color:${VAL.modo==="partidas"?"var(--amber-strong)":"var(--soft)"}">
+           ${VAL.modo==="partidas"?"✓ Proyectando por partidas":"📐 Proyectar por partidas (como la plantilla)"}</button>
+       </div></details>
      </div>
 
-     <div class="bar-actions" style="margin-top:.8rem">
-       <button type="button" class="b2" id="promptAnalistas">📊 Pedir las estimaciones a una IA</button>
-       <button type="button" class="b2" id="btnForecast" style="border-color:var(--amber-line);
-         color:var(--amber-strong)">📋 Pegar la pestaña Forecasts de InvestingPro</button>
-       <button type="button" class="b2" id="modoPartidas"
-         style="border-color:${VAL.modo==="partidas"?"var(--amber)":"var(--line-strong)"};
-                color:${VAL.modo==="partidas"?"var(--amber-strong)":"var(--soft)"}">
-         ${VAL.modo==="partidas"?"✓ Proyectando por partidas":"📐 Proyectar por partidas (como la plantilla)"}</button>
-     </div>
-     <div id="analistasBox" class="pegagrid hide" style="margin-top:.8rem"></div>
-     <div id="fcBox" class="pegagrid hide" style="margin-top:.8rem"></div>
-     ${VAL.modo==="partidas" ? tablaPartidas(R) : ""}
-     <details class="noimp" style="margin-top:.6rem"><summary>Ajustes finos · beneficios, retorno, deuda y dilución</summary>
-       <div class="dbody"><div class="vgrid" style="margin:0">
-         <div><label>Crecim. beneficios · año 1 (%)</label><input class="vin" data-v="gb" type="number" step="any" value="${nf(v.gB,1).replace(",",".")}"></div>
-         <div><label>Crecim. beneficios · año 5 (%)</label><input class="vin" data-v="gb5" type="number" step="any" value="${nf(v.gB5,1).replace(",",".")}"></div>
-         <div><label>Retorno anual que quieres (%)</label><input class="vin" data-v="obj" type="number" step="any" value="${nf(v.obj*100,0)}"></div>
-         <div><label>Deuda neta dentro de 5 años</label><input class="vin" data-v="dn5" type="number" step="any" value="${nf(v.dn5,0).replace(/\./g,"")}"></div>
-         <div><label>Dilución anual (%)</label><input class="vin" data-v="dil" type="number" step="any" value="${nf(v.dil*100,2).replace(",",".")}"></div>
-       </div></div>
-     </details>
-
-     <h3>El resultado</h3>
+     ${!via2 ? `
+     ${tramo(3,"Y con qué número te quedas",
+       `Sin proyección propia no hay IDC, y está bien que no lo haya: un precio sacado de
+        extrapolar el pasado no es un análisis, es un adorno. Con lo de arriba te sobra.`)}
+     ${cierrePrecio(R)}
+     ` : `
+     ${tramo(3,"Tu precio, calculado con lo que esperan los analistas",
+       `Esto ya es tuyo. No es lo que la empresa vale: es <b>lo máximo que puedes pagar hoy</b>
+        para llevarte un ${nf(v.obj*100,0)}% anual durante cinco años.`)}
      ${bandaVeredicto(R)}
      <div class="kpis">
        ${kpi("Precio hoy", mo(R.precio), "Cotización que has introducido", null)}
@@ -5316,19 +5340,19 @@ function pasoValoracion(R){
        ${kpi("Retorno anual esperado", pc(v.retorno), "Al precio de hoy, si se cumple lo previsto", sem("retorno",v.retorno))}
      </div>
 
-     <div class="tw"><table class="rs">
-      <thead><tr><th>Precio dentro de 5 años, calculado de 4 formas</th><th style="text-align:right">Múltiplo</th><th style="text-align:right">Precio año 5</th><th style="text-align:right">Retorno anual</th></tr></thead>
-      <tbody>${objetivos}
-        <tr style="border-top:1px solid var(--line-strong)"><td class="l"><b>Promedio de las cuatro</b></td><td class="n">—</td>
-        <td class="n"><b>${mo(P.prom)}</b></td><td class="n"><b>${P.prom!==null?pc(Math.pow(P.prom/R.precio,1/5)-1):"—"}</b></td></tr>
-      </tbody></table></div>
-
      ${porQueDistinto(R)}
 
-     ${tramo(3,"El resultado, y de dónde sale cada pieza",
-       `Esto es lo que ha salido de tus supuestos. Cada línea de la cuenta de abajo es
-        comprobable: si algo no te cuadra, ahí está su origen.`)}
-     <details style="margin-top:1.1rem" open><summary>Ver la cuenta paso a paso</summary><div class="dbody">
+     <details class="noimp" style="margin-top:1.1rem"><summary>Las cuatro formas de calcular el
+       precio a 5 años${P.prom!==null?` · promedio ${mo(P.prom)}`:""}</summary><div class="dbody">
+       <div class="tw"><table class="rs">
+        <thead><tr><th>Múltiplo usado</th><th style="text-align:right">Múltiplo</th><th style="text-align:right">Precio año 5</th><th style="text-align:right">Retorno anual</th></tr></thead>
+        <tbody>${objetivos}
+          <tr style="border-top:1px solid var(--line-strong)"><td class="l"><b>Promedio de las cuatro</b></td><td class="n">—</td>
+          <td class="n"><b>${mo(P.prom)}</b></td><td class="n"><b>${P.prom!==null?pc(Math.pow(P.prom/R.precio,1/5)-1):"—"}</b></td></tr>
+        </tbody></table></div>
+     </div></details>
+
+     <details class="noimp" style="margin-top:.6rem"><summary>La cuenta entera, línea a línea</summary><div class="dbody">
        <table class="rs"><tbody>
         <tr><td class="l">Dinero real del último año</td><td class="n">${nf(d.fcf[L],0)} M</td></tr>
         ${v.pasosF.map((g,i)=>`<tr><td class="l">año ${i+1} · × ${nf(1+g/100,3)} <span style="color:var(--muted-txt)">(${nf(g,1)}%)</span></td>
@@ -5343,9 +5367,14 @@ function pasoValoracion(R){
         <tr><td class="l">× 0,85 = <b>zona de análisis</b></td><td class="n"><b>${mo(v.zona)}</b></td></tr>
        </tbody></table>
      </div></details>
-     ${tramo(4,"Los tres números, juntos, y con cuál quedarse",
+     ${VAL.modo==="partidas" ? `<details class="noimp" style="margin-top:.6rem"><summary>Los
+       supuestos, año a año</summary>${tablaPartidas(R)}</details>` : ""}
+
+     ${tramo(4,"Los cuatro precios, juntos, y con cuál quedarse",
        `Ya tienes tu valoración y la de fuera. Este es el momento de decidir qué te crees.`)}
      ${cierrePrecio(R)}
+     `}
+     `; })()}
      <div class="note">Un estado operativo <b>abre un análisis</b>. Nunca autoriza una compra por sí mismo.</div>`,
      "p6","Precio");
 }
@@ -5423,6 +5452,14 @@ function resumenEntrada(R){
    Tres números y una recomendación de con cuál quedarse. Sin esto el alumno
    sale del informe con tres cifras distintas y sin saber qué hacer con ellas,
    que es la peor forma de terminar un análisis. */
+/* ── ¿Ha montado su propia proyección, o se queda con el precio de Investing? ──
+   Las dos vías son legítimas y el informe cambia entero según cuál se use:
+   sin proyección propia NO se enseña un IDC, porque sería un número salido de
+   extrapolar el pasado —y eso es exactamente lo que confunde a quien empieza. */
+function viaAnalistas(){
+  return VAL.origen === "forecast" || VAL.origen === "analistas" || VAL.modo === "partidas";
+}
+
 /* ══════════════════════ EL MAPA DE PRECIOS ══════════════════════
    Los tres números que hay sobre la mesa —lo que pide el mercado, lo que dicen
    los analistas, lo que dicen los modelos de Investing— y el tuyo, en la MISMA
@@ -5441,7 +5478,7 @@ function mapaPrecios(R){
     m:nn("fvAn"), lo:nn("fvAnLo"), hi:nn("fvAnHi")});
   if(ok(nn("fv"))) B.push({t:"Investing · sus modelos", s:"Su tasación automática", c:"var(--d2)",
     m:nn("fv"), lo:nn("fvLo"), hi:nn("fvHi")});
-  if(ok(v.idc)) B.push({t:"Tu IDC", s:"Exigiendo un "+nf(v.obj*100,0)+"% anual",
+  if(ok(v.idc) && viaAnalistas()) B.push({t:"Tu IDC", s:"Exigiendo un "+nf(v.obj*100,0)+"% anual",
     c:"var(--amber-strong)", m:v.idc, lo:v.zona, hi:v.idc});
   if(B.length < 2) return "";
 
@@ -5506,16 +5543,17 @@ function cierrePrecio(R){
   }
 
   const suyo = fv !== null ? fv : an;
+  const mio  = viaAnalistas();
   const rel  = v.idc/suyo - 1;
-  const filas = [
+  const filas = mio ? [
     ["Tu IDC", v.idc, "amber", "Exige un "+nf(v.obj*100,0)+"% anual · precio de entrada"],
     ["Zona de análisis", v.zona, "", "El IDC con un 15% de colchón"],
-  ];
+  ] : [];
   if(fv !== null) filas.push(["Investing · sus modelos", fv, "blue", "Su tasación automática"]);
   if(an !== null) filas.push(["Analistas · objetivo 12 meses", an, "blue", "Opinión humana, y suele ir alta"]);
   filas.push(["Lo que pide hoy el mercado", R.precio, "", "El único que no es una opinión"]);
 
-  const bajo = Math.min.apply(null, [v.idc, fv, an].filter(x => x!==null && isFinite(x)));
+  const bajo = Math.min.apply(null, [mio ? v.idc : null, fv, an].filter(x => x!==null && isFinite(x)));
   const anRel = (an !== null && fv !== null) ? an/fv - 1 : null;
 
   return `${mapaPrecios(R)}
@@ -5529,7 +5567,12 @@ function cierrePrecio(R){
       </tbody></table></div>
 
     <div class="db" style="margin-top:1.1rem"><span class="t">Y con cuál me quedo</span>
-      ${rel < -0.05
+      ${!mio
+        ? `Te has quedado con <b>la tasación de InvestingPro</b>, y es una forma perfectamente
+           razonable de trabajar: es la media de sus doce modelos y no te la has inventado tú.
+           Lo único que no te dice es <b>qué rentabilidad te llevas si compras a ese precio</b> —
+           para eso hace falta la vía 2.`
+        : rel < -0.05
         ? `Tu IDC está <b>${pc(Math.abs(rel))} por debajo</b> de su tasación, y así debe ser: tú
            exiges un ${nf(v.obj*100,0)}% anual y ellos no exigen nada. <b>Todo en orden.</b>`
         : rel <= 0.05
@@ -5561,52 +5604,37 @@ function porQueDistinto(R){
   const d = R.der, L = R.L, v = R.v;
   const exp = d.capexExp && d.capexExp[L] !== null ? d.capexExp[L] : null;
   const mant = d.capexMant[L], fcf = d.fcf[L];
-  if(exp === null || mant === null || fcf === null) return "";
+  if(exp === null || mant === null || fcf === null || !viaAnalistas()) return "";
 
-  const publicado = fcf - exp;                 /* lo que restaría una web */
-  const peso = fcf ? exp / fcf : 0;
+  const total = mant + exp;
+  const pMant = total ? mant/total : 0;
+  const publicado = fcf - exp;
   const idcSin = (v.idc && fcf) ? v.idc * (publicado / fcf) : null;
 
   if(exp < mant * 0.02){
     return `<div class="note" style="margin-top:1rem"><b>Esta empresa casi no invierte en
-      crecer:</b> de sus ${nf(mant + exp, 0)} millones de inversión, solo
-      <b>${nf(exp, 0)}</b> son de expansión. Por eso aquí tu flujo de caja y el que publica
-      cualquier web se parecen mucho — la diferencia del método casi no se nota, y eso también
-      es información sobre la compañía.</div>`;
+      crecer:</b> de sus ${nf(total, 0)} millones de inversión, solo <b>${nf(exp, 0)}</b> son de
+      expansión. Por eso tu flujo de caja y el de cualquier web se parecen mucho — y eso también
+      dice algo de la compañía.</div>`;
   }
 
+  /* Una barra y dos frases. Antes había aquí una tabla de cinco filas y tres
+     párrafos: la idea es una sola y se ve mejor que se lee. */
   return `<div class="panel" style="border-color:var(--amber-line);margin-top:1.1rem">
-    <h3 style="margin-top:0">Por qué tu número no coincidirá con el de nadie</h3>
-    <p class="step-w">Y conviene que sepas explicarlo, porque es <b>la diferencia entera</b>
-      entre este método y mirar un dato en una pantalla.</p>
-    <div class="tw"><table class="rs"><tbody>
-      <tr><td class="l">Lo que invierte al año, en total</td>
-          <td class="n">${nf(mant + exp, 0)} M</td></tr>
-      <tr><td class="l">— de eso, <b>mantener</b> lo que ya tiene</td>
-          <td class="n">${nf(mant, 0)} M</td></tr>
-      <tr><td class="l">— de eso, <b style="color:var(--amber-strong)">crecer</b></td>
-          <td class="n"><b style="color:var(--amber-strong)">${nf(exp, 0)} M</b></td></tr>
-      <tr style="border-top:1px solid var(--line-strong)">
-          <td class="l">Tu flujo de caja · resta solo el mantenimiento</td>
-          <td class="n"><b style="color:var(--amber-strong)">${nf(fcf, 0)} M</b></td></tr>
-      <tr><td class="l">El de cualquier web · resta la inversión entera</td>
-          <td class="n">${nf(publicado, 0)} M</td></tr>
-    </tbody></table></div>
-    <div class="db" style="margin-top:1rem"><span class="t">Y esto qué significa</span>
-      Esos <b>${nf(exp, 0)} millones</b> —un <b>${pc(peso)}</b> de tu flujo— son lo que la empresa
-      gasta en <b>construir lo que todavía no existe</b>. Podría no gastarlos y el negocio
-      seguiría funcionando exactamente igual: no son un coste de estar abierto, son una apuesta.
-      <br><br>
-      Si los restaras, como hacen todas las webs, tu IDC bajaría de <b>${mo(v.idc)}</b> a
-      <b>${idcSin !== null ? mo(idcSin) : "—"}</b>. Y estarías diciendo que
-      <b>${esc($("nombre").value || "esta empresa")} vale menos justo porque está apostando por su
-      futuro</b>, que es exactamente al revés de como funciona un negocio.
-      <br><br>
-      <span style="color:var(--muted-txt)">Por eso tu número sale más alto que el Fair Value de
-      Investing y que el de cualquier pantalla. No es que te equivoques ni ellos: es que
-      <b>estáis midiendo cosas distintas</b>. Ellos contestan «¿cuánto sobró este año?»; tú,
-      «¿cuánto genera el negocio que ya está construido?». Para valorar interesa la segunda.</span>
+    <h3 style="margin-top:0">Por qué tu número no es el de la pantalla</h3>
+    <div class="dosbar" role="img" aria-label="De cada euro que invierte, ${pc(pMant)} es mantener y ${pc(1-pMant)} es crecer">
+      <div class="db-m" style="width:${(pMant*100).toFixed(1)}%"><span>mantener ${nf(mant,0)} M</span></div>
+      <div class="db-c" style="width:${((1-pMant)*100).toFixed(1)}%"><span>crecer ${nf(exp,0)} M</span></div>
     </div>
+    <p class="step-w" style="margin-top:.85rem">De los <b>${nf(total,0)} M</b> que
+      ${esc($("nombre").value || "la empresa")} invierte al año, solo <b>${nf(mant,0)} M</b> son de
+      <b>estar abierta</b>. El resto es una apuesta: podría no gastarlo y mañana el negocio
+      funcionaría igual.</p>
+    <p class="step-w"><b>Tú restas solo el mantenimiento</b> → flujo de ${nf(fcf,0)} M.
+      Cualquier web resta la inversión entera → ${nf(publicado,0)} M. Por eso tu IDC sale
+      <b style="color:var(--amber-strong)">${mo(v.idc)}</b> y no
+      <b>${idcSin !== null ? mo(idcSin) : "—"}</b>: ellos contestan «¿cuánto sobró?»; tú,
+      «¿cuánto genera lo que ya está construido?».</p>
   </div>`;
 }
 
@@ -5753,8 +5781,8 @@ function resumen(R){
 
     <h3>Conclusiones: cómo se leen estos datos juntos</h3>
     ${conclusiones(R)}
-    <h3>Cómo hemos llegado a este número</h3>
-    ${cadenaValoracion(R)}
+    ${viaAnalistas() ? `<h3>Cómo hemos llegado a este número</h3>
+    ${cadenaValoracion(R)}` : ""}
 
     <h3>De dónde ha salido cada dato del precio</h3>
     ${origenDelPrecio(R)}
@@ -5891,8 +5919,21 @@ function conclusiones(R){
         <b>Aquí la que decide ya no es del todo la empresa</b>: es quien le presta.`]);
   }
 
-  /* 4 · el precio */
-  if(v && v.idc){
+  /* 4 · el precio · por la vía que se haya usado */
+  const fvR = (VAL.fv!==null && isFinite(VAL.fv)) ? +VAL.fv : null;
+  if(!viaAnalistas()){
+    if(fvR !== null){
+      const caroF = R.precio > fvR, dif = fvR/R.precio - 1;
+      out.push(["🏷️","Qué dice el precio",
+        `El mercado pide <b>${mo(R.precio)}</b>. <b>InvestingPro lo tasa en ${mo(fvR)}</b>, la media
+         de sus modelos. ${caroF
+          ? `El mercado paga <b>${pc(Math.abs(dif))} más</b> de lo que dice esa tasación.`
+          : `El mercado paga <b>${pc(dif)} menos</b> de lo que dice esa tasación.`}
+         <span style="color:var(--muted-txt)">Es una tasación, no una rentabilidad: dice cuánto creen
+         que vale, no qué te llevas si compras a ese precio. Para eso está la vía 2 del paso del
+         precio.</span>`]);
+    }
+  } else if(v && v.idc){
     const caro = R.precio > v.idc;
     out.push(["🏷️","Qué dice el precio",
       `El mercado pide <b>${mo(R.precio)}</b>. Con tus supuestos —crecer del ${nf(v.gF,1)}% al
@@ -6016,6 +6057,24 @@ function conclusionLlana(R){
       <b>${nf(R.der.fcf[R.L],0)} millones</b>. No el beneficio que sale en las noticias: el dinero
       de verdad, después de pagar lo que hace falta para que la tienda siga abierta.</p>
 
+    ${!viaAnalistas() ? `
+    <p><b>3 · ¿Y cuánto vale la tienda?</b> Eso ya no lo estimamos aquí: lo dice
+      <b>InvestingPro</b>, que hace las cuentas por ti con doce modelos distintos y publica la
+      media.</p>
+
+    <div class="db" style="margin-top:1rem"><span class="t">Y la respuesta es…</span>
+      ${(VAL.fv!==null && isFinite(VAL.fv))
+        ? `La tienda pide <b>${mo(R.precio)}</b> y ellos dicen que vale <b>${mo(+VAL.fv)}</b>.
+           ${R.precio <= +VAL.fv
+             ? `<b style="color:var(--green)">Pide menos de lo que dicen que vale.</b>`
+             : `<b style="color:var(--amber-strong)">Pide más de lo que dicen que vale.</b>`}
+           <br><br>Y eso <b>no quiere decir «compra»</b>. Quiere decir que el precio no es lo raro de
+           esta tienda, y que lo que decide es todo lo de antes: si viene más gente cada año, si le
+           queda dinero, y si lo que gana llega de verdad a la caja.`
+        : `Todavía no has apuntado lo que dice InvestingPro. Vuelve al paso del precio, apúntalo, y
+           esta frase se completa sola.`}
+    </div>
+    ` : `
     <p><b>3 · ¿Y dentro de cinco años?</b> Si sigue creciendo como hemos supuesto,
       <b>${nf(v.fcf5,0)} millones</b>. Ese es el supuesto más importante de todo el informe, y lo
       has puesto tú.</p>
@@ -6042,6 +6101,7 @@ function conclusionLlana(R){
            Eso no significa que sea mala ni que vaya a bajar. Significa que <b>a este precio no
            llegas a tu 15% anual</b>. Se apunta el número, y se espera.`}
     </div>
+    `}
 
     <p style="margin-top:1rem;color:var(--muted)">Y una cosa que conviene recordar: todo esto sale
     de suponer que el futuro se parecerá al pasado. <b>Nadie sabe si será así.</b> Por eso el
@@ -6142,12 +6202,26 @@ function veredicto(R){
   p.push(`<p><span class="q">🚩 ¿Algo raro bajo la alfombra?</span><em class="tq">Banderas rojas del método</em>${
     rojas.length?`Hay <b>${rojas.length}</b> cosa${rojas.length>1?"s":""} que mirar de cerca: ${rojas.map(k=>esc(ESC[k].lab).toLowerCase()).join(", ")}. Una luz roja no dice «huye»: dice «pregunta por qué».`
     :"No he encontrado nada raro con estos datos."}</p>`);
+  const fvLl = (VAL.fv!==null && isFinite(VAL.fv)) ? +VAL.fv : null;
+  if(!viaAnalistas()){
+    p.push(`<p><span class="q">🏷️ ¿Cuánto pide el dueño?</span><em class="tq">Lo que dice InvestingPro</em>Hoy cuesta <b>${mo(R.precio)}</b>.
+      ${fvLl !== null
+        ? `Los que se dedican a esto lo tasan en <b>${mo(fvLl)}</b>. ${R.precio > fvLl
+            ? `Está pidiendo más de lo que ellos dicen que vale.`
+            : `Está pidiendo menos de lo que ellos dicen que vale.`}
+           Eso no significa comprar: significa que <b>el precio no es lo raro de esta empresa</b>,
+           y que lo que decide es todo lo de arriba.`
+        : `Todavía no has apuntado lo que dice InvestingPro, así que este informe <b>no tiene precio
+           de referencia</b>. Lo demás sigue siendo válido: si crece, si gana, si el dinero llega
+           a la caja.`}</p>`);
+  } else {
   p.push(`<p><span class="q">🏷️ ¿Cuánto pide el dueño?</span><em class="tq">Precio objetivo · IDC · zona de análisis</em>Hoy cuesta <b>${mo(R.precio)}</b>.
     Con estas cuentas, dentro de 5 años debería valer <b>${mo(R.P.evFcf)}</b>. Para ganar un
     <b>${nf(v.obj*100,0)}% cada año</b>, hoy no se debería pagar más de <b><span data-idc>${mo(v.idc)}</span></b>.
     ${v.recorr>=0?`Como cuesta menos, todavía podría subir un <b>${pc(v.recorr)}</b> y seguiría mereciendo la pena.`
       :`Como cuesta más, tendría que bajar un <b>${pc(Math.abs(v.recorr))}</b> para merecer la pena.`}
     El precio al que de verdad merecería la pena mirarlo en serio es <b>${mo(v.zona)}</b>.</p>`);
+  }
   p.push(`<p><span class="q">⚠️ Lo que podría salir mal</span>Todo esto da por hecho que crecerá un
     <b>${nf(v.gF,1)}% cada año durante cinco años</b> y que la gente seguirá pagando <b>${mu(v.multObj)}</b>
     por su dinero real. Si creciera la mitad, el precio dentro de 5 años sería
@@ -7708,7 +7782,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.6c5c827";
+const APP_VERSION = "2026-08-08.84133ea";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
