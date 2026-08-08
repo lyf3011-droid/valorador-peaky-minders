@@ -3237,6 +3237,69 @@ function enlazarAjusteAnios(){
   });
 }
 
+/* ══════════════════ APLICAR UNA TABLA DE PREVISIONES ══════════════════
+   Sirve tanto al cuadro dedicado como al cajón de sastre: da igual dónde la
+   pegues, la herramienta reconoce lo que es y monta la proyección. */
+function aplicarForecast(txt, caja){
+  const filas = leerForecast(txt);
+  if(!filas.ventas && !filas.ebit && !filas.ebitda) return false;
+
+  const base = R_ULT && R_ULT.ventas ? R_ULT.ventas[R_ULT.L] : null;
+  const A = anios(), ult = A[A.length-1];
+  /* el primer año lo dicen las etiquetas FY de la cabecera; si no vienen, se
+     supone que la primera columna es el último año real, que es lo normal */
+  const fy = fyDeLaTabla(txt);
+  const a0 = fy ? fy.ultimoReal : ult;
+
+  if(!base){
+    caja.innerHTML = `<span class="mal">Esto es la pestaña <b>Forecasts</b>, y la reconozco</span>
+      —${["ventas","ebit","ebitda"].filter(k=>filas[k]).map(k=>({ventas:"ventas",ebit:"EBIT",ebitda:"EBITDA"})[k]).join(", ")}—
+      pero necesito antes <b>las ventas del último año real</b> para saber desde dónde proyectar.
+      Pega primero la <b>cuenta de resultados</b> en el paso 1 y vuelve aquí.`;
+    return true;
+  }
+
+  const col = a => a - a0;
+  const cinco = Array.from({length:5}, (_,i) => ult + 1 + i);
+  const tabla = cinco.map(a => {
+    const c = col(a), ok = c >= 0 && filas.ventas && c < filas.ventas.length;
+    return {anio:a, ok,
+      ventas: ok && filas.ventas ? filas.ventas[c] : null,
+      ebit:   ok && filas.ebit   ? filas.ebit[c]   : null};
+  });
+  const conDato = tabla.filter(x => x.ventas !== null).length;
+  if(!conDato){
+    caja.innerHTML = `<span class="mal">Es la pestaña Forecasts, pero sus años no encajan.</span>
+      He entendido que su primera columna es <b>${a0}</b> y aquí el último ejercicio real es
+      <b>${ult}</b>. Cuadra primero las cuentas y vuelve a pegarla.`;
+    return true;
+  }
+
+  const pg = [], pm = [];
+  let prev = base;
+  for(const x of tabla){
+    if(x.ventas === null){ pg.push(pg.length?pg[pg.length-1]:5); pm.push(pm.length?pm[pm.length-1]:20); continue; }
+    pg.push(Math.round((x.ventas/prev - 1)*1000)/10);
+    pm.push(x.ebit !== null ? Math.round(x.ebit/x.ventas*1000)/10 : (pm.length?pm[pm.length-1]:20));
+    prev = x.ventas;
+  }
+  const raro = Math.abs(pg[0]) > 60;
+  VAL.modo = "partidas"; VAL.pg = pg; VAL.pm = pm; VAL.origen = "forecast";
+  informe(calcular()); guardarTrabajo();
+
+  caja.innerHTML = `<span class="bien">✓ Era la pestaña <b>Forecasts</b> y la he aplicado.</span>
+    ${fy ? `El primer año lo he leído de la cabecera: <b>${a0}</b> (la columna <code>FY</code>),
+      y las ${fy.previstos} siguientes son estimaciones.` : `He supuesto que su primera columna es <b>${a0}</b>.`}<br>
+    Crecimiento de ventas: <b>${pg.map(x=>nf(x,1)+"%").join(" → ")}</b><br>
+    Margen EBIT: <b>${pm.map(x=>nf(x,1)+"%").join(" → ")}</b>
+    ${raro ? `<div class="warn" style="margin-top:.5rem"><b>Ojo: el primer año crecería un
+      ${nf(pg[0],0)}%.</b> Eso no suele ser real — comprueba que la tabla es de <b>esta misma
+      empresa</b>.</div>` : ""}
+    <div class="note" style="margin-top:.5rem">La proyección del informe ya usa el consenso de
+      analistas. Puedes cambiar cualquier año a mano en la tabla de supuestos.</div>`;
+  return true;
+}
+
 function leerCaja(g){
   const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
   const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
@@ -3248,6 +3311,12 @@ function leerCaja(g){
   const soloDe = g === "ER"
     ? CONCEPTOS.filter(c => !c.auto && D[c.k].every(v => v === null)).map(c => c.k)
     : CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
+  /* Antes de nada: ¿es esto una tabla de PREVISIONES? El filtro que impide que
+     el futuro se cuele como pasado dejaba ciego a este cuadro, que es justo
+     donde la app dice que se pegue Forecasts. Se mira primero y se aplica con
+     el lector que sí sabe leerla. */
+  if(ta.value.trim() && ES_PREVISION.test(ta.value) && aplicarForecast(ta.value, caja)) return;
+
   let filas = [];
   if(HTML_CAJA[g]){ try{ filas = leerHTMLInvesting(HTML_CAJA[g]); }catch(e){} }
   if(!filas.length && ta.value.trim()) filas = leerTextoPlano(ta.value);
@@ -4126,8 +4195,11 @@ function bandaReferencia(R){
     esta herramienta.</div>`;
 }
 
-function cardConservador(c, fmt, nombre){
+function cardConservador(c, fmt, nombre, quien){
   if(c.v===null) return "";
+  /* Decir «media 170,7x» sin decir DE QUÉ no informa de nada: el informe maneja
+     cuatro múltiplos a la vez y el lector no tiene por qué adivinar cuál es. */
+  const de = quien ? `<b style="color:var(--amber-strong)">${esc(quien)}</b> · ` : "";
   const cual = c.cual==="ambas" ? "las dos coinciden"
     : c.cual==="media" ? "la <b>media</b> es la más baja" : "la <b>mediana</b> es la más baja";
   /* Si se ha apartado algún año hay que decirlo, y decir cuál. Descartar datos
@@ -4142,7 +4214,7 @@ function cardConservador(c, fmt, nombre){
        <span style="color:var(--muted)">Míra${c.fuera.length===1?"lo":"los"} igual: un año así
        cuenta algo, aunque no sirva para promediar.</span>`
     : "";
-  return `<div class="note">Media ${fmt(c.media)} · mediana ${fmt(c.mediana)} → nos quedamos con
+  return `<div class="note">${de}media ${fmt(c.media)} · mediana ${fmt(c.mediana)} → nos quedamos con
     <b>${fmt(c.v)}</b> porque ${cual}. <span style="color:var(--muted)">Siempre el número más
     exigente: si aun así ${esc(nombre)} pasa el filtro, es que pasa de verdad.</span>${apartados}</div>`;
 }
@@ -4715,7 +4787,7 @@ function pasoValoracion(R){
     ? `<div class="warn"><b>No hay múltiplos históricos.</b> Rellena la fila
         <b>«Precio al cierre del año»</b> en la pestaña <em>Mercado</em> y el sistema calculará solo
         lo que el mercado ha pagado normalmente por esta empresa.</div>`
-    : cardConservador(cm, mu, "el múltiplo");
+    : cardConservador(cm, mu, "el múltiplo", "EV / FCF");
 
   const filasMult = [["EV / FCF",R.cMult.evFcf],["PER",R.cMult.per],["EV / EBITDA",R.cMult.evEbitda],["EV / EBIT",R.cMult.evEbit]]
     .filter(([,c])=>c.v!==null)
@@ -4757,6 +4829,10 @@ function pasoValoracion(R){
      análisis solo habría servido para darnos la razón.`,
     `<h3>Lo que el mercado ha pagado normalmente por esta empresa</h3>
      ${multBox}
+     <div class="note">Se calculan <b>los cuatro</b>, pero el método decide con el
+       <b style="color:var(--amber-strong)">EV / FCF</b>: es el único que mide lo que la empresa
+       mete en la caja de verdad. El <b>PER</b> se apoya en el beneficio contable, y el
+       <b>EV / EBITDA</b> ignora impuestos y desgaste — sirven para contrastar, no para decidir.</div>
      ${filasMult?`<div class="tw"><table class="rs">
        <thead><tr><th>Múltiplo</th><th style="text-align:right">Media</th><th style="text-align:right">Mediana</th><th style="text-align:right">El que usamos</th></tr></thead>
        <tbody>${filasMult}</tbody></table></div>`:""}
@@ -4770,6 +4846,11 @@ function pasoValoracion(R){
           "El otro múltiplo de siempre. Si hoy está muy por encima de su propia línea, el mercado espera algo que antes no esperaba.",
           {series:[{name:"PER",data:d.per}],labels:A,type:"line",fmt:v2=>nf(v2,0)+"x",
            refs:[{v:R.cMult.per.v,label:"su normal",color:"rgba(14,143,191,.7)"}],aria:"PER histórico"}) : ""}
+        ${d.evEbitda.some(x=>x!==null) ? figura(
+          "Cuántos años de EBITDA ha costado (EV/EBITDA)",
+          "El más usado en banca de inversión. Ignora impuestos y desgaste, así que compara empresas de sectores distintos mejor que los otros dos — y perdona más.",
+          {series:[{name:"EV/EBITDA",data:d.evEbitda}],labels:A,type:"line",fmt:v2=>nf(v2,0)+"x",
+           refs:[{v:R.cMult.evEbitda.v,label:"su normal",color:"rgba(245,158,11,.55)"}],aria:"EV sobre EBITDA histórico"}) : ""}
         </div>`:""}
 
      ${bandaReferencia(R)}
@@ -6979,7 +7060,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.875aae2";
+const APP_VERSION = "2026-08-08.5df7ce0";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
