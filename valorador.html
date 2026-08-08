@@ -3721,7 +3721,43 @@ function vigilarDatos(R){
                p: "revisa cobrar, pagar e inventarios: alguna fila puede no ser la que parece"});
   });
 
-  /* 7 · el año que no debería estar vacío */
+  /* 7 · el precio de hoy y los cierres históricos, en escalas distintas.
+        EL MÁS PELIGROSO de todos: no rompe nada, no deja ningún hueco, y
+        produce un informe entero con un múltiplo de cinco cifras y una nota
+        alta. Pasa al pegar los cierres en una moneda y el precio en otra. */
+  if(R.precio && R.der.mcap){
+    const ult = D.precioAno && D.precioAno[L] !== null ? D.precioAno[L] : null;
+    if(ult){
+      const veces = ult / R.precio;
+      if(veces > 8 || veces < 0.125)
+        av.push({a: anio(L), q: `el cierre de ${anio(L)} es <b>${M(veces>1?veces:1/veces,0)} veces</b> ${veces>1?"mayor":"menor"} que el precio de hoy`,
+                 p: "el precio de hoy y los cierres anuales <b>están en escalas distintas</b> — casi siempre, dos monedas mezcladas. Todos los múltiplos y el IDC salen mal, aunque el informe parezca correcto"});
+    }
+  }
+
+  /* 8 · el capital invertido se queda en nada y el ROIC se dispara.
+        Le pasa a las empresas con patrimonio neto NEGATIVO por recomprar
+        acciones durante años — McDonald's, Boeing, Starbucks—. El ROIC sube
+        solo porque el denominador encoge, no porque el negocio mejore. */
+  if(d.capInv[L] !== null && R.ventas[L]){
+    const rel = d.capInv[L] / R.ventas[L];
+    if(rel > 0 && rel < 0.2 && d.roic[L] !== null && d.roic[L] > 0.5)
+      av.push({a: anio(L), q: `un ROIC del <b>${pc(d.roic[L])}</b> sobre un capital invertido de solo <b>${M(d.capInv[L])} M</b>`,
+               p: "el patrimonio neto es muy pequeño o negativo —típico de quien lleva años recomprando acciones—, así que el ROIC se dispara porque el <b>denominador encoge</b>, no porque el negocio rinda más. Míralo como tendencia, no como nivel"});
+    if(d.capInv[L] <= 0)
+      av.push({a: anio(L), q: `un capital invertido <b>negativo</b> (${M(d.capInv[L])} M)`,
+               p: "con patrimonio neto negativo el ROIC <b>no significa nada</b>: se está dividiendo entre un número por debajo de cero. Usa el margen y la conversión en caja para juzgar esta empresa"});
+  }
+
+  /* 9 · un año a cero. El bucle de las ventas se los saltaba —porque un cero
+        es falso en JavaScript— así que ni se miraban. */
+  A.forEach((_, i) => {
+    if(i <= L && R.ventas[i] === 0)
+      av.push({a: anio(i), q: "las ventas de ese año son <b>cero</b>",
+               p: "ninguna empresa cotizada vende cero: esa columna se ha leído mal o está desplazada"});
+  });
+
+  /* 10 · el año que no debería estar vacío */
   if(R.ventas[L] === null && R.ventas[L-1] !== null)
     av.push({a: anio(L), q: "el último año no tiene ventas",
              p: "la empresa aún no ha publicado ese ejercicio, o los años están desplazados un puesto"});
@@ -7223,7 +7259,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.1e5fbb9";
+const APP_VERSION = "2026-08-08.32f9ecb";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
