@@ -459,6 +459,14 @@ svg.esq,svg.ch,svg.dg{cursor:zoom-in}
 #ayudaPanel .ap-b button.pri{background:var(--amber);border-color:var(--amber);color:#0a0a0a;font-weight:700}
 #ayudaPanel .ap-v{font-family:var(--font-m);font-size:.62rem;color:var(--muted-txt);margin-top:.7rem}
 @media print{#ayudaBtn,#ayudaPanel,#avisoNueva{display:none!important}}
+/* la ficha cualitativa: en el paso 1 solo se confirma; se lee en el informe */
+.neg-ok{border:1px solid rgba(74,222,128,.35);background:rgba(74,222,128,.05);
+  border-radius:11px;padding:.9rem 1.1rem;margin-top:.6rem}
+.neg-t{font-family:var(--font-m);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--green)}
+.neg-r{font-size:.92rem;color:var(--text);margin:.35rem 0 .4rem;line-height:1.5}
+.neg-x{font-size:.79rem;color:var(--muted-txt);display:flex;align-items:center;gap:.5rem;
+  flex-wrap:wrap}
 /* Los cuatro tramos del paso del precio: numerados y anunciados, para que se
    sepa siempre qué viene después de qué */
 .tramo{display:flex;gap:1rem;align-items:flex-start;margin:2.2rem 0 1rem;
@@ -6918,9 +6926,24 @@ function md2htmlInterno(txt, enLinea){
 function pintarNegocio(){
   const t = $("negocio").value.trim();
   if(!t){ $("negocioVista").classList.add("hide"); $("negocio").classList.remove("hide"); return; }
-  $("negocioVista").innerHTML = `<div class="negocio-doc">
-      <div class="nd-cab">El negocio · ficha de trabajo</div>
-      ${md2html(t)}</div>`;
+  /* Al pegar la ficha cualitativa, aquí NO se despliega el texto entero: en el
+     paso 1 solo importa saber que ya está y seguir. La ficha se lee entera en
+     el informe, junto a los números, que es donde de verdad sirve. Antes el
+     paso 1 se convertía en un muro de texto y tapaba lo que venía después. */
+  const pal = t.split(/\s+/).filter(Boolean).length;
+  const lin = t.split(String.fromCharCode(10)).map(x=>x.trim()).filter(Boolean);
+  const titulo = (lin.find(x => x.length > 12 && x.length < 90) || lin[0] || "").replace(/^#+\s*/, "");
+  $("negocioVista").innerHTML = `<div class="neg-ok">
+      <div class="neg-t">✓ Ficha del negocio guardada</div>
+      <div class="neg-r">${esc(titulo.slice(0,110))}${titulo.length>110?"…":""}</div>
+      <div class="neg-x"><b>${pal}</b> palabras · se leerá entera en el informe, al lado de los
+        números. <button type="button" class="fx" id="verNegocio">ver ahora</button></div>
+    </div>`;
+  const ver = $("verNegocio");
+  if(ver) ver.onclick = () => {
+    $("negocioVista").innerHTML = `<div class="negocio-doc">
+        <div class="nd-cab">El negocio · ficha de trabajo</div>${md2html(t)}</div>`;
+  };
   $("negocioVista").classList.remove("hide");
   $("negocio").classList.add("hide");
 }
@@ -7519,7 +7542,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.5e8332c";
+const APP_VERSION = "2026-08-08.5b13048";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
