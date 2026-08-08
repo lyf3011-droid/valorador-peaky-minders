@@ -1774,7 +1774,7 @@ const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:n
   /* proyección por partidas, al estilo de la plantilla */
   modo:null, pg:null, pm:null, pt:null, pint:null, prep:null, ptc:null,
   /* la asignación de capital va año a año, como en la plantilla */
-  prepA:null,
+  prepA:null, pcxA:null,
   /* el contraste externo: Fair Value de InvestingPro y el IDC del Excel */
   fv:null, fvEb:null, fvDcf:null, idcX:null,
   /* la puerta: el precio no se enseña hasta que escribes tu juicio */
@@ -2390,6 +2390,12 @@ const FC_FILAS = {
   ventas: ["revenue forecast (investingpro)", "revenue forecast"],
   ebit:   ["ebit forecast (investingpro)", "ebit forecast median consensus"],
   ebitda: ["ebitda forecast (investingpro)"],
+  /* Estas dos no las usábamos y son justo dos celdas naranjas de la plantilla:
+     lo que la empresa va a invertir y lo que va a repartir. Sin ellas, el CapEx
+     se proyectaba con el ratio del último año real —congelado cinco años— y el
+     reparto con el histórico. Con ellas, los cinco años los pone el consenso. */
+  capex:  ["capital expenditures forecast (investingpro)", "capex forecast (investingpro)"],
+  dps:    ["dividends per share forecast (investingpro)"],
 };
 
 /* Parte la tabla en filas {etiqueta, valores}, valga el formato que valga:
@@ -3265,7 +3271,9 @@ function aplicarForecast(txt, caja){
     const c = col(a), ok = c >= 0 && filas.ventas && c < filas.ventas.length;
     return {anio:a, ok,
       ventas: ok && filas.ventas ? filas.ventas[c] : null,
-      ebit:   ok && filas.ebit   ? filas.ebit[c]   : null};
+      ebit:   ok && filas.ebit   ? filas.ebit[c]   : null,
+      capex:  ok && filas.capex  ? filas.capex[c]  : null,
+      dps:    ok && filas.dps    ? filas.dps[c]    : null};
   });
   const conDato = tabla.filter(x => x.ventas !== null).length;
   if(!conDato){
@@ -3275,16 +3283,21 @@ function aplicarForecast(txt, caja){
     return true;
   }
 
-  const pg = [], pm = [];
+  const pg = [], pm = [], pcx = [];
   let prev = base;
   for(const x of tabla){
-    if(x.ventas === null){ pg.push(pg.length?pg[pg.length-1]:5); pm.push(pm.length?pm[pm.length-1]:20); continue; }
+    if(x.ventas === null){ pg.push(pg.length?pg[pg.length-1]:5); pm.push(pm.length?pm[pm.length-1]:20); pcx.push(null); continue; }
     pg.push(Math.round((x.ventas/prev - 1)*1000)/10);
     pm.push(x.ebit !== null ? Math.round(x.ebit/x.ventas*1000)/10 : (pm.length?pm[pm.length-1]:20));
+    /* el CapEx previsto, como porcentaje de las ventas de ese mismo año */
+    pcx.push(x.capex !== null && x.ventas ? Math.round(Math.abs(x.capex)/x.ventas*10000)/100 : null);
     prev = x.ventas;
   }
   const raro = Math.abs(pg[0]) > 60;
   VAL.modo = "partidas"; VAL.pg = pg; VAL.pm = pm; VAL.origen = "forecast";
+  /* solo se toma el CapEx del consenso si viene entero: medio vector sería peor
+     que el histórico, porque mezclaría dos criterios sin decirlo */
+  VAL.pcxA = pcx.every(x => x !== null && isFinite(x)) ? pcx : null;
   informe(calcular()); guardarTrabajo();
 
   caja.innerHTML = `<span class="bien">✓ Era la pestaña <b>Forecasts</b> y la he aplicado.</span>
@@ -3292,6 +3305,8 @@ function aplicarForecast(txt, caja){
       y las ${fy.previstos} siguientes son estimaciones.` : `He supuesto que su primera columna es <b>${a0}</b>.`}<br>
     Crecimiento de ventas: <b>${pg.map(x=>nf(x,1)+"%").join(" → ")}</b><br>
     Margen EBIT: <b>${pm.map(x=>nf(x,1)+"%").join(" → ")}</b>
+    ${VAL.pcxA ? `<br>CapEx / ventas: <b>${VAL.pcxA.map(x=>nf(x,1)+"%").join(" → ")}</b>
+      <span style="color:var(--muted-txt)">— también del consenso, en vez del histórico</span>` : ""}
     ${raro ? `<div class="warn" style="margin-top:.5rem"><b>Ojo: el primer año crecería un
       ${nf(pg[0],0)}%.</b> Eso no suele ser real — comprueba que la tabla es de <b>esta misma
       empresa</b>.</div>` : ""}
@@ -3928,6 +3943,11 @@ function calcular(){
     const txHist = der.tax[L]!==null ? der.tax[L]
                  : (impuestos[L] && ebit[L] ? Math.abs(impuestos[L])/ebit[L] : 0.21);
     const capexRatio = der.capexMant[L]!==null && ventas[L] ? der.capexMant[L]/ventas[L] : 0;
+    /* Si el consenso trae el CapEx previsto, se usa AÑO A AÑO en vez de
+       congelar el ratio del último ejercicio real durante cinco años. Es una
+       de las celdas naranjas de la plantilla y hasta ahora la rellenábamos
+       con el pasado sin decirlo. */
+    const pcxA = Array.isArray(VAL.pcxA) && VAL.pcxA.length === 5 ? VAL.pcxA : null;
     const daRatio    = at(da,L)!==null ? at(da,L) : 0;
 
     const pg = cinco(VAL.pg, R.cagrV!==null ? Math.round(R.cagrV*1000)/10 : 5);
@@ -4001,7 +4021,7 @@ function calcular(){
       dat = dat * (1+g);
       const ebt   = vt * (pm[i]/100);
       const ebtda = ebt + Math.abs(dat);
-      const cxm   = vt * capexRatio;
+      const cxm   = vt * (pcxA ? pcxA[i]/100 : capexRatio);
       /* intereses del año: lo que cobra por su caja menos lo que paga por su deuda */
       const intAno = VAL.pint!==null && VAL.pint!==undefined ? +VAL.pint
                    : dosLados ? (cajaT*tipoCaja - deuda0*tipoGas)
@@ -4024,7 +4044,7 @@ function calcular(){
     if(VAL.dn5 === null) R.v.dn5 = u.dn;      /* si no lo has fijado tú, se proyecta */
     R.v.partidas = filas;
     R.v.pg = pg; R.v.pm = pm; R.v.pt = pt; R.v.pint = pint;
-    R.v.capexRatio = capexRatio;
+    R.v.capexRatio = capexRatio; R.v.pcxA = pcxA;
     R.v.fcf5 = u.fcf; R.v.ebitda5 = u.ebitda; R.v.ebit5 = u.ebit;
     R.v.neto5 = u.ebit + pint - u.impuesto;
     R.v.cagrEquivF = der.fcf[L] > 0 ? Math.pow(u.fcf/der.fcf[L], 1/5) - 1 : null;
@@ -4712,6 +4732,12 @@ function tablaPartidas(R){
      <p class="step-w">Esto es lo que en la plantilla son las <b>celdas naranjas</b>. Vienen puestas
        con el histórico de la empresa; cámbialas por lo que tú creas —o por lo que digan los
        analistas— y todo lo de abajo se recalcula.</p>
+     ${VAL.origen === "forecast" ? `<div class="ok" style="margin-bottom:.8rem">
+       <b>Estas filas vienen del consenso de InvestingPro</b>, no del pasado: crecimiento de
+       ventas y margen EBIT año a año${v.pcxA ? ", y también el <b>CapEx sobre ventas</b>" : ""}.
+       Son exactamente las celdas que tú rellenas a mano en el Excel.
+       <span style="color:var(--muted-txt)">Cámbialas si no te crees alguna: el consenso es un
+       punto de partida, no una autoridad.</span></div>` : ""}
      <div class="tw"><table class="rs"><thead><tr><th>Supuesto</th>
        ${f.map(x=>`<th style="text-align:right">${x.anio}e</th>`).join("")}</tr></thead>
        <tbody>
@@ -4856,6 +4882,17 @@ function pasoValoracion(R){
      ${bandaReferencia(R)}
 
      <h3>Tus dos decisiones</h3>
+     ${VAL.modo !== "partidas" ? `<div class="warn">
+       <b>Ojo: esto es el modo simplificado.</b> El crecimiento del FCF de aquí abajo está
+       <b>extrapolado del pasado</b> — no es lo que hace la plantilla original.
+       <br><br>El método de verdad <b>no proyecta el flujo de caja de un tirón</b>: proyecta
+       <b>partida por partida</b> —ventas, margen, impuesto, CapEx— y el flujo de caja
+       <em>sale</em> de ahí. Pulsa <b>«Proyectar por partidas»</b> abajo, o pega la pestaña
+       <b>Forecasts</b> y se monta sola con el consenso de analistas.
+       <div class="note" style="margin-top:.6rem;background:transparent;border:0;padding:0">
+         El modo simplificado sirve para una primera idea rápida y para empresas sin consenso.
+         Para un análisis que quieras defender, usa el de partidas.</div>
+     </div>` : ""}
      <div class="note">De toda la cadena de cálculo, <b>solo hay dos números que decides tú</b>:
        cuánto crecerá y cuánto es justo pagar. Todo lo demás es aritmética. Vienen precargados
        con el valor conservador — cámbialos y el resultado se recalcula solo.</div>
@@ -7060,7 +7097,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.5df7ce0";
+const APP_VERSION = "2026-08-08.a3e4135";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
