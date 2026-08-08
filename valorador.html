@@ -5260,6 +5260,8 @@ function pasoValoracion(R){
         <td class="n"><b>${mo(P.prom)}</b></td><td class="n"><b>${P.prom!==null?pc(Math.pow(P.prom/R.precio,1/5)-1):"—"}</b></td></tr>
       </tbody></table></div>
 
+     ${porQueDistinto(R)}
+
      ${tramo(3,"El resultado, y de dónde sale cada pieza",
        `Esto es lo que ha salido de tus supuestos. Cada línea de la cuenta de abajo es
         comprobable: si algo no te cuadra, ahí está su origen.`)}
@@ -5403,6 +5405,64 @@ function cierrePrecio(R){
       <br><br>
       <span style="color:var(--muted-txt)">Llegar a ese precio no significa comprar. Significa que
       el precio ha dejado de ser el obstáculo y que ahora empieza el trabajo de verdad.</span>
+    </div>
+  </div>`;
+}
+
+/* ══════════════════ POR QUÉ NUESTRO NÚMERO SERÁ DISTINTO ══════════════════
+   La pieza que faltaba para poder defender el resultado delante de alguien.
+   No basta con dar un IDC distinto al Fair Value: hay que decir, con las
+   cifras de ESTA empresa en la mano, de dónde sale la diferencia. Y sale de
+   un sitio concreto y medible: el CapEx de expansión. */
+function porQueDistinto(R){
+  const d = R.der, L = R.L, v = R.v;
+  const exp = d.capexExp && d.capexExp[L] !== null ? d.capexExp[L] : null;
+  const mant = d.capexMant[L], fcf = d.fcf[L];
+  if(exp === null || mant === null || fcf === null) return "";
+
+  const publicado = fcf - exp;                 /* lo que restaría una web */
+  const peso = fcf ? exp / fcf : 0;
+  const idcSin = (v.idc && fcf) ? v.idc * (publicado / fcf) : null;
+
+  if(exp < mant * 0.02){
+    return `<div class="note" style="margin-top:1rem"><b>Esta empresa casi no invierte en
+      crecer:</b> de sus ${nf(mant + exp, 0)} millones de inversión, solo
+      <b>${nf(exp, 0)}</b> son de expansión. Por eso aquí tu flujo de caja y el que publica
+      cualquier web se parecen mucho — la diferencia del método casi no se nota, y eso también
+      es información sobre la compañía.</div>`;
+  }
+
+  return `<div class="panel" style="border-color:var(--amber-line);margin-top:1.1rem">
+    <h3 style="margin-top:0">Por qué tu número no coincidirá con el de nadie</h3>
+    <p class="step-w">Y conviene que sepas explicarlo, porque es <b>la diferencia entera</b>
+      entre este método y mirar un dato en una pantalla.</p>
+    <div class="tw"><table class="rs"><tbody>
+      <tr><td class="l">Lo que invierte al año, en total</td>
+          <td class="n">${nf(mant + exp, 0)} M</td></tr>
+      <tr><td class="l">— de eso, <b>mantener</b> lo que ya tiene</td>
+          <td class="n">${nf(mant, 0)} M</td></tr>
+      <tr><td class="l">— de eso, <b style="color:var(--amber-strong)">crecer</b></td>
+          <td class="n"><b style="color:var(--amber-strong)">${nf(exp, 0)} M</b></td></tr>
+      <tr style="border-top:1px solid var(--line-strong)">
+          <td class="l">Tu flujo de caja · resta solo el mantenimiento</td>
+          <td class="n"><b style="color:var(--amber-strong)">${nf(fcf, 0)} M</b></td></tr>
+      <tr><td class="l">El de cualquier web · resta la inversión entera</td>
+          <td class="n">${nf(publicado, 0)} M</td></tr>
+    </tbody></table></div>
+    <div class="db" style="margin-top:1rem"><span class="t">Y esto qué significa</span>
+      Esos <b>${nf(exp, 0)} millones</b> —un <b>${pc(peso)}</b> de tu flujo— son lo que la empresa
+      gasta en <b>construir lo que todavía no existe</b>. Podría no gastarlos y el negocio
+      seguiría funcionando exactamente igual: no son un coste de estar abierto, son una apuesta.
+      <br><br>
+      Si los restaras, como hacen todas las webs, tu IDC bajaría de <b>${mo(v.idc)}</b> a
+      <b>${idcSin !== null ? mo(idcSin) : "—"}</b>. Y estarías diciendo que
+      <b>${esc($("nombre").value || "esta empresa")} vale menos justo porque está apostando por su
+      futuro</b>, que es exactamente al revés de como funciona un negocio.
+      <br><br>
+      <span style="color:var(--muted-txt)">Por eso tu número sale más alto que el Fair Value de
+      Investing y que el de cualquier pantalla. No es que te equivoques ni ellos: es que
+      <b>estáis midiendo cosas distintas</b>. Ellos contestan «¿cuánto sobró este año?»; tú,
+      «¿cuánto genera el negocio que ya está construido?». Para valorar interesa la segunda.</span>
     </div>
   </div>`;
 }
@@ -7459,7 +7519,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.9d1a506";
+const APP_VERSION = "2026-08-08.5e8332c";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
