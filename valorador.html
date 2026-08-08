@@ -229,6 +229,69 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   color:var(--muted-txt);white-space:nowrap}
 .sug li.no{cursor:default;color:var(--muted-txt);font-size:.8rem}
 
+.pg-v{max-width:40rem;margin:1.1rem auto 0;text-align:left;border-top:1px solid var(--amber-line);
+  padding-top:.9rem}
+.pg-v label{display:block;font-size:.85rem;color:var(--amber-strong);line-height:1.55}
+.pg-v label span{display:block;font-size:.79rem;color:var(--muted-txt);margin-top:.2rem}
+.pg-vi{display:flex;align-items:center;gap:.5rem;margin-top:.5rem}
+.pg-vi input{width:9rem;background:var(--surface);border:1px solid var(--line-strong);
+  border-radius:8px;padding:.6rem .8rem;color:var(--text);font-family:var(--font-m);font-size:1rem}
+.pg-vi input:focus{outline:none;border-color:var(--amber)}
+.pg-vm{font-family:var(--font-m);color:var(--soft)}
+.px-c{margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--line);font-size:.88rem;
+  color:var(--soft);line-height:1.6}
+.px-c span{display:block;font-family:var(--font-m);font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted-txt);margin-bottom:.25rem}
+/* ── LAS CUATRO FASES ────────────────────────────────────────────────────
+   El «Paso 2 de 4» era una línea de 10 píxeles en versalitas. Ahora la cabecera
+   de fase ocupa lo que tiene que ocupar y la barra de arriba te recuerda dónde
+   estás sin tener que subir. */
+.fase-cab{display:flex;align-items:center;gap:1.1rem;margin:0 0 1.6rem;
+  padding-bottom:1.1rem;border-bottom:1px solid var(--line-strong);
+  opacity:0;transform:translateY(14px);animation:faseEntra .55s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes faseEntra{to{opacity:1;transform:none}}
+.fc-n{font-family:var(--font-h);font-weight:800;font-size:clamp(3rem,9vw,5.5rem);line-height:.82;
+  color:transparent;-webkit-text-stroke:2px var(--amber-line);letter-spacing:-.04em;
+  flex:0 0 auto;user-select:none}
+.fase-cab[data-fase="3"] .fc-n{-webkit-text-stroke-color:var(--amber)}
+.fc-k{font-family:var(--font-m);font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--amber)}
+.fc-h{font-family:var(--font-h);font-weight:800;font-size:clamp(1.35rem,3.6vw,2.1rem);
+  letter-spacing:-.02em;line-height:1.12;margin:.2rem 0 .25rem;color:var(--text)}
+.fc-m{font-family:var(--font-m);font-size:.7rem;color:var(--muted-txt);letter-spacing:.04em}
+.fase-cab[data-fase="3"] .fc-m{color:var(--amber-strong)}
+@media(prefers-reduced-motion:reduce){.fase-cab{animation:none;opacity:1;transform:none}}
+
+.barra-fase{position:sticky;top:0;z-index:60;background:rgba(8,8,8,.92);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  opacity:0;pointer-events:none;transition:opacity .25s}
+.barra-fase.on{opacity:1;pointer-events:auto}
+.bf-w{max-width:78rem;margin:0 auto;padding:.55rem 1.2rem;display:flex;gap:.3rem;
+  flex-wrap:wrap;align-items:center}
+.bf-p{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--font-m);font-size:.66rem;
+  letter-spacing:.06em;color:var(--muted-txt);padding:.25rem .6rem;border-radius:20px;
+  transition:all .2s}
+.bf-p b{display:inline-flex;align-items:center;justify-content:center;width:1.05rem;height:1.05rem;
+  border-radius:50%;background:var(--line-strong);color:var(--soft);font-size:.6rem}
+.bf-p.on{color:var(--text);background:var(--amber-muted)}
+.bf-p.on b{background:var(--amber);color:#0a0a0a}
+.bf-cerr::after{content:"🔒";font-size:.62rem;opacity:.55}
+.bf-p.abierta.bf-cerr::after{content:"";}
+@media print{.barra-fase{display:none!important}}
+/* El enlace de cada paso es la ACCION, no una nota: primero abres la pagina */
+.abrir{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin:.2rem 0 .8rem}
+.ab-b{display:inline-flex;align-items:center;gap:.6rem;font-size:.92rem;text-decoration:none;
+  background:var(--amber);color:#0a0a0a;border-radius:9px;padding:.65rem 1.1rem;
+  font-weight:600;transition:transform .12s,box-shadow .12s}
+.ab-b:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(245,158,11,.28)}
+.ab-b b{font-weight:800}
+.ab-n{display:inline-flex;align-items:center;justify-content:center;width:1.4rem;height:1.4rem;
+  border-radius:50%;background:rgba(0,0,0,.22);font-family:var(--font-m);font-size:.72rem;
+  font-weight:700}
+.ab-s{font-family:var(--font-m);font-size:.74rem;color:var(--amber-strong);text-decoration:none;
+  border-bottom:1px dotted var(--amber-line)}
+.ab-s:hover{color:var(--text)}
+.ab-x{font-size:.74rem;color:var(--muted-txt)}
 /* ── LA PUERTA ──────────────────────────────────────────────────────────
    El precio no está en el documento hasta que el alumno escribe su juicio.
    Visualmente tiene que parecer un corte, no una sección más: por eso ocupa
@@ -738,6 +801,16 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 </style>
 </head>
 <body>
+<!-- Dice SIEMPRE en qué fase estás. Antes solo lo ponía una línea de 10px al
+     principio de cada sección, y al bajar desaparecía. -->
+<div id="barraFase" class="barra-fase" aria-hidden="true">
+  <div class="bf-w">
+    <span class="bf-p" data-f="1"><b>1</b> Cualitativo</span>
+    <span class="bf-p" data-f="2"><b>2</b> Fundamental</span>
+    <span class="bf-p bf-cerr" data-f="3"><b>3</b> Precio</span>
+    <span class="bf-p" data-f="4"><b>4</b> Técnico</span>
+  </div>
+</div>
 
 <nav id="nav"><div class="in">
   <a class="marca" href="index.html">Valoración <b>Peaky Minders</b></a>
@@ -854,7 +927,14 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
 <!-- ═══════════ 1b · MODELO DE NEGOCIO ═══════════ -->
 <section id="f1">
-  <div class="sec-num">Paso 1 de 4 · Cualitativo <span style="color:var(--muted-txt)">— a ciegas, sin mirar el precio</span></div>
+  <div class="fase-cab" data-fase="1">
+    <div class="fc-n" aria-hidden="true">1</div>
+    <div class="fc-t">
+      <div class="fc-k">Fase 1 de 4 · Cualitativo</div>
+      <div class="fc-h">Entiende a qué se dedica</div>
+      <div class="fc-m">A ciegas · sin mirar el precio</div>
+    </div>
+  </div>
   <h2>¿A qué se dedica esta empresa?</h2>
   <p class="sub" style="margin-bottom:1rem">Va primero por un motivo: <b>si no sabes de qué vive una empresa, sus números no significan nada</b>. Un margen del 40% es excelente en software y sospechoso en una constructora. Esto es lo que te dice cuál de las dos estás mirando.</p>
   <p class="sub">Antes de mirar un solo número hay que saber <b>de dónde sale cada euro de ventas</b>:
@@ -910,7 +990,14 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
 <!-- ═══════════ 2 · DATOS ═══════════ -->
 <section id="f2">
-  <div class="sec-num">Paso 2 de 4 · Fundamental <span style="color:var(--muted-txt)">— a ciegas, sin mirar el precio</span></div>
+  <div class="fase-cab" data-fase="2">
+    <div class="fc-n" aria-hidden="true">2</div>
+    <div class="fc-t">
+      <div class="fc-k">Fase 2 de 4 · Fundamental</div>
+      <div class="fc-h">Mete los datos y lee las cuentas</div>
+      <div class="fc-m">A ciegas · sin mirar el precio</div>
+    </div>
+  </div>
   <h2>Mete los datos de los últimos años</h2>
   <p class="sub">Todo sale de <b>InvestingPro</b>, siempre en modo <code>Annual</code>.
   Debajo del nombre de cada fila tienes el nombre <em>literal</em> que hay que buscar.</p>
@@ -1018,7 +1105,7 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
       <b>ventas · EBITDA · EBIT · impuestos · acciones diluidas</b> de la cuenta de resultados, y
       <b>caja, deuda a largo y patrimonio neto</b> del balance. Con eso ya sale un análisis;
       lo demás afina el resultado.<br>
-      <b>Y una regla:</b> InvestingPro <b>en inglés</b>, con los cuatro desplegables en
+      <b>Y una regla, solo para las tres cuentas de la ficha clásica:</b> InvestingPro <b>en inglés</b>, con los cuatro desplegables en
       <code>Fiscal Years · Ascending · 10 Years · Millions</code> y <b>la moneda que reporta la
       empresa</b>. <span style="color:var(--muted-txt)">Los años no los toques: se detectan solos
       por las etiquetas <code>FY-9</code> … <code>FY</code> de la cabecera.</span></div>
@@ -1172,7 +1259,14 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
 
 <!-- ═══════════ PASO 3 · EL PRECIO ═══════════ -->
 <section id="f3">
-  <div class="sec-num">Paso 3 de 4 · Precio <span style="color:var(--muted-txt)">— solo después de cruzar la puerta</span></div>
+  <div class="fase-cab" data-fase="3">
+    <div class="fc-n" aria-hidden="true">3</div>
+    <div class="fc-t">
+      <div class="fc-k">Fase 3 de 4 · Precio</div>
+      <div class="fc-h">Y solo ahora, cuánto cuesta</div>
+      <div class="fc-m">Detrás de la puerta</div>
+    </div>
+  </div>
   <h2>¿Cuánto vale y cuánto cuesta?</h2>
   <p class="sub">Son dos preguntas distintas y mucha gente las confunde. <b>Cuánto cuesta</b> lo dice
   el mercado y lo sabe todo el mundo. <b>Cuánto vale</b> lo decides tú, y por eso hay que hacer los
@@ -1226,7 +1320,14 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
 
 <!-- ═══════════ PASO 4 · TÉCNICO ═══════════ -->
 <section id="f4">
-  <div class="sec-num">Paso 4 de 4 · Técnico</div>
+  <div class="fase-cab" data-fase="4">
+    <div class="fc-n" aria-hidden="true">4</div>
+    <div class="fc-t">
+      <div class="fc-k">Fase 4 de 4 · Técnico</div>
+      <div class="fc-h">Cuándo, si decides entrar</div>
+      <div class="fc-m">Opcional · fuera del método IDC</div>
+    </div>
+  </div>
   <h2>¿Y cuándo entrar?</h2>
   <p class="sub">Aquí es donde más gente se pierde, así que conviene decirlo claro:
   <b>el análisis técnico no sirve para elegir empresa ni para saber si está barata.</b> Para eso
@@ -1250,7 +1351,10 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
 </section>
 
 <div class="foot">
-ENTENDER UNA EMPRESA · Valoración Peaky Minders v2.0 · 2026-08-03<br>
+ENTENDER UNA EMPRESA · Valoración Peaky Minders v2.0<br>
+Creada bajo los derechos de <b>Francisco González</b> para
+<b>Escudería 5 · Academia de Inversión</b><br>
+<b>Elena Hernáez</b> y <b>Juan Luco Cazorla</b><br>
 Sistema de valoración propio, desarrollado a partir de metodología de inversión en calidad.<br>
 Funciona sin conexión salvo el botón «Buscar». Ningún dato tuyo sale de este navegador.<br>
 Paleta de datos validada para daltonismo y contraste sobre fondo oscuro.<br><br>
@@ -1577,7 +1681,7 @@ const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:n
   /* el contraste externo: Fair Value de InvestingPro y el IDC del Excel */
   fv:null, fvEb:null, fvDcf:null, idcX:null,
   /* la puerta: el precio no se enseña hasta que escribes tu juicio */
-  puertaAbierta:false, juicio:null,
+  puertaAbierta:false, juicio:null, miPrecio:null,
   /* de dónde salen los supuestos: null, "analistas" o "forecast" */
   origen:null};
 
@@ -2706,11 +2810,21 @@ function esquemaPaso(g){
     <li>Copia <b>la columna de cierre</b> y pégala aquí.</li>
   </ol>`;
 
+  /* El esquema tiene que enseñar LA PANTALLA DE ESTE PASO, no siempre la de la
+     cuenta de resultados: si dice «Balance» arriba y dibuja income-statement
+     abajo, el alumno abre la tabla equivocada y no entiende por qué no le
+     cuadra. Las tres filas de ejemplo son las obligatorias de cada cuenta. */
+  const F = (typeof FUENTE !== "undefined" && FUENTE[g]) ? FUENTE[g] : FUENTE.IS;
+  const FILAS = {
+    IS: ["Total Revenues","Operating Income","Income Tax Expense"],
+    BS: ["Cash And Equivalents","Long-Term Debt","Total Equity"],
+    CF: ["Capital Expenditure","Depreciation & Amortization","Common Dividends Paid"]
+  }[g] || ["Total Revenues","Operating Income","Income Tax Expense"];
   return `
   <svg viewBox="0 0 640 250" class="esq" role="img"
-    aria-label="Esquema de la ficha clásica de Investing: los cuatro desplegables, la moneda, y copiar desde Period Ending hasta el final">
+    aria-label="Esquema de la ficha clásica de Investing para ${esc(F.lab)}: los cuatro desplegables, la moneda, y copiar desde Period Ending hasta el final">
     <rect x="1" y="1" width="638" height="248" rx="10" fill="${BG}" stroke="${L}"/>
-    <text x="18" y="24" font-family="var(--font-m)" font-size="10" fill="${MU}">investing.com/equities/<tspan fill="${AF}">…-income-statement</tspan></text>
+    <text x="18" y="24" font-family="var(--font-m)" font-size="10" fill="${MU}">investing.com/equities/<tspan fill="${AF}">…-${esc(F.inv)}</tspan></text>
     <text x="560" y="24" font-family="var(--font-m)" font-size="10" fill="${AF}">EN 🇬🇧</text>
     ${punto(548,20,1)}
     <line x1="1" y1="36" x2="639" y2="36" stroke="${L}"/>
@@ -2723,7 +2837,7 @@ function esquemaPaso(g){
     <rect x="12" y="84" width="616" height="132" rx="6" fill="${SEL}" stroke="${A}" stroke-dasharray="4 3"/>
     <text x="18" y="100" font-family="var(--font-m)" font-size="10" fill="${AF}">Period Ending</text>
     ${cab(232,100,"2016-12-31","FY-9")}${cab(308,100,"2024-12-31","FY-1")}${cab(384,100,"2025-12-31","FY")}
-    ${fila(132,"Total Revenues")}${fila(158,"Operating Income")}${fila(184,"Income Tax Expense")}
+    ${fila(132,FILAS[0])}${fila(158,FILAS[1])}${fila(184,FILAS[2])}
     ${punto(18,88,4)}${punto(622,212,5)}
     <text x="18" y="240" font-family="var(--font-m)" font-size="10" fill="${SF}">
       Desde <tspan fill="${AF}">«Period Ending»</tspan> hasta la última fila. Los años los detecto yo por
@@ -2803,12 +2917,19 @@ function pintarPegaGrid(){
       <div class="pt"><span class="pn">Paso ${PASO_PEGA+1} de 5 · ${esc(G[g])}</span>
         <span class="pe">${e.hechos}/${e.total} ${e.total===1?"partida":"partidas"}</span></div>
       <div style="font-size:.82rem;color:var(--soft);margin:.25rem 0 .7rem;line-height:1.6">${ayuda}</div>
-      ${url?`<a class="th-link" href="${url}" target="_blank" rel="noopener">${
-        !esNuevo ? "abrir en InvestingPro ↗"
-        : BOLSA_PRO ? "abrir EBITDA Reconciliation ↗" : "buscar la empresa en Investing ↗"}</a>`:""}
-      ${esNuevo && BOLSA_PRO ? `
-        <a class="th-link" href="${urlPro("forecasts")}" target="_blank" rel="noopener"
-           style="margin-left:.9rem">abrir Forecasts ↗</a>` : ""}
+      <!-- El enlace es LA ACCION de este paso, no una nota al pie: primero se
+           abre la pagina, despues se copia. Por eso va como boton y numerado. -->
+      ${url?`<div class="abrir">
+        <a class="ab-b" href="${url}" target="_blank" rel="noopener">
+          <span class="ab-n">${PASO_PEGA+1}</span>
+          ${!esNuevo ? `Abre <b>${esc(FUENTE[g].lab)}</b>${T?` de <b>${esc(T)}</b>`:""} aquí`
+           : BOLSA_PRO ? `Abre <b>EBITDA Reconciliation</b> de <b>${esc(T)}</b> aquí`
+                       : `Busca <b>${esc(T)}</b> en Investing`} ↗</a>
+        ${esNuevo && BOLSA_PRO ? `<a class="ab-s" href="${urlPro("forecasts")}"
+           target="_blank" rel="noopener">…o Forecasts ↗</a>` : ""}
+        <span class="ab-x">se abre en otra pestaña</span>
+      </div>`:`<div class="note">Escribe el <b>ticker</b> arriba y aquí aparecerá el enlace directo
+        a la tabla que toca.</div>`}
       ${esNuevo && !BOLSA_PRO && T ? `<div class="note" style="margin:.4rem 0 .6rem">
         Pulsa <b>Buscar</b> arriba y estos enlaces pasan a llevarte <b>directos</b> a la tabla:
         hace falta saber en qué bolsa cotiza para componer la dirección
@@ -3852,6 +3973,18 @@ function puerta(R){
       <div class="px-t">✓ Ya has cruzado la puerta</div>
       ${nota ? `<div class="px-n"><span>Lo que pensabas antes de ver el precio:</span>
         “${esc(nota)}”</div>` : ""}
+      ${(VAL.miPrecio!==null && VAL.miPrecio!==undefined && isFinite(VAL.miPrecio) && R.v && R.v.idc)
+        ? (()=>{ const d = VAL.miPrecio/R.v.idc - 1;
+                 const cerca = Math.abs(d) <= 0.20;
+            return `<div class="px-c"><span>Tu precio antes de mirar</span>
+              <b>${mo(+VAL.miPrecio)}</b> · el del método <b>${mo(R.v.idc)}</b> ·
+              te separas un <b style="color:var(--${cerca?"green":"amber-strong"})">${
+                d>=0?"+":"−"}${pc(Math.abs(d))}</b>.
+              ${cerca ? "Muy cerca. Estás cogiendo el criterio."
+                      : d>0 ? "Tú pagarías más. Mira el crecimiento y el múltiplo del método: ¿te los crees más optimistas?"
+                            : "Tú pagarías menos. Eres más exigente que el método — no es malo, pero pregúntate en qué supuesto discrepas."}
+            </div>`; })()
+        : ""}
       <div class="px-d">A partir de aquí ya conoces el precio. Si algo de lo de abajo te hace
         cambiar de opinión, <b>pregúntate por qué</b>: ¿es un dato nuevo, o es que el número te
         está gustando?</div>
@@ -3868,6 +4001,16 @@ function puerta(R){
       ¿comprarías esta empresa entera si fuera tuya, sin saber lo que cuesta? ¿Y qué es lo que
       más te chirría?</label>
     <textarea id="juicioTxt" class="pg-t" placeholder="Por ejemplo: sí, crece y convierte muy bien en caja, pero depende demasiado de un solo producto…">${esc(nota)}</textarea>
+    <div class="pg-v">
+      <label for="miPrecio">Y si te atreves: <b>¿cuánto pagarías por una acción?</b>
+        <span>Opcional. Sirve para saber si estás aprendiendo: si tu número y el del método se
+        van pareciendo con las semanas, es que has cogido el criterio.</span></label>
+      <div class="pg-vi">
+        <input id="miPrecio" type="number" step="any" inputmode="decimal"
+          placeholder="tu precio" value="${VAL.miPrecio!==null&&VAL.miPrecio!==undefined?VAL.miPrecio:""}">
+        <span class="pg-vm">${esc(MON)}</span>
+      </div>
+    </div>
     <div class="pg-b">
       <button type="button" class="b1" id="abrirPuerta">🔓 Ya tengo mi juicio · enséñame el precio</button>
       <span class="pg-x">No hay vuelta atrás en este informe. Es a propósito.</span>
@@ -5034,8 +5177,10 @@ function enlazarValoracion(){
   });
   /* la puerta: guarda el juicio y descubre el precio */
   if($("juicioTxt")) $("juicioTxt").oninput = () => { VAL.juicio = $("juicioTxt").value; guardarTrabajo(); };
+  if($("miPrecio")) $("miPrecio").onchange = () => { VAL.miPrecio = parseNum($("miPrecio").value); guardarTrabajo(); };
   if($("abrirPuerta")) $("abrirPuerta").onclick = () => {
     VAL.juicio = ($("juicioTxt").value||"").trim();
+    if($("miPrecio")) VAL.miPrecio = parseNum($("miPrecio").value);
     if(!VAL.juicio){
       $("juicioTxt").focus();
       $("juicioTxt").style.borderColor = "var(--amber)";
@@ -5253,6 +5398,18 @@ function marcarRuta(){
       activa = secs[secs.length-1].id;
     document.querySelectorAll("#ruta a").forEach(a =>
       a.classList.toggle("on", a.dataset.f === activa));
+    /* la barra fija de arriba: mismo estado, y se enciende solo cuando ya has
+       bajado, para que no tape la portada */
+    const bar = $("barraFase");
+    if(bar){
+      const n = activa.replace("f","");
+      bar.classList.toggle("on", scrollY > 260);
+      bar.querySelectorAll(".bf-p").forEach(x => {
+        x.classList.toggle("on", x.dataset.f === n);
+        /* el candado del precio se quita en cuanto cruzas la puerta */
+        if(x.dataset.f === "3") x.classList.toggle("abierta", !!(typeof VAL!=="undefined" && VAL.puertaAbierta));
+      });
+    }
   };
   addEventListener("scroll", () => { if(pendiente) return;
     pendiente = true; requestAnimationFrame(actualiza); }, {passive:true});
@@ -5385,7 +5542,8 @@ const SEC_PUENTES = [
   u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
   u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
 ];
-let SEC_PUENTE_OK = null;                 /* el primero que funcione se reutiliza */
+let SEC_PUENTE_OK = null;
+let PUENTE_CAIDO = false;   /* para poder decirlo una sola vez y con calma */                 /* el primero que funcione se reutiliza */
 
 /* espera: el fichero de tickers pesa 800 KB y por un reenviador gratuito no baja
    en 9 segundos ni de broma. Ése fue el motivo real de que la SEC «no funcionara»:
@@ -5421,7 +5579,13 @@ async function secJSON(url, espera){
       ultimo = e.name === "AbortError" ? "tardó demasiado" : "sin conexión";
     }
   }
-  throw new Error("no he podido llegar a la SEC · " + ultimo);
+  /* Si ninguna via responde, el problema es de RED, no de los datos del alumno.
+     Decirlo evita el peor momento posible: que en clase falle un boton y nadie
+     sepa si es la herramienta, internet o lo que ha pegado. */
+  PUENTE_CAIDO = true;
+  throw new Error("no he podido llegar a la SEC · " + ultimo +
+    ". Si acabas de pulsar varios botones seguidos, espera unos segundos. Si sigue, " +
+    "es la conexión con la fuente — todo lo demás de la app funciona igual y puedes pegar a mano");
 }
 
 /* El fichero de la SEC trae las ~10.400 cotizadas de EE. UU. con su nombre. Ya se
