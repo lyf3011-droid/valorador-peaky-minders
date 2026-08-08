@@ -1625,11 +1625,58 @@ const media   = a => { const x=lim(a); return x.length ? x.reduce((s,v)=>s+v,0)/
 const mediana = a => { const x=lim(a).slice().sort((p,q)=>p-q); if(!x.length) return null;
   const m=Math.floor(x.length/2); return x.length%2 ? x[m] : (x[m-1]+x[m])/2; };
 /* el conservador: dir=+1 → cuanto más alto mejor → cogemos el MENOR de los dos */
-function conservador(a, dir=1){
-  const m1=media(a), m2=mediana(a);
-  if(m1===null) return {v:null,cual:null,media:null,mediana:null};
-  const v = dir>0 ? Math.min(m1,m2) : Math.max(m1,m2);
-  return {v, cual: v===m1 ? (m1===m2?"ambas":"media") : "mediana", media:m1, mediana:m2};
+/* ── EL CONSERVADOR, A PRUEBA DE AÑOS RAROS ────────────────────────────────
+   La regla del método es quedarse con el número más exigente entre la media y
+   la mediana. Funciona con series normales y SE ROMPE con un solo año extremo.
+
+   El caso que lo destapó: la conversión en caja de Tesla. En 2017 ganó 4
+   millones de EBITDA y quemó 1.400 de caja, o sea −35.000%. Con ese año dentro,
+   la media salía −3.542% y la mediana +37%. La regla cogía la media y ponía en
+   el informe «conversión en caja −1.692%», que no describe nada.
+
+   Un ratio con un denominador casi cero no es un dato malo: es un dato SIN
+   SIGNIFICADO. Así que se apartan esos años —con la desviación absoluta
+   respecto a la mediana, que es lo que no se deja arrastrar por un extremo— y
+   se dice CUÁLES se han apartado. Nunca se descarta en silencio.
+
+   Si al apartarlos quedan menos de tres años, no se aparta nada: preferimos un
+   número incómodo a uno calculado sobre casi nada. */
+function conservador(a, dir=1, anios){
+  const dentro = [], fuera = [];
+  const bruto = lim(a);
+  if(!bruto.length) return {v:null, cual:null, media:null, mediana:null, fuera:[]};
+
+  const med = mediana(bruto);
+  const desv = mediana(bruto.map(v => Math.abs(v - med)));      /* la MAD */
+
+  /* Hacen falta DOS condiciones, y esto costó un intento fallido:
+     con solo la estadística, Microsoft —cuya conversión lleva años clavada en
+     el 75%— tiene una MAD del 2,4%, así que el corte caía en el 55% y apartaba
+     2016 y 2018, que son años perfectamente normales. Apartar años buenos es
+     PEOR que incluir uno absurdo: infla el resultado en silencio, que es justo
+     lo contrario de ser conservador.
+       1 · lejos de la mediana, con un margen amplio
+       2 · y además absurdo en términos absolutos: un ratio por encima de 500%
+           ya no describe nada, o cambia de signo de forma desproporcionada.
+     Con las dos, Tesla pierde sus dos años imposibles y Microsoft no pierde
+     ninguno. */
+  const limite = Math.max(desv * 8, Math.abs(med) * 2, 1e-9);
+  const absurdo = v => Math.abs(v) > 5 ||
+        (Math.sign(v) !== Math.sign(med) && Math.abs(v) > Math.abs(med) * 3);
+
+  a.forEach((v, i) => {
+    if(v === null || !isFinite(v)) return;
+    if(bruto.length >= 4 && Math.abs(v - med) > limite && absurdo(v))
+      fuera.push({i, v, anio: anios ? anios[i] : null});
+    else dentro.push(v);
+  });
+  const usar = dentro.length >= 3 ? dentro : bruto;
+  if(dentro.length < 3) fuera.length = 0;
+
+  const m1 = media(usar), m2 = mediana(usar);
+  const v = dir > 0 ? Math.min(m1, m2) : Math.max(m1, m2);
+  return {v, cual: v === m1 ? (m1 === m2 ? "ambas" : "media") : "mediana",
+          media: m1, mediana: m2, fuera};
 }
 const cagr = (fin,ini,n) => (fin>0 && ini>0 && n>0) ? Math.pow(fin/ini,1/n)-1 : null;
 
@@ -3008,14 +3055,34 @@ function esCeldaNumerica(linea){
   return /^[(\s]*[-−+]?[\d][\d.,]*\s*[%x]?\s*\)?$/.test(t);
 }
 
+/* Filas que hablan del FUTURO. Nunca pueden alimentar una partida histórica.
+   Se busca como palabra suelta para no descartar de más. */
+const ES_PREVISION = /\b(forecast|forecasts|consensus|estimate|estimates|estimated|guidance|proyecci[oó]n|previsi[oó]n|estimaci[oó]n|consenso)\b/i;
+/* lo que puede venir DETRAS del nombre de una partida: solo cifras y signos */
+const SOLO_CIFRAS = /^[\s\d.,()%+\-\u2013\u2014x]*$/;
+
 function leerTextoPlano(txt){
   const out = [];
   const L = txt.split(/\n/).map(x=>x.trim());
   for(let i=0;i<L.length;i++){
     if(!L[i]) continue;
     const bajo = L[i].toLowerCase().replace(/\s+/g," ");
+    /* ── EL FILTRO QUE IMPIDE MEZCLAR FUTURO CON PASADO ───────────────────
+       «Revenue Forecast (InvestingPro)» empieza por «revenue», que es sinónimo
+       de ventas. Antes casaba, y pegar la pestaña Forecasts con la hoja vacía
+       cargaba las PREVISIONES DE ANALISTAS como si fueran las ventas reales.
+       Y no se notaba: el informe salía entero, con sus gráficas y su IDC,
+       calculado sobre datos del futuro.
+       Estas tablas se leen aparte, con leerForecast, que sí sabe lo que son. */
+    if(ES_PREVISION.test(bajo)) continue;
     for(const [k,alts] of Object.entries(SIN)){
-      const alt = alts.find(a=>bajo===a || bajo.startsWith(a+" ") || bajo.startsWith(a+"\t"));
+      const alt = alts.find(a => {
+        if(bajo === a) return true;
+        if(!bajo.startsWith(a + " ") && !bajo.startsWith(a + "\t")) return false;
+        /* Detrás del nombre de la partida solo pueden venir CIFRAS. Si vienen
+           más palabras es otra fila que empieza igual, no la nuestra. */
+        return SOLO_CIFRAS.test(bajo.slice(a.length));
+      });
       if(!alt) continue;
       let nums = tokensNum(L[i].slice(alt.length));
       if(nums.length < 3 && L[i+1]) nums = tokensNum(L[i+1]);
@@ -3164,6 +3231,81 @@ function procesarBloque(){
    archivo, `node 04_INFRA/construir.js` los vuelve a juntar.
    ───────────────────────────────────────────────────────────── */
 
+/* ══════════════════ EL VIGILANTE DE DATOS ══════════════════
+   Un número puede ser correcto de cálculo y disparatado de significado. Eso es
+   lo que de verdad hace daño: el informe sale entero, con sus gráficas, y nadie
+   se entera de que la moneda estaba mal, o de que se pegó la tabla equivocada,
+   o de que los años iban desplazados.
+
+   Esto no arregla nada: LO DICE. Cada aviso nombra el año y explica cuál es la
+   causa más probable, que casi siempre es una de cuatro:
+     · la tabla pegada no era la que tocaba
+     · la moneda no es la que reporta la empresa
+     · los años están desplazados
+     · se coló una fila de previsiones entre las históricas                */
+function vigilarDatos(R){
+  const A = R.A, L = R.L, d = R.der, av = [];
+  const anio = i => A[i];
+  const M = (v, n) => nf(v, n === undefined ? 0 : n);
+
+  /* 1 · márgenes imposibles */
+  A.forEach((_, i) => {
+    if(d.mEbit[i] !== null && (d.mEbit[i] > 1.5 || d.mEbit[i] < -3))
+      av.push({a: anio(i), q: `un margen operativo del <b>${pc(d.mEbit[i])}</b>`,
+               p: "el EBIT y las ventas no son del mismo año, o una de las dos filas no es la que parece"});
+  });
+
+  /* 2 · saltos imposibles en ventas */
+  for(let i = 1; i <= L; i++){
+    if(!R.ventas[i] || !R.ventas[i-1]) continue;
+    const x = R.ventas[i] / R.ventas[i-1];
+    if(x > 8 || x < 0.2)
+      av.push({a: anio(i), q: `las ventas ${x>1?"se multiplican por":"caen a la"} <b>${M(x>1?x:1/x,1)}</b>${x>1?"":"ª parte"} en un año`,
+               p: x > 1000 ? "los datos están en unidades distintas — mira que la tabla esté en <b>Millions</b>"
+                           : "puede ser real (una compra grande), pero también años desplazados o una moneda distinta"});
+  }
+
+  /* 3 · la moneda: si el precio y las ventas por acción no guardan ninguna
+        relación creíble, casi siempre es que la moneda no coincide */
+  if(R.precio && R.acciones[L] && R.ventas[L]){
+    const vpa = R.ventas[L] / R.acciones[L];
+    const veces = R.precio / vpa;
+    if(veces > 200 || veces < 0.02)
+      av.push({a: anio(L), q: `el precio son <b>${M(veces,1)} veces</b> las ventas por acción`,
+               p: "eso casi siempre significa que <b>la moneda del precio no es la de las cuentas</b>. Comprueba el selector de moneda en Investing"});
+  }
+
+  /* 4 · acciones que se disparan */
+  for(let i = 1; i <= L; i++){
+    if(!R.acciones[i] || !R.acciones[i-1]) continue;
+    const x = R.acciones[i] / R.acciones[i-1];
+    if(x > 3 || x < 0.34)
+      av.push({a: anio(i), q: `el número de acciones ${x>1?"se multiplica por":"se divide entre"} <b>${M(x>1?x:1/x,1)}</b>`,
+               p: "puede ser un <em>split</em> real, pero también una fila mal leída. Si es un split, los años anteriores hay que ajustarlos"});
+  }
+
+  /* 5 · conversión en caja fuera de toda lógica */
+  A.forEach((_, i) => {
+    if(d.conv[i] !== null && Math.abs(d.conv[i]) > 5)
+      av.push({a: anio(i), q: `una conversión en caja del <b>${pc(d.conv[i])}</b>`,
+               p: "el EBITDA de ese año es casi cero, así que el ratio no significa nada. <b>Se ha apartado del promedio</b>"});
+  });
+
+  /* 6 · el circulante mayor que las ventas */
+  A.forEach((_, i) => {
+    if(d.wcV[i] !== null && Math.abs(d.wcV[i]) > 3)
+      av.push({a: anio(i), q: `un circulante de <b>${pc(d.wcV[i])}</b> de las ventas`,
+               p: "revisa cobrar, pagar e inventarios: alguna fila puede no ser la que parece"});
+  });
+
+  /* 7 · el año que no debería estar vacío */
+  if(R.ventas[L] === null && R.ventas[L-1] !== null)
+    av.push({a: anio(L), q: "el último año no tiene ventas",
+             p: "la empresa aún no ha publicado ese ejercicio, o los años están desplazados un puesto"});
+
+  return av;
+}
+
 /* ══════════════════ CÁLCULO ══════════════════ */
 function calcular(){
   const A = anios(), R = {A, aviso:[], veto:[]};
@@ -3275,16 +3417,42 @@ function calcular(){
   R.cagrF = cagr(der.fcf[L],der.fcf[fp.i],fp.n);
   R.spanB = bp.n; R.spanF = fp.n;
 
+  /* ── CUANDO EL CRECIMIENTO NO SE PUEDE EXPRESAR EN % ──────────────────────
+     El crecimiento compuesto no existe si se parte de un número negativo: la
+     fórmula es (final/inicial)^(1/años)−1 y con un negativo dentro sale un
+     número imaginario. Le pasa a cualquier empresa que estuviera en pérdidas
+     hace diez años — Tesla iba de −0,30 a 1,14 de BPA.
+     La app devolvía vacío, que es correcto, pero lo hacía EN SILENCIO: un
+     guion sin explicación parece un fallo de la herramienta y hace desconfiar
+     de todo lo demás. Ahora se explica y se da el dato que sí significa algo:
+     de cuánto a cuánto ha ido, y el crecimiento desde que se puso en positivo. */
+  const porQueNoHayTasa = (arr, i0, n, unidad) => {
+    const ini = arr[i0], fin = arr[L];
+    if(ini===null || fin===null) return null;
+    if(ini > 0 && fin > 0) return null;                  /* sí hay tasa */
+    const fmt = v => (unidad==="M" ? nf(v,0)+" M" : nf(v,2));
+    /* primer año en positivo, para poder dar una tasa que sí exista */
+    let j = i0; while(j < L && !(arr[j] > 0)) j++;
+    const desde = (j < L && arr[j] > 0 && fin > 0)
+      ? {anio: A[j], tasa: cagr(fin, arr[j], L-j), n: L-j} : null;
+    return {
+      ini: fmt(ini), fin: fmt(fin), anioIni: A[i0], anioFin: A[L],
+      negativoAlPrincipio: ini <= 0, negativoAlFinal: fin <= 0, desde
+    };
+  };
+  R.sinTasaB = porQueNoHayTasa(der.bpa, bp.i, bp.n, "");
+  R.sinTasaF = porQueNoHayTasa(der.fcf, fp.i, fp.n, "M");
+
   /* conservadores */
   R.c = {};
-  ["mEbitda","mEbit","mNeto","mFcf","conv","roic","roe","capexV","wcV","sbcV"].forEach(k=>R.c[k]=conservador(der[k],1));
-  R.c.deuda = conservador(der.dnEbitda,-1);
-  R.c.dil   = conservador(der.dilucion,-1);
+  ["mEbitda","mEbit","mNeto","mFcf","conv","roic","roe","capexV","wcV","sbcV"].forEach(k=>R.c[k]=conservador(der[k],1,A));
+  R.c.deuda = conservador(der.dnEbitda,-1,A);
+  R.c.dil   = conservador(der.dilucion,-1,A);
   R.cMult = {
-    evFcf   : conservador(der.evFcf,1),
-    per     : conservador(der.per,1),
-    evEbitda: conservador(der.evEbitda,1),
-    evEbit  : conservador(der.evEbit,1)
+    evFcf   : conservador(der.evFcf,1,A),
+    per     : conservador(der.per,1,A),
+    evEbitda: conservador(der.evEbitda,1,A),
+    evEbit  : conservador(der.evEbit,1,A)
   };
 
   /* red flags automáticas */
@@ -3323,7 +3491,7 @@ function calcular(){
   const accHoy = acciones[L];
   const multObj = VAL.mult!==null ? VAL.mult : (R.cMult.evFcf.v!==null ? Math.round(R.cMult.evFcf.v*10)/10 : null);
   const gF = (VAL.g!==null ? VAL.g : (R.cagrF!==null ? Math.round(R.cagrF*1000)/10 : null));
-  if(multObj===null || gF===null){ R.sinVal = true; return R; }
+  if(multObj===null || gF===null){ R.sinVal = true; R.raros = vigilarDatos(R); return R; }
   const gB = VAL.gb!==null ? VAL.gb : gF;
   /* ESCALERA DECRECIENTE: ningún negocio crece al mismo ritmo cinco años seguidos.
      Se define el crecimiento del año 1 y el del año 5; los intermedios se interpolan.
@@ -3526,6 +3694,8 @@ function calcular(){
   });
   R.score = pw>0 ? acc/pw : null;
   R.etiqueta = R.score===null?"—":R.score>=85?"Excepcional":R.score>=70?"Muy sólido":R.score>=55?"Correcto":R.score>=40?"Débil":"Descartar";
+  /* lo último: revisar que ningún número sea imposible */
+  R.raros = vigilarDatos(R);
   return R;
 }
 
@@ -3546,13 +3716,45 @@ function kpi(k,v,d,s,hero){
   return `<div class="kpi${hero?" hero":""}"><div class="k">${s?`<span class="dot ${s}"></span>`:""}${esc(k)}</div>
     <div class="v">${v}</div>${d?`<div class="d">${d}</div>`:""}</div>`;
 }
+/* Cuando no hay tasa de crecimiento, la casilla no se queda en blanco: dice
+   POR QUÉ no la hay y da el dato que sí significa algo. Un guion mudo hace
+   pensar que la herramienta ha fallado, y eso contamina todo el informe. */
+function kpiSinTasa(que, x){
+  if(!x) return kpi("Crecimiento de " + que.toLowerCase(), "—", "Faltan datos para calcularlo", null);
+  const cuerpo = `${x.ini} <span style="color:var(--muted-txt)">(${x.anioIni})</span>
+     → ${x.fin} <span style="color:var(--muted-txt)">(${x.anioFin})</span>`;
+  const pie = x.negativoAlFinal
+    ? "Sigue en negativo: no hay crecimiento que medir, hay una pérdida."
+    : x.desde && x.desde.tasa !== null
+      ? `Partía de pérdidas, así que <b>no se puede poner un % anual</b>. Desde
+         ${x.desde.anio}, que es cuando se puso en positivo, crece un
+         <b>${pc(x.desde.tasa)}</b> al año.`
+      : "Partía de pérdidas, así que no se puede expresar como % anual.";
+  return `<div class="kpi">
+    <div class="k">${esc(que)} · de dónde a dónde</div>
+    <div class="v" style="font-size:clamp(1rem,2.4vw,1.35rem)">${cuerpo}</div>
+    <div class="d">${pie}</div></div>`;
+}
+
 function cardConservador(c, fmt, nombre){
   if(c.v===null) return "";
   const cual = c.cual==="ambas" ? "las dos coinciden"
     : c.cual==="media" ? "la <b>media</b> es la más baja" : "la <b>mediana</b> es la más baja";
+  /* Si se ha apartado algún año hay que decirlo, y decir cuál. Descartar datos
+     en silencio es justo lo que hace que una herramienta deje de ser fiable. */
+  const apartados = (c.fuera && c.fuera.length)
+    ? `<br><b style="color:var(--amber-strong)">He apartado ${c.fuera.length}
+       ${c.fuera.length===1?"año":"años"}</b> del cálculo:
+       ${c.fuera.map(f => (f.anio!==null&&f.anio!==undefined?f.anio:"?") + " (" + fmt(f.v) + ")").join(" · ")}.
+       ${c.fuera.length===1?"Ese año se sale":"Esos años se salen"} tanto de lo normal que
+       ${c.fuera.length===1?"arrastra":"arrastran"} la media hasta un número que no describe la
+       empresa — suele pasar cuando el denominador es casi cero.
+       <span style="color:var(--muted)">Míra${c.fuera.length===1?"lo":"los"} igual: un año así
+       cuenta algo, aunque no sirva para promediar.</span>`
+    : "";
   return `<div class="note">Media ${fmt(c.media)} · mediana ${fmt(c.mediana)} → nos quedamos con
     <b>${fmt(c.v)}</b> porque ${cual}. <span style="color:var(--muted)">Siempre el número más
-    exigente: si aun así ${esc(nombre)} pasa el filtro, es que pasa de verdad.</span></div>`;
+    exigente: si aun así ${esc(nombre)} pasa el filtro, es que pasa de verdad.</span>${apartados}</div>`;
 }
 function paso(n,q,w,cuerpo,id,rail){
   const num = String(n).replace(/\D/g,"");
@@ -3760,8 +3962,12 @@ function informe(R){
      El crecimiento no lo tiene.`,
     `<div class="kpis">
       ${kpi("Crecimiento anual de ventas", pc(R.cagrV), `Últimos ${R.span} años, compuesto`, sem("cagrV",R.cagrV), true)}
-      ${kpi("Crecimiento del beneficio por acción", pc(R.cagrB), "Beneficio normalizado por acción", sem("cagrB",R.cagrB))}
-      ${kpi("Crecimiento del dinero real", pc(R.cagrF), "Flujo de caja libre", sem("cagrF",R.cagrF))}
+      ${R.cagrB!==null
+        ? kpi("Crecimiento del beneficio por acción", pc(R.cagrB), "Beneficio normalizado por acción", sem("cagrB",R.cagrB))
+        : kpiSinTasa("Beneficio por acción", R.sinTasaB)}
+      ${R.cagrF!==null
+        ? kpi("Crecimiento del dinero real", pc(R.cagrF), "Flujo de caja libre", sem("cagrF",R.cagrF))
+        : kpiSinTasa("Dinero real", R.sinTasaF)}
      </div>
      <div class="charts">
       ${figura("Ventas por año","Todo el dinero que entra por la puerta, en millones.",
@@ -3940,7 +4146,21 @@ function informe(R){
        Súbelo arriba: entender el negocio va antes que cualquier número.</div>`}
    </div>`;
 
-  out.innerHTML = cab + `<div id="coherencia"></div>` + H +
+  /* El vigilante va ARRIBA del todo. Si algo no puede ser, hay que verlo antes
+     de leer un solo número, no al final en letra pequeña. */
+  const raros = (R.raros && R.raros.length) ? `
+    <div class="warn" style="margin:0 0 1.2rem">
+      <b>⚠️ Hay ${R.raros.length} ${R.raros.length===1?"dato que no cuadra":"datos que no cuadran"}.</b>
+      El informe está calculado igual, pero <b>revísalo antes de fiarte</b>.
+      <ul style="margin:.6rem 0 0;padding-left:1.2rem">
+        ${R.raros.slice(0,8).map(x=>`<li style="margin:.35rem 0">
+          <b>${esc(String(x.a))}</b>: ${x.q}.
+          <span style="color:var(--muted-txt)">Lo más probable: ${x.p}.</span></li>`).join("")}
+      </ul>
+      ${R.raros.length>8?`<div class="note" style="margin-top:.5rem">Y ${R.raros.length-8} más.</div>`:""}
+    </div>` : "";
+
+  out.innerHTML = cab + `<div id="coherencia"></div>` + raros + H +
     `<div class="cta-print" style="text-align:center;padding:1.5rem 0 0">
      <button class="b2" onclick="window.print()">🖨 Guardar el informe como PDF</button>
      <div class="marca-pie">Valoración Peaky Minders · material formativo</div></div>`;
