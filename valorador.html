@@ -242,6 +242,28 @@ tr.helpbar td{background:rgba(14,143,191,.05);padding:.5rem .8rem}
   color:var(--soft);line-height:1.6}
 .px-c span{display:block;font-family:var(--font-m);font-size:.66rem;letter-spacing:.1em;
   text-transform:uppercase;color:var(--muted-txt);margin-bottom:.25rem}
+/* ── FOCO Y AMPLIAR ──────────────────────────────────────────────────────
+   Las gráficas eran pequeñas y el valor solo salía esperando el tooltip del
+   navegador. Ahora: al pasar el ratón la barra o el punto se encienden al
+   instante, y cualquier gráfica, esquema o diagrama se amplía a pantalla
+   completa con un clic. Cero librerías: un solo <dialog> para todo. */
+.ch rect, .ch circle{transition:opacity .12s, filter .12s;cursor:pointer}
+.ch:hover rect:not(:hover), .ch:hover circle:not(:hover){opacity:.42}
+.ch rect:hover, .ch circle:hover{filter:brightness(1.35) drop-shadow(0 0 6px rgba(245,158,11,.5))}
+figure .ch, svg.esq, .dg{cursor:zoom-in}
+figure .ch:hover, svg.esq:hover, .dg:hover{filter:brightness(1.06)}
+
+dialog#lupa{border:1px solid var(--amber-line);border-radius:14px;background:var(--bg);
+  padding:1rem;max-width:min(94vw,1100px);width:94vw;color:var(--text)}
+dialog#lupa::backdrop{background:rgba(0,0,0,.82);backdrop-filter:blur(3px)}
+#lupa svg{width:100%;height:auto;display:block}
+#lupa .lupa-t{font-family:var(--font-m);font-size:.7rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--amber);margin-bottom:.6rem;display:flex;
+  justify-content:space-between;align-items:center;gap:1rem}
+#lupa .lupa-t button{font-family:var(--font-m);font-size:.72rem;border:1px solid var(--line-strong);
+  background:transparent;color:var(--soft);border-radius:7px;padding:.4rem .8rem;cursor:pointer}
+#lupa .lupa-t button:hover{border-color:var(--amber-line);color:var(--text)}
+@media print{dialog#lupa{display:none!important}}
 /* ── LAS CUATRO FASES ────────────────────────────────────────────────────
    El «Paso 2 de 4» era una línea de 10 píxeles en versalitas. Ahora la cabecera
    de fase ocupa lo que tiene que ocupar y la barra de arriba te recuerda dónde
@@ -872,6 +894,17 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
 
   <div id="recuperado" class="recup hide" role="status"></div>
 
+  <!-- El trabajo, a un archivo: el backup que no depende de este navegador -->
+  <div class="bar-actions" style="margin-top:.6rem">
+    <button class="b2" id="btnExportar">💾 Guardar el trabajo en un archivo</button>
+    <button class="b2" id="btnImportar">📂 Cargar un archivo</button>
+    <input type="file" id="ficheroTrabajo" accept=".json,application/json" class="hide">
+    <span style="font-size:.8rem;color:var(--soft);align-self:center">
+      Todo lo tuyo en un <code>.peaky.json</code>: para llevarlo a otro ordenador,
+      guardarlo por si acaso, o pasárselo a un compañero.</span>
+  </div>
+  <div class="pr" id="resArchivo" style="margin-top:.5rem"></div>
+
   <div class="sec-num">Antes de empezar</div>
   <h2>Identifica la empresa</h2>
   <p class="sub">Empieza a escribir el ticker <b>o el nombre</b>: las <b>578 empresas del S&amp;P 500, el IBEX 35 y el DAX 40</b> están guardadas aquí dentro, así que el nombre y la moneda se ponen solos y sin
@@ -1361,6 +1394,12 @@ Paleta de datos validada para daltonismo y contraste sobre fondo oscuro.<br><br>
 ⚠️ Material formativo. No constituye asesoramiento financiero ni recomendación de compra o venta.<br><a href="legal.html" style="color:var(--amber-strong)">Aviso legal completo →</a>
 </div>
 </div>
+
+<dialog id="lupa" aria-label="Vista ampliada">
+  <div class="lupa-t"><span id="lupaTit">Vista ampliada</span>
+    <button type="button" onclick="this.closest('dialog').close()">Cerrar ✕</button></div>
+  <div id="lupaCuerpo"></div>
+</dialog>
 
 <!-- El JavaScript vive en js/, en siete ficheros que se cargan EN ORDEN.
      Para la copia de un solo archivo: node 04_INFRA/construir.js -->
@@ -6412,6 +6451,12 @@ $("abrirBloque").onclick = () => { $("bloqueBox").classList.toggle("hide"); pint
 $("btnSECtop").onclick = () => traerSEC("top");
 $("btn10K").onclick = traer10K;
 if($("btnEU")) $("btnEU").onclick = abrirEuropa;
+if($("btnExportar")) $("btnExportar").onclick = exportarTrabajo;
+if($("btnImportar")) $("btnImportar").onclick = () => $("ficheroTrabajo").click();
+if($("ficheroTrabajo")) $("ficheroTrabajo").onchange = e => {
+  if(e.target.files && e.target.files[0]) importarTrabajo(e.target.files[0]);
+  e.target.value = "";                       /* poder cargar el mismo archivo dos veces */
+};
 $("verTV").onclick = verTradingView;
 marcarRuta(); pintarEnlacesPrecio();
 
@@ -6431,20 +6476,117 @@ function hayTrabajo(){
          || ($("negocio").value||"").trim());
 }
 
+
+/* ══════════════════ GUARDAR EN ARCHIVO Y MULTIEMPRESA ══════════════════
+   Hasta ahora el trabajo vivía solo en el localStorage de UN navegador y de
+   UNA empresa: analizabas otra y pisabas la anterior sin aviso, cambiabas de
+   ordenador y no había nada. Tres piezas:
+
+   · empaquetar(): junta TODO el estado en un objeto con versión. La versión
+     importa: si mañana cambia el formato, lo guardado ayer se detecta y se
+     migra, en vez de cargarse mal en silencio.
+   · exportarTrabajo(): lo baja como archivo .peaky.json — el backup local.
+   · importarTrabajo(): lo lee comprobando versión y avisando de qué empresa
+     era. Nunca mezcla: importar sustituye, y lo dice antes.
+   · Y el localStorage pasa a guardar UNA ENTRADA POR TICKER, con la última
+     empresa activa aparte. Cambiar de empresa ya no borra nada. */
+const FORMATO_TRABAJO = 2;
+
+function empaquetar(){
+  const datos = {};
+  CONCEPTOS.forEach(c => { if(D[c.k].some(v=>v!==null)) datos[c.k] = D[c.k]; });
+  return {
+    formato: FORMATO_TRABAJO,
+    app: "Valoración Peaky Minders",
+    cuando: Date.now(), N, anioFin: ANIO_FIN,
+    ticker: $("ticker").value, nombre: $("nombre").value,
+    precio: $("precio").value, moneda: $("moneda").value,
+    negocio: $("negocio").value, invertir: $("invertir").checked,
+    val: VAL, datos
+  };
+}
+
+function aplicarPaquete(g){
+  if(g.N && g.N !== N){ N = g.N; $("nAnios").value = String(N); }
+  CONCEPTOS.forEach(c => D[c.k] = new Array(N).fill(null));
+  if(g.anioFin){ ANIO_FIN = g.anioFin; $("anioFin").value = g.anioFin; }
+  Object.entries(g.datos || {}).forEach(([k, arr]) => {
+    if(!D[k] || !Array.isArray(arr)) return;
+    arr.slice(0, N).forEach((v, i) => D[k][i] = (typeof v === "number" ? v : null));
+  });
+  ["ticker","nombre","precio","moneda","negocio"].forEach(id => $(id).value = g[id] || "");
+  MON = $("moneda").value || "$";
+  $("invertir").checked = !!g.invertir;
+  Object.keys(VAL).forEach(k => { VAL[k] = (g.val && g.val[k] !== undefined) ? g.val[k] : null; });
+  if(g.val && g.val.obj !== undefined) VAL.obj = g.val.obj; else VAL.obj = 15;
+  VAL.puertaAbierta = !!(g.val && g.val.puertaAbierta);
+}
+
+/* lo guardado con el formato 1 se entiende igual: solo cambia el envoltorio */
+function migrarPaquete(g){
+  if(!g) return null;
+  if(g.formato === FORMATO_TRABAJO) return g;
+  if(g.v === 1 || g.formato === undefined){ g.formato = FORMATO_TRABAJO; return g; }
+  return null;                                  /* de un formato futuro: no se toca */
+}
+
+function exportarTrabajo(){
+  const g = empaquetar();
+  const quien = (g.ticker || g.nombre || "empresa").replace(/[^\w.\-]+/g, "_");
+  const fecha = new Date().toISOString().slice(0, 10);
+  const blob = new Blob([JSON.stringify(g, null, 1)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${quien}_${fecha}.peaky.json`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+  const r = $("resArchivo");
+  if(r) r.innerHTML = `<div class="ok"><b>Guardado.</b> El archivo
+    <code>${esc(a.download)}</code> lleva todo: los datos, tus supuestos, el negocio y tu
+    juicio. Se abre con «Cargar archivo» en cualquier ordenador, sin internet.</div>`;
+}
+
+function importarTrabajo(fichero){
+  const r = $("resArchivo");
+  const lector = new FileReader();
+  lector.onload = () => {
+    let g = null;
+    try{ g = JSON.parse(String(lector.result)); }catch(e){}
+    g = migrarPaquete(g);
+    if(!g || !g.datos){
+      if(r) r.innerHTML = `<div class="warn"><b>Ese archivo no es de esta herramienta</b>
+        (o es de una versión más nueva que esta página). No he tocado nada.</div>`;
+      return;
+    }
+    const quien = g.nombre || g.ticker || "una empresa";
+    const actual = ($("ticker").value || $("nombre").value || "").trim();
+    const distinta = actual && g.ticker && actual.toUpperCase() !== String(g.ticker).toUpperCase();
+    aplicarPaquete(g);
+    pintarMatriz(); pintarPegaGrid(); guardarTrabajo();
+    if(r) r.innerHTML = `<div class="ok"><b>Cargado: ${esc(quien)}</b>${
+      g.cuando ? `, guardado el ${new Date(g.cuando).toLocaleDateString("es-ES",{day:"numeric",month:"long"})}` : ""}.
+      ${distinta ? `<b style="color:var(--amber-strong)">Ojo: aquí tenías ${esc(actual)} y lo he
+        sustituido entero</b> — el trabajo anterior sigue en la memoria de este navegador.` : ""}
+      Pulsa <b>Analizar la empresa</b> para ver su informe.</div>`;
+    informe(calcular());
+  };
+  lector.readAsText(fichero);
+}
+
+/* ── multiempresa: una entrada por ticker, y la activa aparte ── */
+function claveDe(t){ return CLAVE_TRABAJO + ":" + String(t || "SIN_TICKER").toUpperCase().trim(); }
+
 function guardarTrabajo(){
   clearTimeout(GUARDANDO);
   GUARDANDO = setTimeout(() => {
     try{
       if(!hayTrabajo()){ olvidarTrabajo(); return; }
-      const datos = {};
-      CONCEPTOS.forEach(c => { if(D[c.k].some(v=>v!==null)) datos[c.k] = D[c.k]; });
-      localStorage.setItem(CLAVE_TRABAJO, JSON.stringify({
-        v: 1, cuando: Date.now(), N, anioFin: ANIO_FIN,
-        ticker: $("ticker").value, nombre: $("nombre").value,
-        precio: $("precio").value, moneda: $("moneda").value,
-        negocio: $("negocio").value, invertir: $("invertir").checked,
-        val: VAL, datos
-      }));
+      const g = empaquetar();
+      /* una entrada por empresa: cambiar de ticker ya no pisa la anterior */
+      localStorage.setItem(claveDe(g.ticker), JSON.stringify(g));
+      localStorage.setItem(CLAVE_TRABAJO + ":ultima", claveDe(g.ticker));
+      /* y la entrada antigua de formato 1 se retira para no cargarla dos veces */
+      localStorage.removeItem(CLAVE_TRABAJO);
     }catch(e){ /* modo incógnito o disco lleno: se sigue sin guardar */ }
   }, 600);
 }
@@ -6456,7 +6598,14 @@ function olvidarTrabajo(){
 
 function cargarTrabajo(){
   let g = null;
-  try{ g = JSON.parse(localStorage.getItem(CLAVE_TRABAJO) || "null"); }catch(e){}
+  try{
+    /* primero la última empresa activa del formato nuevo; si no, la entrada
+       antigua de formato 1, que se migra sola */
+    const ult = localStorage.getItem(CLAVE_TRABAJO + ":ultima");
+    if(ult) g = JSON.parse(localStorage.getItem(ult) || "null");
+    if(!g) g = JSON.parse(localStorage.getItem(CLAVE_TRABAJO) || "null");
+  }catch(e){}
+  g = migrarPaquete(g);
   if(!g || !g.datos) return false;
 
   if(g.N && g.N !== N){ N = g.N; $("nAnios").value = String(N);
@@ -6540,6 +6689,27 @@ window.addEventListener("afterprint", () => {
 });
 $("btnSonido").onclick = () => { SND.on = !SND.on;
   localStorage.setItem("sonido", SND.on ? "1" : "0"); pintarSonido(); if(SND.on) SND.toca(); };
+
+/* ── AMPLIAR CON UN CLIC ────────────────────────────────────────────────────
+   Delegado en el documento: vale para las gráficas del informe (que se
+   redibujan cada vez), los esquemas de los pasos y los diagramas. Se clona el
+   SVG dentro de un <dialog>, así que no hay que preparar nada en cada sitio. */
+document.addEventListener("click", e => {
+  const svg = e.target.closest && e.target.closest("svg.ch, svg.esq, svg.dg");
+  if(!svg) return;
+  /* un clic en una barra concreta es para ver su valor, no para ampliar */
+  if(e.target.tagName === "rect" || e.target.tagName === "circle") return;
+  const d = document.getElementById("lupa");
+  if(!d || !d.showModal) return;
+  const fig = svg.closest("figure");
+  const tit = fig && fig.querySelector("figcaption") ? fig.querySelector("figcaption").textContent
+            : (svg.getAttribute("aria-label") || "Vista ampliada");
+  document.getElementById("lupaTit").textContent = tit;
+  const c = document.getElementById("lupaCuerpo");
+  c.innerHTML = "";
+  c.appendChild(svg.cloneNode(true));
+  d.showModal();
+});
 
 </script>
 </body>
