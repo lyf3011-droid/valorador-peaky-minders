@@ -1535,6 +1535,11 @@ const CONCEPTOS = [
     Es la lección central del método, y hasta ahora había que explicarla de
     palabra en vez de verse en pantalla. */
  {k:"fcfPub",   g:"CF", lab:"FCF publicado (solo comparar)", src:"Levered Free Cash Flow"},
+ /* La fila 13 de la plantilla: minoritarios, provisiones y demás ajustes que
+    no encajan en ninguna otra partida. CON SU SIGNO: negativa resta al FCF,
+    positiva suma. Casi siempre está a cero; cuando no, mueve el resultado
+    —en Nestlé es un 2,4% del FCF proyectado— y por eso existe. */
+ {k:"otros",    g:"CF", lab:"Otros ajustes del FCF (con signo)", src:"— manual · fila 13 de la plantilla"},
  {k:"da",       g:"CF", lab:"Depreciación y amortización",src:"Depreciation & Amortization, Total", req:1,
    calc:{op:"−", a:"EBITDA", b:"Operating Income"}},
  {k:"capexMant",g:"CF", lab:"CapEx de mantenimiento",     src:"Depreciation (la sola, no la D&A)",
@@ -1805,7 +1810,7 @@ const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:n
   /* la asignación de capital va año a año, como en la plantilla */
   prepA:null, pcxA:null,
   /* acciones diluidas año a año y circulante/ventas: celdas naranjas de la plantilla */
-  accA:null, pwcv:null,
+  accA:null, pwcv:null, potros:null,
   /* el contraste externo: Fair Value de InvestingPro y el IDC del Excel */
   fv:null, fvEb:null, fvDcf:null, idcX:null,
   /* la puerta: el precio no se enseña hasta que escribes tu juicio */
@@ -3845,7 +3850,8 @@ function calcular(){
     invirtió menos de lo que se le desgastó, así que el CapEx de mantenimiento se ha limitado al
     <b>CapEx realmente gastado</b>. Es la regla de la plantilla: la depreciación es el techo, no el importe.`);
   der.fcf = mk(i => at(ebitda,i)===null ? null
-     : ebitda[i] - z(der.capexMant,i) - z(impuestos,i) + z(interes,i) - z(der.cwc,i));
+     : ebitda[i] - z(der.capexMant,i) - z(impuestos,i) + z(interes,i) - z(der.cwc,i)
+       + z(g("otros"),i));      /* fila 13 de la plantilla, con su signo */
   der.neto = mk(i => at(ebit,i)===null ? null : ebit[i] + z(interes,i) - z(impuestos,i));
   der.bpa  = mk(i => (der.neto[i]===null||!acciones[i]) ? null : der.neto[i]/acciones[i]);
   der.fcfps= mk(i => (der.fcf[i]===null||!acciones[i]) ? null : der.fcf[i]/acciones[i]);
@@ -4050,6 +4056,11 @@ function calcular(){
        ratio 0, el año 1 se comía 24.146 millones artificiales. La plantilla
        hace lo mismo: su variación proyectada del año 1 es 0, no el salto. */
     let wcPrev = ventas[L]*wcv;
+    /* los «otros ajustes», proyectados como % de ventas constante — es lo que
+       hace la plantilla: fila13_t = fila13_L × crecimiento acumulado */
+    const otrosL = at(g("otros"), L);
+    const otrosR = VAL.potros!==null && VAL.potros!==undefined ? VAL.potros/100
+                 : (otrosL!==null && ventas[L] ? otrosL/ventas[L] : 0);
     const daRatio    = at(da,L)!==null ? at(da,L) : 0;
 
     const pg = cinco(VAL.pg, R.cagrV!==null ? Math.round(R.cagrV*1000)/10 : 5);
@@ -4132,7 +4143,7 @@ function calcular(){
       /* la variación de circulante, como en la plantilla (2.FCF fila 12) */
       const wcT   = vt * wcv;
       const dWC   = wcT - wcPrev; wcPrev = wcT;
-      const fcf   = ebtda - cxm + intAno - imp - dWC;
+      const fcf   = ebtda - cxm + intAno - imp - dWC + vt*otrosR;
       /* cada año tiene su propio porcentaje de reparto, como en la plantilla */
       const rep   = prepA[i]/100;
       const queda = fcf * (1 - rep);          /* lo que no se reparte ni se reinvierte */
@@ -4151,7 +4162,7 @@ function calcular(){
     R.v.partidas = filas;
     R.v.pg = pg; R.v.pm = pm; R.v.pt = pt; R.v.pint = pint;
     R.v.capexRatio = capexRatio; R.v.pcxA = pcxA;
-    R.v.accA = accA; R.v.wcv = wcv; R.v.wcvHist = wcvHist;
+    R.v.accA = accA; R.v.wcv = wcv; R.v.wcvHist = wcvHist; R.v.otrosR = otrosR;
     /* las acciones del año 5 salen del vector, como en la plantilla */
     R.v.accPlantilla = accA[4];
     /* Y el divisor de verdad. La línea de arriba del fichero calcula acc5 con
@@ -4991,6 +5002,10 @@ function tablaPartidas(R){
              value="${nf(v.wcv*100,1).replace(",",".")}">
            <button type="button" id="wcCero" class="fx" title="En tecnológicas potentes el circulante proyectado suele ser cero — es lo que hace la plantilla en META">a 0</button>
          </div></div>
+       <div><label>Otros ajustes / ventas (%)
+           <span style="color:var(--muted-txt);font-weight:400">· fila 13 · con signo</span></label>
+         <input class="vin" data-v="potros" type="number" step="any"
+           value="${nf((v.otrosR||0)*100,2).replace(",",".")}"></div>
        <div><label>CapEx mant. / ventas</label>
          <input class="vin" data-v="pcx" type="number" step="any" readonly
            value="${nf(v.capexRatio*100,2).replace(",",".")}" style="opacity:.6"></div>
@@ -7492,7 +7507,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.bea3e4c";
+const APP_VERSION = "2026-08-08.3df7e5a";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
