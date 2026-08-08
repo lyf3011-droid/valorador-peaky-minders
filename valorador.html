@@ -459,6 +459,28 @@ svg.esq,svg.ch,svg.dg{cursor:zoom-in}
 #ayudaPanel .ap-b button.pri{background:var(--amber);border-color:var(--amber);color:#0a0a0a;font-weight:700}
 #ayudaPanel .ap-v{font-family:var(--font-m);font-size:.62rem;color:var(--muted-txt);margin-top:.7rem}
 @media print{#ayudaBtn,#ayudaPanel,#avisoNueva{display:none!important}}
+/* Los cuatro tramos del paso del precio: numerados y anunciados, para que se
+   sepa siempre qué viene después de qué */
+.tramo{display:flex;gap:1rem;align-items:flex-start;margin:2.2rem 0 1rem;
+  padding-top:1.2rem;border-top:2px solid var(--amber-line)}
+.tr-n{flex:0 0 auto;width:2.1rem;height:2.1rem;border-radius:50%;background:var(--amber);
+  color:#0a0a0a;font-family:var(--font-m);font-weight:700;font-size:1rem;
+  display:flex;align-items:center;justify-content:center}
+.tr-h{font-family:var(--font-h);font-weight:800;font-size:1.18rem;color:var(--text);
+  letter-spacing:-.01em;line-height:1.25}
+.tr-d{font-size:.88rem;color:var(--soft);line-height:1.6;margin-top:.3rem}
+/* el resumen de entrada, en dos columnas */
+.entrada .ent-g{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem}
+@media(max-width:720px){.entrada .ent-g{grid-template-columns:1fr}}
+.ent-t{font-family:var(--font-m);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--amber)}
+.ent-o{font-size:.79rem;color:var(--muted-txt);margin-top:.2rem}
+.ent-l{margin:.6rem 0 0;padding-left:1.2rem;font-size:.86rem;color:var(--soft);line-height:1.7}
+.ent-l li{margin:.3rem 0}
+.ent-l li::marker{color:var(--amber);font-family:var(--font-m);font-size:.78rem}
+.ent-x{font-size:.84rem;color:var(--soft);margin-top:.8rem;padding-top:.7rem;
+  border-top:1px solid var(--line)}
+.cierre{border-color:var(--amber-line)}
 /* la barra de «dónde cae tu empresa» respecto al listón del método */
 .bref{position:relative;height:.85rem;border-radius:5px;border:1px solid var(--line)}
 .bref-m{position:absolute;top:-3px;width:3px;height:calc(100% + 6px);background:var(--amber-strong);
@@ -893,8 +915,6 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
   <span class="sep"></span>
   <a class="t" href="index.html">Guía</a>
   <a class="t on" href="valorador.html">Valorador</a>
-  <a class="t" href="metodo-facil.html" style="font-size:.72rem;opacity:.75">El método</a>
-  <a class="t" href="metodo.html" style="font-size:.72rem;opacity:.6">Nota técnica</a>
   <a class="t" href="legal.html" style="font-size:.72rem;opacity:.75">Legal</a>
   <button type="button" class="t" id="tourNav" style="cursor:pointer;background:transparent;color:var(--amber-strong);font-family:var(--font-m);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--amber-line);padding:.42rem .8rem;border-radius:6px">&#9654; C&oacute;mo funciona &middot; 3 min</button>
   <button type="button" class="t" id="demoNav" style="cursor:pointer;background:var(--amber);color:#0a0a0a;font-family:var(--font-h);font-weight:800;font-size:.72rem;letter-spacing:.02em;text-transform:none;border:none;padding:.45rem .9rem;border-radius:6px">&#9654; Ejemplo META</button>
@@ -5045,6 +5065,17 @@ function pasoValoracion(R){
 
      ${bandaReferencia(R)}
 
+     ${tramo(1,"Antes de calcular nada, mira lo que dicen otros",
+       `Ya sabes lo que ha pagado el mercado por esta empresa históricamente. Antes de montar tu
+        propia valoración, <b>mira la de InvestingPro</b>: te da una referencia y evita que tu
+        número salga de la nada. Luego harás el tuyo y los compararás.`)}
+     ${cuadroFairValue(R)}
+
+     ${tramo(2,"Ahora mete tus supuestos",
+       `Aquí es donde tú decides. Puedes traer el consenso de analistas de la pestaña
+        <b>Forecasts</b> —lo normal— o poner los números a mano.`)}
+     ${resumenEntrada(R)}
+
      <h3>Tus dos decisiones</h3>
      ${VAL.modo !== "partidas" ? `<div class="warn">
        <b>Ojo: esto es el modo simplificado.</b> El crecimiento del FCF de aquí abajo está
@@ -5115,7 +5146,10 @@ function pasoValoracion(R){
         <td class="n"><b>${mo(P.prom)}</b></td><td class="n"><b>${P.prom!==null?pc(Math.pow(P.prom/R.precio,1/5)-1):"—"}</b></td></tr>
       </tbody></table></div>
 
-     <details style="margin-top:1.1rem"><summary>Ver la cuenta paso a paso</summary><div class="dbody">
+     ${tramo(3,"El resultado, y de dónde sale cada pieza",
+       `Esto es lo que ha salido de tus supuestos. Cada línea de la cuenta de abajo es
+        comprobable: si algo no te cuadra, ahí está su origen.`)}
+     <details style="margin-top:1.1rem" open><summary>Ver la cuenta paso a paso</summary><div class="dbody">
        <table class="rs"><tbody>
         <tr><td class="l">Dinero real del último año</td><td class="n">${nf(d.fcf[L],0)} M</td></tr>
         ${v.pasosF.map((g,i)=>`<tr><td class="l">año ${i+1} · × ${nf(1+g/100,3)} <span style="color:var(--muted-txt)">(${nf(g,1)}%)</span></td>
@@ -5130,7 +5164,9 @@ function pasoValoracion(R){
         <tr><td class="l">× 0,85 = <b>zona de análisis</b></td><td class="n"><b>${mo(v.zona)}</b></td></tr>
        </tbody></table>
      </div></details>
-     ${cuadroFairValue(R)}
+     ${tramo(4,"Los tres números, juntos, y con cuál quedarse",
+       `Ya tienes tu valoración y la de fuera. Este es el momento de decidir qué te crees.`)}
+     ${cierrePrecio(R)}
      <div class="note">Un estado operativo <b>abre un análisis</b>. Nunca autoriza una compra por sí mismo.</div>`,
      "p6","Precio");
 }
@@ -5141,6 +5177,133 @@ function pasoValoracion(R){
    una docena de modelos y descuentan a un año, nosotros proyectamos cinco y
    exigimos un 15% anual— así que no tienen por qué coincidir, y decirlo forma
    parte del ejercicio. El dato lo escribe el alumno mirándolo: no se inventa. */
+/* Los cuatro tramos del paso del precio. Antes era una sucesión larga de
+   bloques sin jerarquía y no se sabía qué venía después de qué; ahora cada
+   tramo se anuncia, se numera y dice para qué es. */
+function tramo(n, titulo, texto){
+  return `<div class="tramo">
+    <div class="tr-n">${n}</div>
+    <div><div class="tr-h">${titulo}</div><div class="tr-d">${texto}</div></div>
+  </div>`;
+}
+
+/* ══════════════════ QUÉ HAS METIDO Y QUÉ SE VA A CALCULAR ══════════════════
+   Antes se pulsaba «calcular» sin saber con qué. Este cuadro dice, en dos
+   columnas, de dónde sale cada supuesto y qué se va a hacer con él — para que
+   nadie tenga que fiarse de una caja negra. */
+function resumenEntrada(R){
+  const v = R.v, part = VAL.modo === "partidas";
+  const orig = VAL.origen === "forecast" ? "el <b>consenso de analistas</b> de InvestingPro"
+             : VAL.origen === "analistas" ? "las <b>estimaciones</b> que has traído"
+             : "el <b>histórico</b> de la propia empresa";
+  const filas = part && v.pg ? [
+    ["Crecimiento de ventas", v.pg.map(x=>nf(x,1)+"%").join(" → ")],
+    ["Margen EBIT",           v.pm.map(x=>nf(x,1)+"%").join(" → ")],
+    ["Tipo impositivo",       v.pt.map(x=>nf(x,1)+"%").join(" → ")],
+    ["CapEx / ventas",        v.pcxA ? v.pcxA.map(x=>nf(x,1)+"%").join(" → ")
+                                     : nf(v.capexRatio*100,1)+"% (del último año real)"],
+    ["Se reparte",            v.prepA ? v.prepA.map(x=>nf(x,0)+"%").join(" → ") : "—"],
+  ] : [
+    ["Crecimiento del flujo", `${nf(v.gF,1)}% el año 1 → ${nf(v.gF5,1)}% el año 5`],
+  ];
+
+  return `<div class="panel entrada">
+    <div class="ent-g">
+      <div>
+        <div class="ent-t">Lo que has metido</div>
+        <div class="ent-o">Origen: ${orig}</div>
+        <table class="rs" style="margin-top:.5rem">
+          <tbody>${filas.map(([l,x])=>`<tr><td class="l">${esc(l)}</td>
+            <td class="n" style="font-size:.78rem">${x}</td></tr>`).join("")}
+          <tr><td class="l">Múltiplo objetivo</td>
+              <td class="n"><b style="color:var(--amber-strong)">${mu(v.multObj)}</b> EV/FCF</td></tr>
+          <tr><td class="l">Rentabilidad que exiges</td>
+              <td class="n"><b>${nf(v.obj*100,0)}%</b> anual</td></tr>
+          </tbody></table>
+      </div>
+      <div>
+        <div class="ent-t">Lo que se va a calcular</div>
+        <div class="ent-o">En este orden, y todo es aritmética</div>
+        <ol class="ent-l">
+          <li>El <b>flujo de caja de cada uno de los cinco años</b>, partida por partida</li>
+          <li>Ese flujo del año 5 <b>× el múltiplo objetivo</b> = valor de la empresa entonces</li>
+          <li><b>− la deuda neta</b> proyectada, <b>÷ las acciones</b> que habrá</li>
+          <li>Y ese precio futuro <b>÷ 1,${nf(v.obj*100,0)}⁵</b> para traerlo a hoy</li>
+        </ol>
+        <div class="ent-x">El resultado es el <b>IDC</b>: lo máximo que puedes pagar hoy para que
+          te salga el ${nf(v.obj*100,0)}% anual. <b>No es lo que la empresa vale.</b></div>
+      </div>
+    </div>
+    ${!part ? `<div class="note" style="margin-top:.8rem">Estás en el <b>modo simplificado</b>:
+      una sola tasa de crecimiento extrapolada del pasado. Para hacerlo como la plantilla, pega
+      la pestaña <b>Forecasts</b> o pulsa <b>«Proyectar por partidas»</b> más abajo.</div>` : ""}
+  </div>`;
+}
+
+/* ══════════════════ EL CIERRE ══════════════════
+   Tres números y una recomendación de con cuál quedarse. Sin esto el alumno
+   sale del informe con tres cifras distintas y sin saber qué hacer con ellas,
+   que es la peor forma de terminar un análisis. */
+function cierrePrecio(R){
+  const v = R.v;
+  const nn = k => (VAL[k]!==null && VAL[k]!==undefined && isFinite(VAL[k])) ? +VAL[k] : null;
+  const fvEb = nn("fvEb"), fvDcf = nn("fvDcf"), fv = nn("fv"), idcX = nn("idcX");
+  const externos = [fvEb, fvDcf].filter(x => x!==null);
+  const ref = externos.length ? externos.reduce((a,b)=>a+b,0)/externos.length : fv;
+
+  const filas = [
+    ["Tu IDC · este informe", v.idc, "amber", "Exige un "+nf(v.obj*100,0)+"% anual. Es un precio de entrada"],
+    ["Zona de análisis", v.zona, "", "El IDC con un 15% de colchón"],
+    externos.length ? ["Modelos comparables de InvestingPro", ref, "blue",
+      externos.length===2 ? "Media de EV/EBITDA y 5Y DCF" : "El que has puesto"] : null,
+    idcX!==null ? ["Tu Excel", idcX, "", "El mismo método, a mano"] : null,
+    ["Lo que pide hoy el mercado", R.precio, "", "El único que no es una opinión"],
+  ].filter(Boolean);
+
+  if(!externos.length && idcX===null){
+    return `<div class="note">Escribe arriba el <b>Fair Value</b> de InvestingPro y aquí
+      aparecerá la comparación de los tres números y con cuál quedarte.</div>`;
+  }
+
+  const rel = ref ? v.idc/ref - 1 : null;
+  const cerca = rel !== null && Math.abs(rel) <= 0.20;
+  const bajo  = Math.min(...filas.filter(f=>f[0]!=="Lo que pide hoy el mercado").map(f=>f[1]));
+
+  return `<div class="panel cierre">
+    <div class="tw"><table class="rs">
+      <thead><tr><th>De dónde sale</th><th style="text-align:right">Precio</th><th>Qué mide</th></tr></thead>
+      <tbody>${filas.map(([l,x,c,d])=>`<tr>
+        <td class="l">${esc(l)}</td>
+        <td class="n"><b style="${c==="amber"?"color:var(--amber-strong)":c==="blue"?"color:var(--d2)":""}">${mo(x)}</b></td>
+        <td class="l" style="font-size:.8rem;color:var(--soft)">${d}</td></tr>`).join("")}
+      </tbody></table></div>
+
+    <div class="db" style="margin-top:1.1rem"><span class="t">Y con cuál me quedo</span>
+      ${cerca
+        ? `Tu número y el de fuera <b style="color:var(--green)">se parecen</b> —${
+            rel>=0?"+":"−"}${pc(Math.abs(rel))}—, y eso es lo mejor que puede pasar: dos caminos
+           muy distintos llegan casi al mismo sitio. No demuestra que el número sea correcto, pero
+           sí que <b>no has metido la pata en los datos</b>.`
+        : rel !== null && rel < 0
+        ? `Tu número es <b>${pc(Math.abs(rel))} más bajo</b>, y eso es lo normal: tú exiges un
+           ${nf(v.obj*100,0)}% anual y ellos no exigen nada. Si la diferencia pasara del 40%,
+           revisa el crecimiento y el múltiplo.`
+        : `Tu número es <b style="color:var(--amber-strong)">${pc(Math.abs(rel||0))} más alto</b>, y
+           eso sí merece una parada. Exigiendo un ${nf(v.obj*100,0)}% deberías salir <em>por
+           debajo</em> de una tasación normal. Revisa los dos supuestos que decides tú.`}
+      <br><br>
+      <b>La regla:</b> quédate con <b>el más bajo de los tres</b> —hoy, ${mo(bajo)}— y trabaja
+      desde ahí. No porque sea el correcto, sino porque <b>ninguna valoración es un número: es un
+      rango</b>, y el borde bajo del rango es el único que te protege si te equivocas. Los otros
+      dos te dicen cuánto margen tienes antes de estar solo en tu opinión.
+      <br><br>
+      <span style="color:var(--muted-txt)">Y una última cosa: llegar a ese precio no significa
+      comprar. Significa que el precio ha dejado de ser el obstáculo y que ahora empieza el
+      trabajo de verdad.</span>
+    </div>
+  </div>`;
+}
+
 function cuadroFairValue(R){
   const v = R.v;
   const nn = k => (VAL[k]!==null && VAL[k]!==undefined && isFinite(VAL[k])) ? +VAL[k] : null;
@@ -7261,7 +7424,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.29d90ed";
+const APP_VERSION = "2026-08-08.8704878";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
