@@ -1804,6 +1804,8 @@ const VAL = {g:null, g5:null, gb:null, gb5:null, mult:null, mPer:null, mEbitda:n
   modo:null, pg:null, pm:null, pt:null, pint:null, prep:null, ptc:null,
   /* la asignación de capital va año a año, como en la plantilla */
   prepA:null, pcxA:null,
+  /* acciones diluidas año a año y circulante/ventas: celdas naranjas de la plantilla */
+  accA:null, pwcv:null,
   /* el contraste externo: Fair Value de InvestingPro y el IDC del Excel */
   fv:null, fvEb:null, fvDcf:null, idcX:null,
   /* la puerta: el precio no se enseña hasta que escribes tu juicio */
@@ -3998,7 +4000,8 @@ function calcular(){
   R.v.ebitda5 = ebitda[L]*kB;
   R.v.ebit5   = ebit[L]!==null ? ebit[L]*kB : null;
   R.v.neto5   = der.neto[L]!==null ? der.neto[L]*kB : null;
-  R.v.acc5    = accHoy*Math.pow(1+dil,5);
+  R.v.acc5    = (VAL.modo==="partidas" && R.v.accPlantilla) ? R.v.accPlantilla
+              : accHoy*Math.pow(1+dil,5);
 
   /* ══════ PROYECCIÓN POR PARTIDAS — el modo de la plantilla ══════
      El modo rápido de arriba hace crecer el flujo de caja entero a una tasa.
@@ -4025,6 +4028,28 @@ function calcular(){
        de las celdas naranjas de la plantilla y hasta ahora la rellenábamos
        con el pasado sin decirlo. */
     const pcxA = Array.isArray(VAL.pcxA) && VAL.pcxA.length === 5 ? VAL.pcxA : null;
+
+    /* ── Las dos celdas naranjas que faltaban, según la plantilla real ──────
+       ACCIONES año a año (1.IS fila 25): la plantilla las pone a mano por
+       ejercicio —en META, planas en 2.574—. Por defecto se aplica la dilución
+       histórica, que era el comportamiento anterior; el vector queda editable.
+       CIRCULANTE (2.FCF filas 11-12 y 23): la proyección lo ignoraba del todo.
+       La plantilla proyecta WC = ventas × ratio y resta la VARIACIÓN. En META
+       el ratio proyectado es 0 —tecnológica potente—; aquí el defecto es la
+       mediana histórica, que es lo prudente para no liar, y hay botón a cero. */
+    const dilP = VAL.dil!==null ? VAL.dil/100 : (R.c.dil.v!==null ? R.c.dil.v : 0);
+    const accA = cinco(VAL.accA,null).map((x,i) =>
+      x!==null ? x : Math.round(acciones[L]*Math.pow(1+dilP,i+1)*10)/10);
+
+    const wcvHist = mediana(der.wcV);
+    const wcv = VAL.pwcv!==null && VAL.pwcv!==undefined ? VAL.pwcv/100
+              : (wcvHist!==null && isFinite(wcvHist) ? Math.max(0,wcvHist) : 0);
+    /* El nivel de partida se calcula CON EL MISMO RATIO aplicado al año base,
+       no con el circulante contable real. Si no, el primer año proyectado paga
+       la transición entera: en Microsoft —circulante negativo de −24.146— y
+       ratio 0, el año 1 se comía 24.146 millones artificiales. La plantilla
+       hace lo mismo: su variación proyectada del año 1 es 0, no el salto. */
+    let wcPrev = ventas[L]*wcv;
     const daRatio    = at(da,L)!==null ? at(da,L) : 0;
 
     const pg = cinco(VAL.pg, R.cagrV!==null ? Math.round(R.cagrV*1000)/10 : 5);
@@ -4104,14 +4129,18 @@ function calcular(){
                    : dosLados ? (cajaT*tipoCaja - deuda0*tipoGas)
                    : (-dnT * tipoCaja);
       const imp   = (ebt + intAno) * (pt[i]/100);
-      const fcf   = ebtda - cxm + intAno - imp;
+      /* la variación de circulante, como en la plantilla (2.FCF fila 12) */
+      const wcT   = vt * wcv;
+      const dWC   = wcT - wcPrev; wcPrev = wcT;
+      const fcf   = ebtda - cxm + intAno - imp - dWC;
       /* cada año tiene su propio porcentaje de reparto, como en la plantilla */
       const rep   = prepA[i]/100;
       const queda = fcf * (1 - rep);          /* lo que no se reparte ni se reinvierte */
       cajaT = cajaT + queda;
       dnT   = dnT - queda;                    /* baja la deuda neta en lo mismo */
       filas.push({anio: A[L]+i+1, ventas:vt, ebit:ebt, da:Math.abs(dat), ebitda:ebtda,
-                  capexMant:cxm, interes:intAno, impuesto:imp, fcf, reparto:rep, dn:dnT});
+                  capexMant:cxm, interes:intAno, impuesto:imp, dwc:dWC, fcf, reparto:rep,
+                  neto: ebt + intAno - imp, acc: accA[i], dn:dnT});
     }
     const u = filas[4];
     R.v.repartoHist = repartoHist; R.v.prepA = prepA;
@@ -4122,6 +4151,9 @@ function calcular(){
     R.v.partidas = filas;
     R.v.pg = pg; R.v.pm = pm; R.v.pt = pt; R.v.pint = pint;
     R.v.capexRatio = capexRatio; R.v.pcxA = pcxA;
+    R.v.accA = accA; R.v.wcv = wcv; R.v.wcvHist = wcvHist;
+    /* las acciones del año 5 salen del vector, como en la plantilla */
+    R.v.accPlantilla = accA[4];
     R.v.fcf5 = u.fcf; R.v.ebitda5 = u.ebitda; R.v.ebit5 = u.ebit;
     R.v.neto5 = u.ebit + pint - u.impuesto;
     R.v.cagrEquivF = der.fcf[L] > 0 ? Math.pow(u.fcf/der.fcf[L], 1/5) - 1 : null;
@@ -4929,6 +4961,7 @@ function tablaPartidas(R){
         <tr><td class="l">Margen EBIT (%)</td>${col("pm", v.pm, 1)}</tr>
         <tr><td class="l">Tipo impositivo (%)</td>${col("pt", v.pt, 1)}</tr>
         <tr><td class="l">Se reparte y reinvierte (% del FCF)</td>${col("prepA", v.prepA, 0)}</tr>
+        <tr><td class="l">Acciones diluidas (M)</td>${col("accA", v.accA, 0)}</tr>
        </tbody></table></div>
      <div class="note" style="margin-top:.6rem">La última fila es la
        <b>asignación de capital</b>: qué parte del flujo se va en dividendos, recompras, compras de
@@ -4943,6 +4976,13 @@ function tablaPartidas(R){
        <div><label>Lo que le renta la caja (% al año)</label>
          <input class="vin" data-v="ptc" type="number" step="any"
            value="${nf(v.tipoCaja*100,2).replace(",",".")}"></div>
+       <div><label>Circulante / ventas (%)
+           <span style="color:var(--muted-txt);font-weight:400">· mediana histórica ${v.wcvHist!==null?nf(v.wcvHist*100,1)+"%":"—"}</span></label>
+         <div style="display:flex;gap:.4rem;align-items:center">
+           <input class="vin" data-v="pwcv" type="number" step="any"
+             value="${nf(v.wcv*100,1).replace(",",".")}">
+           <button type="button" id="wcCero" class="fx" title="En tecnológicas potentes el circulante proyectado suele ser cero — es lo que hace la plantilla en META">a 0</button>
+         </div></div>
        <div><label>CapEx mant. / ventas</label>
          <input class="vin" data-v="pcx" type="number" step="any" readonly
            value="${nf(v.capexRatio*100,2).replace(",",".")}" style="opacity:.6"></div>
@@ -4971,6 +5011,8 @@ function tablaPartidas(R){
           ${f.map(x=>`<td class="n">${nf(x.ebitda,0)}</td>`).join("")}</tr>
         <tr><td class="l">− CapEx de mantenimiento</td><td class="n">${nf(R.der.capexMant[R.L],0)}</td>
           ${f.map(x=>`<td class="n">${nf(x.capexMant,0)}</td>`).join("")}</tr>
+        <tr><td class="l">− Δ circulante</td><td class="n">—</td>
+          ${f.map(x=>`<td class="n">${x.dwc!==undefined?nf(x.dwc,0):"—"}</td>`).join("")}</tr>
         <tr><td class="l">− Impuestos</td><td class="n">${nf(Math.abs(R.der.fcf[R.L]?0:0),0)||"—"}</td>
           ${f.map(x=>`<td class="n">${nf(x.impuesto,0)}</td>`).join("")}</tr>
         <tr style="border-top:1px solid var(--line-strong)">
@@ -4978,6 +5020,23 @@ function tablaPartidas(R){
           <td class="n"><b>${nf(R.der.fcf[R.L],0)}</b></td>
           ${f.map(x=>`<td class="n"><b style="color:var(--amber-strong)">${nf(x.fcf,0)}</b></td>`).join("")}</tr>
        </tbody></table></div>
+     ${R.precio && f[0].neto!==undefined ? `
+     <h3>Los múltiplos, a tu precio de hoy</h3>
+     <p class="step-w">Es la fila que más gusta de la plantilla: si pagases <b>${mo(R.precio)}</b>
+       hoy, esto es lo que estarías pagando por cada año proyectado. Si el número del año 5 te
+       parece barato para esta empresa, la tesis aguanta; si sigue caro, no.</p>
+     <div class="tw"><table class="rs"><thead><tr><th>Al precio de hoy</th>
+       ${f.map(x=>`<th style="text-align:right">${x.anio}e</th>`).join("")}</tr></thead><tbody>
+       <tr><td class="l">EV / FCF</td>
+         ${f.map(x=>{const ev=R.acciones[R.L]*R.precio+x.dn; const m2=x.fcf>0?ev/x.fcf:null;
+           return `<td class="n">${m2!==null?nf(m2,1)+"x":"—"}</td>`;}).join("")}</tr>
+       <tr><td class="l">PER</td>
+         ${f.map(x=>{const m2=x.neto>0?(R.acciones[R.L]*R.precio)/x.neto:null;
+           return `<td class="n">${m2!==null?nf(m2,1)+"x":"—"}</td>`;}).join("")}</tr>
+       <tr><td class="l">EV / EBITDA</td>
+         ${f.map(x=>{const ev=R.acciones[R.L]*R.precio+x.dn; const m2=x.ebitda>0?ev/x.ebitda:null;
+           return `<td class="n">${m2!==null?nf(m2,1)+"x":"—"}</td>`;}).join("")}</tr>
+     </tbody></table></div>` : ""}
      <div class="note" style="margin-top:.8rem">El flujo de caja del año 5 —<b>${nf(v.fcf5,0)} M</b>—
        es el que se multiplica por el múltiplo objetivo. Equivale a crecer un
        <b>${pc(v.cagrEquivF)}</b> anual desde hoy, pero no se ha supuesto esa tasa: <b>ha salido</b>
@@ -5916,6 +5975,7 @@ function enlazarValoracion(){
   /* la puerta: guarda el juicio y descubre el precio */
   if($("juicioTxt")) $("juicioTxt").oninput = () => { VAL.juicio = $("juicioTxt").value; guardarTrabajo(); };
   if($("miPrecio")) $("miPrecio").onchange = () => { VAL.miPrecio = parseNum($("miPrecio").value); guardarTrabajo(); };
+  if($("wcCero")) $("wcCero").onclick = () => { VAL.pwcv = 0; informe(calcular()); guardarTrabajo(); };
   if($("abrirPuerta")) $("abrirPuerta").onclick = () => {
     VAL.juicio = ($("juicioTxt").value||"").trim();
     if($("miPrecio")) VAL.miPrecio = parseNum($("miPrecio").value);
@@ -7424,7 +7484,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.8704878";
+const APP_VERSION = "2026-08-08.afdda82";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
