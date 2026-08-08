@@ -2188,12 +2188,12 @@ function pintarTabs(){
 
 /* ── enlaces directos a la fuente, por pestaña ── */
 const FUENTE = {
-  IS:{sa:"financials/",                    ya:"financials",    inv:"income-statement", lab:"cuenta de resultados"},
-  BS:{sa:"financials/balance-sheet/",      ya:"balance-sheet", inv:"balance-sheet",    lab:"balance"},
-  CF:{sa:"financials/cash-flow-statement/",ya:"cash-flow",     inv:"cash-flow",        lab:"flujo de caja"},
+  IS:{sa:"financials/",                    ya:"financials",    inv:"income-statement", pro:"income_statement", lab:"cuenta de resultados"},
+  BS:{sa:"financials/balance-sheet/",      ya:"balance-sheet", inv:"balance-sheet",    pro:"balance_sheet",    lab:"balance"},
+  CF:{sa:"financials/cash-flow-statement/",ya:"cash-flow",     inv:"cash-flow",        pro:"cash_flow",        lab:"flujo de caja"},
   /* la reconciliación del EBITDA no tiene página propia: es un desplegable
      dentro de la misma pantalla de cuentas, así que el enlace va a la de resultados */
-  ER:{sa:"financials/",                    ya:"financials",    inv:"income-statement", lab:"EBITDA Reconciliation"},
+  ER:{sa:"financials/",                    ya:"financials",    inv:"income-statement", pro:"ebitda",           lab:"EBITDA Reconciliation"},
   MK:{sa:"history/",                       ya:"history",       inv:"historical-data",  lab:"cotización histórica"}
 };
 
@@ -2235,8 +2235,9 @@ function pintarEnlaces(){
   const slug = slugDe(T);
   const sa = T ? `https://stockanalysis.com/stocks/${encodeURIComponent(T)}/${f.sa}` : null;
   /* si conocemos el nombre interno, el enlace abre la tabla exacta; si no, la búsqueda */
-  const inv = slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
-            : (T ? `https://www.investing.com/search/?q=${encodeURIComponent(T)}` : null);
+  const inv = (f.pro ? urlPro(f.pro) : null)
+            || (slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
+            : (T ? `https://www.investing.com/search/?q=${encodeURIComponent(T)}` : null));
   const ya = T ? `https://finance.yahoo.com/quote/${encodeURIComponent(T)}/${f.ya}` : null;
   $("srcbar").innerHTML =
     (T ? `<a class="pri" href="${inv}" target="_blank" rel="noopener">↗ Abrir ${esc(f.lab)} de ${esc(T)} en InvestingPro</a>
@@ -2258,8 +2259,9 @@ function pintarFuentes(){
   const tarjeta = (g) => {
     const f = FUENTE[g];
     const url = !hay ? "#"
-      : slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
-             : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
+      : ((f.pro ? urlPro(f.pro) : null)
+         || (slug ? `https://www.investing.com/equities/${slug}-${f.inv}`
+                  : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`));
     const n = CONCEPTOS.filter(c=>c.g===g).length;
     return `<a class="fcard${g===TAB?" aqui":""}${hay?"":" off"}" href="${url}"
         target="_blank" rel="noopener" data-g="${g}">
@@ -2989,11 +2991,50 @@ function fijarBolsaPro(nombreYahoo){
   const k = String(nombreYahoo||"").trim().toLowerCase();
   BOLSA_PRO = PRO_BOLSA[k] || null;
 }
+/* ── En qué bolsa cotiza cada una, sin preguntárselo a nadie ───────────────
+   El enlace del InvestingPro nuevo necesita el prefijo de la bolsa
+   (investing.com/pro/NYSE:MA) y hasta ahora solo lo sabíamos si el usuario
+   había pulsado «Buscar», porque salía de Yahoo. Quien pegaba los datos
+   directamente se quedaba sin enlace. Las 503 del S&P 500 están aquí escritas:
+   las del Nasdaq, una a una, y el resto es NYSE. Comprobado contra Yahoo el
+   8-ago-2026, empresa por empresa. */
+const PRO_NASDAQ = new Set((
+  "AAPL ABNB ACGL ADBE ADI ADP ADSK AEP AKAM ALGN AMAT AMD AMGN AMZN APA APP AVGO AXON BIIB BKNG " +
+  "BKR CASY CDNS CDW CEG CHRW CHTR CINF CMCSA CME COIN COO COST CPRT CRWD CSCO CSGP CSX CTAS CTSH " +
+  "DASH DDOG DLTR DPZ DXCM EBAY ECHO EQIX ERIE EVRG EXC EXE EXPE FANG FAST FFIV FISV FLEX FOX " +
+  "FOXA FSLR FTNT GEHC GEN GILD GOOG GOOGL HAS HBAN HON HONA HOOD HSIC HST IBKR IDXX INCY INTC " +
+  "INTU ISRG JBHT JKHY KDP KHC KLAC KMB LIN LITE LNT LRCX LULU MAR MCHP MDLZ META MNST MPWR MRNA " +
+  "MRVL MSFT MU NDAQ NDSN NFLX NTAP NTRS NVDA NWS NWSA NXPI ODFL ON ORLY PANW PAYX PCAR PEP PFG " +
+  "PLTR PODD PSKY PTC PYPL QCOM REG REGN ROP ROST SBAC SBUX SMCI SNDK SNPS STLD STX SWKS TECH TER " +
+  "TMUS TRMB TROW TSCO TSLA TTWO TXN UAL ULTA VRSK VRSN VRTX VTRS WBD WDAY WDC WMT WTW WYNN XEL " +
+  "ZBRA").split(" "));
+const PRO_NASDAQ_GM = new Set(["TTD"]);
+const PRO_FUERA = new Set(["CBOE"]);   /* cotiza en su propio mercado */
+function bolsaDe(T){
+  if(typeof BOLSA_PRO !== "undefined" && BOLSA_PRO) return BOLSA_PRO;   /* si Yahoo ya habló, manda */
+  if(!T) return null;
+  if(PRO_FUERA.has(T)) return null;                 /* ni NYSE ni Nasdaq: mejor el buscador */
+  if(PRO_NASDAQ.has(T)) return "NASDAQGS";
+  if(PRO_NASDAQ_GM.has(T)) return "NASDAQGM";
+  /* del índice y no es del Nasdaq → NYSE. Fuera del índice, mejor no inventar */
+  const e = (typeof IDX_POR_TICKER !== "undefined") ? IDX_POR_TICKER[T] : null;
+  return (e && !/\./.test(T)) ? "NYSE" : null;
+}
+
 /* tabla: income_statement · balance_sheet · cash_flow · ebitda · forecasts */
 function urlPro(tabla){
   const T = ($("ticker").value||"").trim().toUpperCase();
+  const B = bolsaDe(T);
+  if(!T || !B) return null;
+  return `https://www.investing.com/pro/${B}:${T}/financials/${tabla}`;
+}
+/* la ficha de InvestingPro, sin tabla: es donde vive el cuadro de Fair Value */
+function urlProFicha(){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const B = bolsaDe(T);
   if(!T) return null;
-  return BOLSA_PRO ? `https://www.investing.com/pro/${BOLSA_PRO}:${T}/financials/${tabla}` : null;
+  return B ? `https://www.investing.com/pro/${B}:${T}`
+           : `https://www.investing.com/search/?q=${encodeURIComponent(T)}`;
 }
 
 function estadoPega(g){
@@ -5577,9 +5618,8 @@ function cuadroFairValue(R){
   /* El enlace SIEMPRE sale. Si Yahoo ya dijo en qué bolsa cotiza, va directo a
      su ficha; si no, al buscador de Investing, que también llega. Antes, sin
      haber pulsado «Buscar», aquí no aparecía nada y el paso se quedaba mudo. */
-  const directo = (typeof BOLSA_PRO!=="undefined" && BOLSA_PRO && T)
-    ? "https://www.investing.com/pro/" + BOLSA_PRO + ":" + T : null;
-  const url = directo || (T ? "https://www.investing.com/search/?q=" + encodeURIComponent(T) : null);
+  const url = (typeof urlProFicha === "function") ? urlProFicha() : null;
+  const directo = url && /\/pro\//.test(url);
 
   const campo = (k, etq, ph) => `<div><label>${etq}</label>
     <input class="vin" data-v="${k}" type="number" step="any" placeholder="${ph}"
@@ -5625,7 +5665,7 @@ function cuadroFairValue(R){
     ${esquema}
     ${url ? `<a class="ab-b" href="${url}" target="_blank" rel="noopener"><span class="ab-n">↗</span>
         ${directo ? `Abre el Fair Value de <b>${esc(T)}</b>` : `Busca <b>${esc(T)}</b> en Investing`}
-        ${directo ? "" : ` <span style="color:var(--muted-txt)">· pulsa «Buscar» en el paso 1 y el enlace irá directo</span>`}</a>`
+        ${directo ? "" : ` <span style="color:var(--muted-txt)">· no la tengo en el índice, así que va al buscador</span>`}</a>`
       : `<div class="note">Escribe el <b>ticker</b> en el paso 1 y aquí saldrá el enlace.</div>`}
 
     <div class="fvfila">
@@ -7668,7 +7708,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.9897612";
+const APP_VERSION = "2026-08-08.6c5c827";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
