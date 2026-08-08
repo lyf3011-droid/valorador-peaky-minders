@@ -1508,6 +1508,11 @@ const CONCEPTOS = [
  {k:"inventar", g:"BS", lab:"Inventarios",                src:"Inventory"},
  {k:"unearned", g:"BS", lab:"Ingresos diferidos",         src:"Unearned Revenue Current, Total"},
 
+ /* El FCF que publica Investing. NO se usa para calcular nada: se enseña al
+    lado del construido para que se vea la diferencia y se entienda por qué.
+    Es la lección central del método, y hasta ahora había que explicarla de
+    palabra en vez de verse en pantalla. */
+ {k:"fcfPub",   g:"CF", lab:"FCF publicado (solo comparar)", src:"Levered Free Cash Flow"},
  {k:"da",       g:"CF", lab:"Depreciación y amortización",src:"Depreciation & Amortization, Total", req:1,
    calc:{op:"−", a:"EBITDA", b:"Operating Income"}},
  {k:"capexMant",g:"CF", lab:"CapEx de mantenimiento",     src:"Depreciation (la sola, no la D&A)",
@@ -1549,6 +1554,8 @@ const SIN = {
  ebitda:["ebitda","ebitda, total"],
  ebit:["operating income","ebit","operating income (loss)","beneficio operativo",
        "ingreso operativo","resultado de explotación","margen neto"],
+ fcfPub:["levered free cash flow","free cash flow","unlevered free cash flow",
+         "flujo de caja libre","flujo de caja libre apalancado"],
  interes:["net interest expenses","net interest expense","net interest expense (income)",
           "gastos netos por intereses","gastos por intereses netos"],
  intIng:["interest and investment income","interest & investment income",
@@ -1875,9 +1882,18 @@ function conservador(a, dir=1, anios){
   if(dentro.length < 3) fuera.length = 0;
 
   const m1 = media(usar), m2 = mediana(usar);
-  const v = dir > 0 ? Math.min(m1, m2) : Math.max(m1, m2);
-  return {v, cual: v === m1 ? (m1 === m2 ? "ambas" : "media") : "mediana",
-          media: m1, mediana: m2, fuera};
+  /* ── MANDA LA MEDIANA ──────────────────────────────────────────────────
+     La plantilla original toma SIEMPRE la mediana a diez años, no la media.
+     Y tiene razón: la media la mueve un solo año raro, y en cuanto hay
+     ejercicios negativos —una empresa que perdió dinero, que es justo cuando
+     más falta hace mirar bien— deja de describir nada.
+     Se sigue enseñando la media al lado, porque compararlas informa: si se
+     separan mucho, esta empresa ha tenido años muy distintos entre sí. */
+  const v = m2;
+  return {v, cual: "mediana", media: m1, mediana: m2,
+          dispersa: (m1 !== null && m2 !== null && Math.abs(m2) > 1e-9)
+                    ? Math.abs(m1 / m2 - 1) > 0.35 : false,
+          fuera};
 }
 const cagr = (fin,ini,n) => (fin>0 && ini>0 && n>0) ? Math.pow(fin/ini,1/n)-1 : null;
 
@@ -4220,8 +4236,7 @@ function cardConservador(c, fmt, nombre, quien){
   /* Decir «media 170,7x» sin decir DE QUÉ no informa de nada: el informe maneja
      cuatro múltiplos a la vez y el lector no tiene por qué adivinar cuál es. */
   const de = quien ? `<b style="color:var(--amber-strong)">${esc(quien)}</b> · ` : "";
-  const cual = c.cual==="ambas" ? "las dos coinciden"
-    : c.cual==="media" ? "la <b>media</b> es la más baja" : "la <b>mediana</b> es la más baja";
+  const cual = "es la que usa el método: <b>la mediana</b> no la mueve un solo año raro";
   /* Si se ha apartado algún año hay que decirlo, y decir cuál. Descartar datos
      en silencio es justo lo que hace que una herramienta deje de ser fiable. */
   const apartados = (c.fuera && c.fuera.length)
@@ -4235,8 +4250,9 @@ function cardConservador(c, fmt, nombre, quien){
        cuenta algo, aunque no sirva para promediar.</span>`
     : "";
   return `<div class="note">${de}media ${fmt(c.media)} · mediana ${fmt(c.mediana)} → nos quedamos con
-    <b>${fmt(c.v)}</b> porque ${cual}. <span style="color:var(--muted)">Siempre el número más
-    exigente: si aun así ${esc(nombre)} pasa el filtro, es que pasa de verdad.</span>${apartados}</div>`;
+    <b>${fmt(c.v)}</b>: ${cual}.${c.dispersa ? ` <b style="color:var(--amber-strong)">Media y
+    mediana se separan bastante</b>, así que esta empresa ha tenido años muy distintos entre sí —
+    míralos uno a uno en la gráfica antes de fiarte del promedio.` : ""}${apartados}</div>`;
 }
 function paso(n,q,w,cuerpo,id,rail){
   const num = String(n).replace(/\D/g,"");
@@ -4544,7 +4560,39 @@ function informe(R){
          <td class="n"><b style="color:var(--amber-strong)">${nf(d.fcf[L],0)}</b></td></tr>
        </tbody></table></div>
        <div class="note" style="margin-top:.6rem">Este número <b>no está publicado en ninguna web</b>:
-       se construye. Es la diferencia entre este método y mirar un dato en una pantalla.</div>` : ""}
+       se construye. Es la diferencia entre este método y mirar un dato en una pantalla.</div>
+       ${(() => {
+         const pub = D.fcfPub && D.fcfPub[L] !== null ? D.fcfPub[L] : null;
+         if(pub === null) return `<div class="note" style="margin-top:.5rem;color:var(--muted-txt)">
+           ¿Quieres ver la diferencia con tus propios ojos? Rellena arriba
+           <b>«FCF publicado»</b> —la fila <code>Levered Free Cash Flow</code> del flujo de caja de
+           Investing— y aparecerá aquí al lado. No se usa para calcular nada.</div>`;
+         const dif = d.fcf[L] - pub, rel = pub ? d.fcf[L]/pub - 1 : null;
+         return `<div class="db" style="margin-top:.8rem">
+           <span class="t">Y esto es lo que publica Investing</span>
+           <div class="tw"><table class="rs"><tbody>
+             <tr><td class="l">Su «free cash flow»</td><td class="n">${nf(pub,0)} M</td></tr>
+             <tr><td class="l">El nuestro, construido</td>
+                 <td class="n"><b style="color:var(--amber-strong)">${nf(d.fcf[L],0)} M</b></td></tr>
+             <tr style="border-top:1px solid var(--line-strong)"><td class="l"><b>Diferencia</b></td>
+                 <td class="n"><b>${dif>=0?"+":"−"}${nf(Math.abs(dif),0)} M${
+                   rel!==null?` · ${rel>=0?"+":"−"}${pc(Math.abs(rel))}`:""}</b></td></tr>
+           </tbody></table></div>
+           <div style="margin-top:.6rem">${Math.abs(rel||0) < 0.05
+             ? `Aquí se parecen, y también informa: significa que esta empresa apenas invierte en
+                crecer — casi todo su CapEx es de mantenimiento.`
+             : dif > 0
+               ? `El nuestro es <b>mayor</b>, y es a propósito: ellos restan <b>todo</b> el CapEx y
+                  nosotros <b>solo el de mantenimiento</b>. La diferencia de
+                  ${nf(Math.abs(dif),0)} millones es lo que la empresa gasta en <b>crecer</b>, que
+                  es una apuesta voluntaria, no un coste de seguir abierto.`
+               : `El nuestro es <b>menor</b>. Suele pasar cuando su cifra no descuenta impuestos o
+                  intereses igual que nosotros. Mira la cascada de arriba: cada resta está a la vista.`}
+             <span style="color:var(--muted-txt)">Ninguna de las dos está mal: miden cosas
+             distintas. La suya contesta «¿cuánto sobró?»; la nuestra, «¿cuánto genera el negocio
+             que ya está construido?».</span></div>
+         </div>`;
+       })()}` : ""}
      <div class="charts">
       ${figura("Dinero real (FCF) frente a beneficio contable","Si las barras azules van muy por encima de las ámbar, el beneficio no llega al cajón.",
         {series:[{name:"Dinero real (FCF)",data:d.fcf},{name:"Beneficio contable",data:d.neto}],labels:A,
@@ -4632,6 +4680,7 @@ function informe(R){
   H += `<div id="trasPuerta"${VAL.puertaAbierta ? "" : ' class="cerrado"'}>`;
   H += pasoValoracion(R);
   H += resumen(R);
+  H += tablaCuentas(R);
   H += `</div>`;
   H += AVISO_FALTAN;      /* lo que falta, al final y en voz baja */
 
@@ -4673,11 +4722,26 @@ function informe(R){
     ? `<div class="solo-papel">
         <h3 style="margin-top:0">Tu análisis, antes de ver el precio</h3>
         ${VAL.juicio ? `<p style="font-style:italic">“${esc(VAL.juicio)}”</p>` : ""}
-        ${(VAL.miPrecio!==null && VAL.miPrecio!==undefined && isFinite(VAL.miPrecio))
-          ? `<p><b>Tu precio:</b> ${mo(+VAL.miPrecio)}${
-              (R.v && R.v.idc) ? ` · el del método ${mo(R.v.idc)} · diferencia
-              <b>${VAL.miPrecio/R.v.idc-1>=0?"+":"−"}${pc(Math.abs(VAL.miPrecio/R.v.idc-1))}</b>` : ""}</p>`
-          : ""}
+        ${(() => {
+          const nn = k => (VAL[k]!==null && VAL[k]!==undefined && isFinite(VAL[k])) ? +VAL[k] : null;
+          const filas = [
+            ["Tu precio, antes de mirar", nn("miPrecio"), "Lo que pagarías sin saber lo que cuesta"],
+            ["IDC · el del método", (R.v && R.v.idc) ? R.v.idc : null, "Proyecta 5 años y exige tu rentabilidad"],
+            ["Zona de análisis", (R.v && R.v.zona) ? R.v.zona : null, "El IDC menos un 15% de colchón"],
+            ["EV / EBITDA · InvestingPro", nn("fvEb"), "Modelo comparable de Investing"],
+            ["5Y DCF EBITDA Exit · InvestingPro", nn("fvDcf"), "El más parecido a este método"],
+            ["IDC de tu Excel", nn("idcX"), "Calculado a mano en la plantilla"],
+            ["Lo que pide hoy el mercado", R.precio || null, "El único que no es una opinión"],
+          ].filter(x => x[1] !== null);
+          if(filas.length < 2) return "";
+          return `<div class="tw" style="margin-top:.6rem"><table class="rs">
+            <thead><tr><th>De dónde sale</th><th style="text-align:right">Precio</th><th>Qué es</th></tr></thead>
+            <tbody>${filas.map(([l,v2,d2])=>`<tr>
+              <td class="l">${esc(l)}</td>
+              <td class="n"><b>${mo(v2)}</b></td>
+              <td class="l" style="font-size:.8rem">${esc(d2)}</td></tr>`).join("")}</tbody>
+          </table></div>`;
+        })()}
        </div>` : "";
 
   out.innerHTML = cab + tuyo + `<div id="coherencia"></div>` + raros + H +
@@ -4718,6 +4782,48 @@ function bandaVeredicto(R){
 
 /* La tabla de supuestos año a año, igual que las celdas naranjas de la
    plantilla: crecimiento de ventas, margen operativo y tipo impositivo. */
+/* ══════════════════ LAS CUENTAS, DENTRO DEL INFORME ══════════════════
+   El PDF era un análisis sin sus datos: para comprobar cualquier cifra había
+   que volver a la pantalla. Ahora el informe lleva al final las tres cuentas
+   tal como se han leído, así que el papel se sostiene solo — que es lo que se
+   le pide a un informe. */
+function tablaCuentas(R){
+  const A = R.A, L = R.L;
+  const bloque = (g, titulo) => {
+    const cs = CONCEPTOS.filter(c => c.g === g && !c.auto && D[c.k].some(v => v !== null));
+    if(!cs.length) return "";
+    return `<h3>${esc(titulo)}</h3>
+      <div class="tw"><table class="rs">
+        <thead><tr><th>Millones</th>${A.map(a=>`<th style="text-align:right">${a}</th>`).join("")}</tr></thead>
+        <tbody>${cs.map(c => `<tr>
+          <td class="l">${esc(c.lab)}
+            <span style="color:var(--muted-txt);font-family:var(--font-m);font-size:.7rem">${esc(c.src)}</span></td>
+          ${A.map((_,i)=>`<td class="n">${D[c.k][i]===null ? "—" : nf(D[c.k][i], Math.abs(D[c.k][i])<100 ? 1 : 0)}</td>`).join("")}
+        </tr>`).join("")}</tbody></table></div>`;
+  };
+  const der = [
+    ["Flujo de caja libre (construido)", R.der.fcf],
+    ["Beneficio neto normalizado", R.der.neto],
+    ["Deuda neta", R.der.deudaNeta],
+    ["Capital invertido", R.der.capInv],
+    ["ROIC", R.der.roic],
+  ].filter(([,a]) => a && a.some(v => v !== null));
+
+  return paso("Los datos","Las cuentas, tal como las he leído",
+    `Para que este informe se sostenga solo: aquí están las tres cuentas con los nombres literales
+     de la fila de InvestingPro de la que sale cada una, y debajo lo que el método construye a
+     partir de ellas. <b>Si un número de arriba te chirría, aquí está su origen.</b>`,
+    bloque("IS","Cuenta de resultados") + bloque("BS","Balance") + bloque("CF","Flujo de caja") +
+    (der.length ? `<h3>Lo que construye el método</h3>
+      <div class="tw"><table class="rs">
+        <thead><tr><th>Millones</th>${A.map(a=>`<th style="text-align:right">${a}</th>`).join("")}</tr></thead>
+        <tbody>${der.map(([lab,arr])=>`<tr><td class="l">${esc(lab)}</td>
+          ${A.map((_,i)=>`<td class="n">${arr[i]===null ? "—"
+            : (lab==="ROIC" ? pc(arr[i]) : nf(arr[i],0))}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table></div>` : ""),
+    "pdatos","Datos");
+}
+
 function tablaPartidas(R){
   const v = R.v, f = v.partidas;
   if(!f) return `<div class="warn" style="margin-top:1rem">Para proyectar por partidas hacen falta
@@ -7097,7 +7203,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.a3e4135";
+const APP_VERSION = "2026-08-08.585c72a";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
