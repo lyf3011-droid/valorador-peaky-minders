@@ -475,6 +475,13 @@ svg.esq,svg.ch,svg.dg{cursor:zoom-in}
 .db-m{background:rgba(255,255,255,.07);color:var(--soft)}
 .db-c{background:rgba(245,158,11,.24);color:var(--amber-strong);font-weight:700}
 .via2ok{border-color:rgba(74,222,128,.3)}
+/* las tres cifras que mandan de lo pegado en Forecasts */
+.fccif{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem;margin-top:.8rem}
+.fcc{border:1px solid var(--line);border-radius:10px;padding:.8rem .9rem;background:var(--surface)}
+.fcc-a{font-size:.78rem;color:var(--soft);line-height:1.4}
+.fcc-b{font-family:var(--font-m);font-size:1.5rem;font-weight:700;color:var(--amber-strong);
+  margin:.15rem 0 .2rem;letter-spacing:-.02em}
+.fcc-c{font-size:.74rem;color:var(--muted-txt);line-height:1.45}
 /* el mapa de precios no baja de 560 px: por debajo el texto deja de leerse y es
    preferible que la caja se deslice, como ya hacen las tablas anchas */
 .mapa-p{min-width:560px}
@@ -2597,6 +2604,82 @@ function leerForecast(txt){
   return out;
 }
 
+/* ══════════════ LO QUE HAS PEGADO, EN UN DIBUJO ══════════════
+   Una tabla de nueve columnas es exacta y no dice nada a quien empieza. Aquí
+   van las tres cosas que de verdad cambian el resultado —cuánto crece, cuánto
+   se queda, y cuánta gente hay detrás— y la tabla completa queda un clic más
+   abajo para quien la quiera. */
+function dibujoForecast(tabla){
+  const v = tabla.map(x => x.ventas).filter(x => x !== null && isFinite(x));
+  if(v.length < 2) return "";
+  const mx = Math.max.apply(null, v);
+  const X0 = 26, W = 588, COL = W/tabla.length, BASE = 124, ALTO = 74;
+  /* Cuanta menos gente ha mirado un año, más pálida su barra. No hace falta
+     leer nada para ver que el final de la proyección es más flojo. */
+  const tinte = n => (n === null || n === undefined) ? .8 : n >= 10 ? .85 : n >= 4 ? .5 : .25;
+
+  const barras = tabla.map((x, i) => {
+    const cx = X0 + COL*i + COL/2, h = (x.ventas && mx) ? Math.max(3, x.ventas/mx*ALTO) : 0;
+    const n = (x.n === null || x.n === undefined) ? null : x.n;
+    const flojo = n !== null && n <= 3;
+    return `<g>
+      ${x.ventas ? `<rect x="${(cx-COL*0.28).toFixed(1)}" y="${(BASE-h).toFixed(1)}"
+        width="${(COL*0.56).toFixed(1)}" height="${h.toFixed(1)}" rx="3"
+        fill="var(--d2)" fill-opacity="${tinte(n)}"/>` : ""}
+      ${x.crece!==null ? `<text x="${cx}" y="${(BASE-h-9).toFixed(1)}" text-anchor="middle"
+        font-family="var(--font-m)" font-size="12" font-weight="700"
+        fill="var(--amber-strong)">${nf(x.crece,1)}%</text>` : ""}
+      <text x="${cx}" y="${BASE+19}" text-anchor="middle" font-family="var(--font-m)"
+        font-size="11.5" fill="var(--soft)">${x.anio}</text>
+      ${x.ventas ? `<text x="${cx}" y="${BASE+33}" text-anchor="middle" font-family="var(--font-m)"
+        font-size="9.5" fill="var(--muted-txt)">${nf(x.ventas,0)}</text>` : ""}
+      ${n!==null ? `<rect x="${(cx-COL*0.20).toFixed(1)}" y="${BASE+88}"
+          width="${(COL*0.40).toFixed(1)}" height="5" rx="2.5" fill="var(--line-strong)"/>
+        <rect x="${(cx-COL*0.20).toFixed(1)}" y="${BASE+88}"
+          width="${(COL*0.40*Math.min(1, n/40)).toFixed(1)}" height="5" rx="2.5"
+          fill="${flojo?"var(--amber)":"var(--d2)"}"/>
+        <text x="${cx}" y="${BASE+81}" text-anchor="middle" font-family="var(--font-m)"
+          font-size="11" font-weight="${flojo?"700":"400"}"
+          fill="${flojo?"var(--amber-strong)":"var(--soft)"}">${nf(n,0)}</text>` : ""}
+    </g>`;
+  }).join("");
+
+  return `<svg viewBox="0 0 640 226" class="esq" role="img"
+    aria-label="Ventas que esperan los analistas año a año, su crecimiento y cuántos analistas hay detrás de cada año">
+    <text x="${X0}" y="18" font-family="var(--font-m)" font-size="9.5" letter-spacing="1.6"
+      fill="var(--muted-txt)">LO QUE ESPERAN QUE VENDA · Y CUÁNTO CRECE CADA AÑO</text>
+    <line x1="${X0}" y1="${BASE}" x2="${X0+W}" y2="${BASE}" stroke="var(--line-strong)"/>
+    <line x1="${X0}" y1="${BASE+44}" x2="${X0+W}" y2="${BASE+44}" stroke="var(--line)"/>
+    <text x="${X0}" y="${BASE+58}" font-family="var(--font-m)" font-size="9.5" letter-spacing="1.6"
+      fill="var(--muted-txt)">ANALISTAS QUE HAN MIRADO ESE AÑO</text>
+    ${barras}
+  </svg>`;
+}
+
+/* Los tres números que mandan, en grande y sin tecnicismos. */
+function cifrasForecast(tabla, bpa){
+  const v = tabla.map(x => x.ventas).filter(x => x !== null && isFinite(x));
+  const mg = tabla.filter(x => x.ventas && x.ebit).map(x => x.ebit/x.ventas*100);
+  const cre = tabla.map(x => x.crece).filter(x => x !== null && isFinite(x));
+  const cagr = cre.length ? (Math.pow(cre.reduce((a,g)=>a*(1+g/100),1), 1/cre.length) - 1)*100 : null;
+  const flojos = tabla.filter(x => x.n !== null && x.n !== undefined && x.n <= 3).length;
+  const T = [];
+  if(cagr !== null) T.push(["Crecerá un", nf(cagr,1)+"%", "cada año, de media, hasta "+tabla[tabla.length-1].anio]);
+  if(mg.length)     T.push(["De cada 100 € que venda se queda", nf(mediana(mg),1)+" €", "antes de impuestos e intereses"]);
+  if(bpa)           T.push(["Ganará por acción", mo(bpa.fin), "en "+bpa.anio+", frente a "+mo(bpa.ini)+" hoy"]);
+  if(!T.length) return "";
+  return `<div class="fccif">${T.map(([a,b,c])=>`<div class="fcc">
+      <div class="fcc-a">${a}</div><div class="fcc-b">${b}</div><div class="fcc-c">${c}</div>
+    </div>`).join("")}</div>
+    ${flojos ? `<div class="note" style="margin-top:.6rem;border-left:2px solid var(--amber)">
+      <b>Ojo a los ${flojos===1?"últimos años":"años del final"}.</b> ${flojos===1
+        ? "El último año lo ha mirado un analista o tres"
+        : "Los últimos "+flojos+" años los han mirado tres analistas o menos"} — mira las barras
+      claras del dibujo. Eso ya no es «lo que dice el mercado»: es lo que dice una persona.
+      Son los años que más pesan en el precio final, así que <b>cámbialos a mano si no te
+      convencen</b>.</div>` : ""}`;
+}
+
 function pedirForecast(){
   const A = anios(), ult = A[A.length-1];
   $("fcBox").classList.remove("hide");
@@ -2669,6 +2752,12 @@ function pedirForecast(){
       <div class="note" style="margin:0 0 .6rem">He leído <b>${leidas.join(", ")}</b>
         con <b>${cab.length} columnas</b>. Si la primera es <b>${a0}</b>, la última sería
         <b>${a0 + cab.length - 1}</b>.${auto}</div>
+      ${dibujoForecast(tabla)}
+      ${cifrasForecast(tabla, (()=>{ const e0 = filas.eps ? filas.eps[0] : null;
+        return (filas.eps && tabla.every(x=>x.eps!==null) && e0)
+          ? {ini:e0, fin:tabla[tabla.length-1].eps, anio:tabla[tabla.length-1].anio} : null; })())}
+      <details class="noimp" style="margin-top:.8rem"><summary>Ver la tabla completa · lo que he
+        leído fila por fila</summary><div class="dbody">
       <div class="tw"><table class="rs"><thead><tr><th>Año</th>
         ${hay("n")?`<th style="text-align:right">Analistas</th>`:""}
         ${col_("Ventas","ventas")}<th style="text-align:right">Crece</th>
@@ -2687,6 +2776,7 @@ function pedirForecast(){
           ${cel_(x,"eps",v=>nf(v,2))}${cel_(x,"per",v=>nf(v,1)+"x")}
           ${cel_(x,"dps",v=>nf(v,2))}</tr>`).join("")}
       </tbody></table></div>
+      </div></details>
       ${hay("n")?`<div class="note" style="margin-top:.5rem">La columna <b>Analistas</b> es la fila
         <i>Contributing Analysts Count</i> de InvestingPro: cuánta gente hay detrás de cada año.
         ${flojos?`<b style="color:var(--amber-strong)">${flojos===1
@@ -7917,7 +8007,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-09.22d608f";
+const APP_VERSION = "2026-08-09.972676e";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
