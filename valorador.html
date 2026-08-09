@@ -2554,6 +2554,20 @@ function leerForecast(txt){
     const med = filas.filter(f => f.et.startsWith("median forecast"));
     if(med.length === 1) out.ventas = med[0].val;
   }
+  /* Cuántos analistas hay detrás de cada año. Es el dato más honesto de toda la
+     tabla y estaba tirándose: InvestingPro proyecta diez años, pero a partir del
+     cuarto suele quedar UN analista. Saberlo cambia cuánto te fías. La fila va
+     justo encima de su métrica, así que se coge la última que aparece antes. */
+  const antesDe = (cab, cuenta) => {
+    const i = filas.findIndex(x => x.et.startsWith(cab));
+    if(i < 0) return null;
+    for(let k = i - 1; k >= 0; k--) if(filas[k].et.startsWith(cuenta)) return filas[k].val;
+    return null;
+  };
+  const nv = antesDe("revenue forecast", "contributing analysts count");
+  if(nv) out._n = nv;
+  const ne = filas.find(x => x.et.startsWith("ebit forecast count"));
+  if(ne) out._nEbit = ne.val;
   return out;
 }
 
@@ -2565,8 +2579,9 @@ function pedirForecast(){
       <div class="pt"><span class="pn">Estimaciones · pestaña <i>Forecasts</i> de InvestingPro</span>
         <button type="button" id="fcCerrar" style="font-size:.75rem;padding:.2rem .5rem">Cerrar</button></div>
       <div style="font-size:.8rem;color:var(--soft);margin-bottom:.6rem">
-        Copia la tabla entera y pégala aquí. Busco tres filas: <b>Revenue Forecast</b>,
-        <b>EBIT Forecast</b> y <b>EBITDA Forecast</b>.
+        Copia la tabla entera y pégala aquí — <b>entera</b>, sin elegir nada. Leo las cinco filas
+        en negrita (<b>Revenue</b>, <b>EBIT</b>, <b>EBITDA</b>, <b>Capital Expenditures</b> y
+        <b>Dividends</b>) y también <b>cuántos analistas</b> hay detrás de cada año.
         <b style="color:var(--amber-strong)">Al copiar no vienen los años</b>, así que dime cuál es
         el primero y te enseño lo que he entendido antes de tocar nada.</div>
       <textarea id="fcTxt" placeholder="Pega aquí la tabla de Forecasts…" style="min-height:150px"></textarea>
@@ -2600,25 +2615,55 @@ function pedirForecast(){
     const anios5 = Array.from({length:5},(_,i)=> ult+1+i);   /* los cinco que proyecta el método */
     const col = a => a - a0;                                  /* qué columna es cada año */
     const dentro = a => col(a) >= 0 && col(a) < cab.length;
+    const dato = (k, a) => (filas[k] && dentro(a) && filas[k][col(a)] !== undefined)
+      ? filas[k][col(a)] : null;
     const tabla = anios5.map(a => ({
       anio: a, ok: dentro(a),
-      ventas: filas.ventas && dentro(a) ? filas.ventas[col(a)] : null,
-      ebit:   filas.ebit   && dentro(a) ? filas.ebit[col(a)]   : null,
+      ventas: dato("ventas", a), ebit: dato("ebit", a), ebitda: dato("ebitda", a),
+      capex: dato("capex", a), dps: dato("dps", a),
+      n: dato("_n", a), nEbit: dato("_nEbit", a),
     }));
+    /* el crecimiento año a año, que es lo que de verdad se va a usar */
+    const ventaPrev = (R_ULT && R_ULT.ventas) ? R_ULT.ventas[R_ULT.L] : null;
+    let prevV = ventaPrev;
+    tabla.forEach(x => { x.crece = (x.ventas !== null && prevV) ? (x.ventas/prevV - 1)*100 : null;
+      if(x.ventas !== null) prevV = x.ventas; });
+    const hay = k => tabla.some(x => x[k] !== null && x[k] !== undefined);
     const faltan = tabla.filter(x => !x.ok).length;
+    const NOM = {ventas:"ventas", ebit:"EBIT", ebitda:"EBITDA", capex:"CapEx", dps:"dividendo"};
+    const leidas = Object.keys(filas).filter(k => NOM[k]).map(k => NOM[k]);
+    /* Cuando quedan pocos analistas, el «consenso» deja de serlo. No se oculta
+       el dato: se marca, que es lo que hace que el alumno sepa dónde fiarse. */
+    const flojos = tabla.filter(x => x.n !== null && x.n <= 3).length;
+    const col_ = (t, k, f) => hay(k) ? `<th style="text-align:right">${t}</th>` : "";
+    const cel_ = (x, k, f) => hay(k) ? `<td class="n">${x[k]!==null?f(x[k]):"—"}</td>` : "";
     r.innerHTML = `
-      <div class="note" style="margin:0 0 .6rem">He leído
-        <b>${Object.keys(filas).map(k=>({ventas:"ventas",ebit:"EBIT",ebitda:"EBITDA"})[k]).join(", ")}</b>
+      <div class="note" style="margin:0 0 .6rem">He leído <b>${leidas.join(", ")}</b>
         con <b>${cab.length} columnas</b>. Si la primera es <b>${a0}</b>, la última sería
         <b>${a0 + cab.length - 1}</b>.${auto}</div>
       <div class="tw"><table class="rs"><thead><tr><th>Año</th>
-        <th style="text-align:right">Ventas</th><th style="text-align:right">EBIT</th>
-        <th style="text-align:right">Margen</th></tr></thead><tbody>
+        ${hay("n")?`<th style="text-align:right">Analistas</th>`:""}
+        ${col_("Ventas","ventas")}<th style="text-align:right">Crece</th>
+        ${col_("EBIT","ebit")}<th style="text-align:right">Margen</th>
+        ${col_("EBITDA","ebitda")}${col_("CapEx","capex")}${col_("Dividendo","dps")}
+      </tr></thead><tbody>
         ${tabla.map(x=>`<tr><td class="l">${x.anio}</td>
-          <td class="n">${x.ventas!==null?nf(x.ventas,0):"—"}</td>
-          <td class="n">${x.ebit!==null?nf(x.ebit,0):"—"}</td>
-          <td class="n">${(x.ventas&&x.ebit)?nf(x.ebit/x.ventas*100,1)+"%":"—"}</td></tr>`).join("")}
+          ${hay("n")?`<td class="n" style="${x.n!==null&&x.n<=3?"color:var(--amber-strong);font-weight:700":""}">${
+            x.n!==null?nf(x.n,0):"—"}</td>`:""}
+          ${cel_(x,"ventas",v=>nf(v,0))}
+          <td class="n">${x.crece!==null?nf(x.crece,1)+"%":"—"}</td>
+          ${cel_(x,"ebit",v=>nf(v,0))}
+          <td class="n">${(x.ventas&&x.ebit)?nf(x.ebit/x.ventas*100,1)+"%":"—"}</td>
+          ${cel_(x,"ebitda",v=>nf(v,0))}${cel_(x,"capex",v=>nf(v,0))}
+          ${cel_(x,"dps",v=>nf(v,2))}</tr>`).join("")}
       </tbody></table></div>
+      ${hay("n")?`<div class="note" style="margin-top:.5rem">La columna <b>Analistas</b> es la fila
+        <i>Contributing Analysts Count</i> de InvestingPro: cuánta gente hay detrás de cada año.
+        ${flojos?`<b style="color:var(--amber-strong)">${flojos===1
+          ? "El último año lo sostienen 3 analistas o menos"
+          : "Los últimos "+flojos+" años los sostienen 3 analistas o menos"}</b> — eso ya no es un
+        consenso, es una opinión. Que no te dé pereza cambiar esos años a mano si no te convencen.`
+        :`Cuantos más, más se ha mirado ese año. Los años lejanos casi siempre tienen menos.`}</div>`:""}
       ${faltan?`<div class="warn" style="margin-top:.5rem">Faltan ${faltan} de los cinco años.
         Revisa el año de la primera columna.</div>`:""}
       <div class="pb" style="margin-top:.6rem">
@@ -2641,7 +2686,14 @@ function pedirForecast(){
          es de otra empresa o el año de inicio está mal. Vale más avisar que
          montar una proyección absurda sin decir nada. */
       const raro = Math.abs(pg[0]) > 60;
+      /* El CapEx del consenso es una de las celdas naranjas de la plantilla y
+         hasta ahora se leía y se tiraba: la proyección congelaba el ratio del
+         último año real durante cinco. Si los analistas lo dan para los cinco,
+         mandan ellos. */
+      const cx = tabla.every(x => x.capex !== null && x.ventas)
+        ? tabla.map(x => Math.round(Math.abs(x.capex)/x.ventas*1e6)/1e4) : null;
       VAL.modo = "partidas"; VAL.pg = pg; VAL.pm = pm; VAL.origen = "forecast";
+      if(cx) VAL.pcxA = cx;
       informe(calcular()); guardarTrabajo();
       pedirForecast();
       $("fcRes").innerHTML = (raro ? `<div class="warn"><b>Ojo: el primer año crecería un
@@ -2650,6 +2702,8 @@ function pedirForecast(){
         `<span class="bien">✓ Proyección montada con el consenso.</span>
         Crecimiento: <b>${pg.map(x=>nf(x,1)+"%").join(" → ")}</b><br>
         Margen EBIT: <b>${pm.map(x=>nf(x,1)+"%").join(" → ")}</b>
+        ${cx?`<br>CapEx sobre ventas: <b>${cx.map(x=>nf(x,1)+"%").join(" → ")}</b>
+          <span style="color:var(--muted-txt)">— también del consenso</span>`:""}
         <div style="margin-top:.4rem;color:var(--muted-txt)">Míralos abajo en la tabla de supuestos
         y cámbialos si no te convencen. El consenso es un punto de partida, no una verdad.</div>`;
     };
@@ -7791,7 +7845,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-09.6f2d830";
+const APP_VERSION = "2026-08-09.b526d59";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
