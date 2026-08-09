@@ -2821,11 +2821,24 @@ function pedirForecast(){
          montar una proyección absurda sin decir nada. */
       const raro = Math.abs(pg[0]) > 60;
       /* El CapEx del consenso es una de las celdas naranjas de la plantilla y
-         hasta ahora se leía y se tiraba: la proyección congelaba el ratio del
-         último año real durante cinco. Si los analistas lo dan para los cinco,
-         mandan ellos. */
+         se leía para nada: la proyección congelaba el ratio del último año real
+         durante cinco. Ahora mandan los analistas — pero pasando por la regla
+         del método, que es donde estuvo el fallo: la casilla de la proyección
+         espera CAPEX DE MANTENIMIENTO, y lo que da InvestingPro es el CapEx
+         TOTAL. Meterlo tal cual hundía el flujo de las empresas que invierten
+         mucho en crecer (META, que invierte casi la mitad de lo que vende,
+         llegó a dar un IDC negativo).
+             mantenimiento = MIN( CapEx total , depreciación )
+         Y la depreciación de cada año sale del propio consenso, sin inventar
+         nada: es EBITDA − EBIT. */
       const cx = tabla.every(x => x.capex !== null && x.ventas)
-        ? tabla.map(x => Math.round(Math.abs(x.capex)/x.ventas*1e6)/1e4) : null;
+        ? tabla.map(x => {
+            const da = (x.ebitda !== null && x.ebit !== null) ? Math.abs(x.ebitda - x.ebit) : null;
+            const mant = da !== null ? Math.min(Math.abs(x.capex), da) : Math.abs(x.capex);
+            return Math.round(mant/x.ventas*1e6)/1e4;
+          }) : null;
+      const cxTope = cx && tabla.some(x => x.ebitda !== null && x.ebit !== null &&
+        Math.abs(x.capex) > Math.abs(x.ebitda - x.ebit));
       /* El BPA del consenso manda sobre el beneficio proyectado. Es la vía por
          la que se monta el IDC a mano: BPA del año 5 × el PER que crees justo.
          Sin esto, el beneficio se extrapolaba del pasado aunque los analistas
@@ -2854,8 +2867,8 @@ function pedirForecast(){
         `<span class="bien">✓ Proyección montada con el consenso.</span>
         Crecimiento: <b>${pg.map(x=>nf(x,1)+"%").join(" → ")}</b><br>
         Margen EBIT: <b>${pm.map(x=>nf(x,1)+"%").join(" → ")}</b>
-        ${cx?`<br>CapEx sobre ventas: <b>${cx.map(x=>nf(x,1)+"%").join(" → ")}</b>
-          <span style="color:var(--muted-txt)">— también del consenso</span>`:""}
+        ${cx?`<br>CapEx de mantenimiento sobre ventas: <b>${cx.map(x=>nf(x,1)+"%").join(" → ")}</b>
+          <span style="color:var(--muted-txt)">— del consenso${cxTope?" y con el tope de la depreciación: lo que invierte de más es para crecer, y eso no se resta":""}</span>`:""}
         ${bpa?`<br>BPA: <b>${nf(bpa.ini,2)} → ${nf(bpa.fin,2)}</b> en ${bpa.anio}
           <span style="color:var(--muted-txt)">(crecimiento del beneficio ${nf(bpa.g1,1)}% →
           ${nf(bpa.g5,1)}%, puesto por los analistas)</span>
@@ -4517,6 +4530,19 @@ function calcular(){
 
   const k = Math.pow(1+obj,5);
   R.v.factor  = k;
+  /* ── Un precio negativo no es un precio ──────────────────────────────────
+     Si con estos supuestos el flujo del año 5 sale negativo —o la deuda
+     proyectada se come el valor entero— el precio objetivo se va por debajo de
+     cero y el IDC sale negativo. Eso no es «una empresa muy cara»: es que la
+     valoración no se sostiene, igual que en una empresa que quema caja. Se
+     dice, y no se enseña un número. Antes se pintaba tal cual: −282,11 $. */
+  if(!(P.evFcf > 0) || !(R.v.fcf5 > 0)){
+    R.sinVal = true;
+    R.motivoSinVal = !(R.v.fcf5 > 0)
+      ? "Con estos supuestos, el flujo de caja del año 5 sale <b>negativo</b>: la empresa gastaría más de lo que genera."
+      : "Con estos supuestos, la <b>deuda proyectada se come el valor entero</b> de la empresa dentro de cinco años.";
+    puntuar(R); R.raros = vigilarDatos(R); return R;
+  }
   R.v.idc     = P.evFcf/k;
   R.v.idcProm = P.prom!==null ? P.prom/k : null;
   R.v.zona    = R.v.idc*0.85;
@@ -5417,6 +5443,7 @@ function pasoValoracion(R){
            El método valora multiplicando el dinero real que genera la empresa. En el último ejercicio
            ${nom} <b>no generó dinero: consumió ${nf(Math.abs(d.fcf[L]),0)} millones</b>. Multiplicar un
            número negativo no da un precio, da un sinsentido.<br><br>
+           ${R.motivoSinVal ? `<br><br>${R.motivoSinVal}` : ""}
            Que no se pueda poner precio <b>es la conclusión</b>. Una empresa que quema caja puede ser
            una gran inversión —si te crees la recuperación— pero entonces no la estás comprando por
            lo que gana, sino por lo que crees que ganará. Eso es otra decisión, con otro riesgo, y
@@ -8007,7 +8034,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-09.972676e";
+const APP_VERSION = "2026-08-09.0ae8179";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
