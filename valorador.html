@@ -4958,8 +4958,10 @@ function informe(R){
           const nn = k => (VAL[k]!==null && VAL[k]!==undefined && isFinite(VAL[k])) ? +VAL[k] : null;
           const filas = [
             ["Tu precio, antes de mirar", nn("miPrecio"), "Lo que pagarías sin saber lo que cuesta"],
-            ["IDC · el del método", (R.v && R.v.idc) ? R.v.idc : null, "Proyecta 5 años y exige tu rentabilidad"],
-            ["Zona de análisis", (R.v && R.v.zona) ? R.v.zona : null, "El IDC menos un 15% de colchón"],
+            ["IDC · el del método", (viaAnalistas() && R.v && R.v.idc) ? R.v.idc : null, "Proyecta 5 años y exige tu rentabilidad"],
+            ["Zona de análisis", (viaAnalistas() && R.v && R.v.zona) ? R.v.zona : null, "El IDC menos un 15% de colchón"],
+            ["Fair Value · InvestingPro", nn("fv"), "La media de sus modelos"],
+            ["Objetivo de los analistas", nn("fvAn"), "Su precio a doce meses"],
             ["EV / EBITDA · InvestingPro", nn("fvEb"), "Modelo comparable de Investing"],
             ["5Y DCF EBITDA Exit · InvestingPro", nn("fvDcf"), "El más parecido a este método"],
             ["IDC de tu Excel", nn("idcX"), "Calculado a mano en la plantilla"],
@@ -5472,11 +5474,11 @@ function mapaPrecios(R){
   const ok = x => x!==null && x!==undefined && isFinite(x) && x>0;
 
   const B = [];
-  if(ok(R.precio)) B.push({t:"Lo que pide hoy el mercado", s:"El único que no es una opinión",
+  if(ok(R.precio)) B.push({t:"El mercado, hoy", s:"El único que no es una opinión",
     c:"var(--soft)", m:R.precio});
   if(ok(nn("fvAn"))) B.push({t:"Analistas", s:"Su objetivo a 12 meses", c:"var(--d2-hi)",
     m:nn("fvAn"), lo:nn("fvAnLo"), hi:nn("fvAnHi")});
-  if(ok(nn("fv"))) B.push({t:"Investing · sus modelos", s:"Su tasación automática", c:"var(--d2)",
+  if(ok(nn("fv"))) B.push({t:"Investing · modelos", s:"Su tasación automática", c:"var(--d2)",
     m:nn("fv"), lo:nn("fvLo"), hi:nn("fvHi")});
   if(ok(v.idc) && viaAnalistas()) B.push({t:"Tu IDC", s:"Exigiendo un "+nf(v.obj*100,0)+"% anual",
     c:"var(--amber-strong)", m:v.idc, lo:v.zona, hi:v.idc});
@@ -5487,7 +5489,7 @@ function mapaPrecios(R){
   let mn = Math.min.apply(null, val), mx = Math.max.apply(null, val);
   const pad = ((mx-mn) || mx*0.2) * 0.14;
   mn = Math.max(0, mn-pad); mx = mx+pad;
-  const X0 = 186, X1 = 614, W = X1-X0, FIL = 54;
+  const X0 = 202, X1 = 614, W = X1-X0, FIL = 54;
   const px  = x => X0 + (x-mn)/(mx-mn)*W;
   const cl  = x => Math.min(X1-16, Math.max(X0+16, x));
   const alto = 22 + B.length*FIL + 26;
@@ -5503,7 +5505,7 @@ function mapaPrecios(R){
            text-anchor="end" font-family="var(--font-m)" font-size="9"
            fill="var(--muted-txt)">${mo(b.hi)}</text>`}` : "";
     return `<g>
-      <text x="6" y="${y+12}" font-family="var(--font-h),sans-serif" font-size="12.5" font-weight="700"
+      <text x="6" y="${y+12}" font-family="var(--font-h),sans-serif" font-size="11.5" font-weight="700"
         fill="var(--text)">${esc(b.t)}</text>
       <text x="6" y="${y+27}" font-family="var(--font-b),sans-serif" font-size="9.5"
         fill="var(--muted-txt)">${esc(b.s.length>34 ? b.s.slice(0,33)+"…" : b.s)}</text>
@@ -5945,8 +5947,8 @@ function conclusiones(R){
            el precio deja de ser el obstáculo y el trabajo pasa a ser confirmar la tesis.`}`]);
   }
 
-  /* 5 · de qué depende todo */
-  if(v && v.idc){
+  /* 5 · de qué depende todo · solo si el número es suyo */
+  if(v && v.idc && viaAnalistas()){
     const mitad = (v.multObj*d.fcf[L]*Math.pow(1+v.gF/200,5) - v.dn5)/v.acc5;
     out.push(["⚖️","De qué depende este número",
       `Todo el cálculo se apoya en dos supuestos tuyos. Si el crecimiento fuera <b>la mitad</b> del
@@ -6222,6 +6224,13 @@ function veredicto(R){
       :`Como cuesta más, tendría que bajar un <b>${pc(Math.abs(v.recorr))}</b> para merecer la pena.`}
     El precio al que de verdad merecería la pena mirarlo en serio es <b>${mo(v.zona)}</b>.</p>`);
   }
+  if(!viaAnalistas()){
+    p.push(`<p><span class="q">⚠️ Lo que podría salir mal</span>Estas cuentas son <b>del pasado</b>:
+      diez años de lo que ya ha ocurrido. Que una tienda haya ido bien diez años <b>no obliga</b> a
+      que vaya bien el que viene. Y la tasación de InvestingPro es <b>una opinión más</b>, no un
+      hecho: la calculan con modelos, y los modelos se alimentan de supuestos que también pueden
+      fallar.</p>`);
+  } else
   p.push(`<p><span class="q">⚠️ Lo que podría salir mal</span>Todo esto da por hecho que crecerá un
     <b>${nf(v.gF,1)}% cada año durante cinco años</b> y que la gente seguirá pagando <b>${mu(v.multObj)}</b>
     por su dinero real. Si creciera la mitad, el precio dentro de 5 años sería
@@ -7782,7 +7791,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-08.84133ea";
+const APP_VERSION = "2026-08-09.6f2d830";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
