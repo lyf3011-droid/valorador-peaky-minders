@@ -3564,6 +3564,21 @@ function pintarPegaGrid(){
     : `La <b>ficha clásica</b> de Investing. Las tres cuentas se copian enteras, igual que en el Excel.`;
   const ayuda = titu + `<details class="mas esq-d" open><summary>Cómo se hace, en un vistazo</summary>
     ${esquemaPaso(g)}</details>`
+    /* La pregunta que más se repite en esta pantalla es «¿qué tabla es?». No
+       basta con nombrarla: se enseña, con su dirección y con diez años reales
+       de una empresa conocida para poder probarlo sin salir de aquí. */
+    + (g==="ER" ? `<details class="mas esq-d"><summary>Ver un ejemplo real · Tesla</summary>
+       <div class="note" style="margin:.5rem 0"><b>Ojo, es otra dirección.</b> No es la ficha donde
+         has copiado las tres cuentas: es el <b>InvestingPro nuevo</b>, y dentro hay que elegir
+         <b>EBITDA Reconciliation</b> en el desplegable de arriba a la izquierda.
+         <br><code>investing.com/pro/NASDAQGS:TSLA/financials/ebitda</code></div>
+       ${esquemaER()}
+       <div class="note">De toda esa tabla el método usa <b>tres filas</b>: la depreciación, el
+         EBITDA y los intereses. Las demás las ignora solo — no hace falta que elijas nada,
+         <b>copia entero</b>.</div>
+       <div class="bar-actions" style="margin-top:.5rem">
+         <button type="button" class="b2" id="probarER">Pegar el ejemplo de Tesla y ver qué lee</button>
+       </div></details>` : "")
     + (g==="CF" ? `<div class="note" style="margin-top:.5rem">Dos partidas se quedarán vacías y no
        es un fallo: el <b>CapEx de mantenimiento</b> sale del paso 4, y los <b>pagos en acciones</b>
        Investing no los publica.</div>` : "");
@@ -3633,6 +3648,15 @@ function pintarPegaGrid(){
     });
   });
   $("pegagrid").querySelectorAll("[data-leer]").forEach(b=>b.onclick=()=>leerCaja(b.dataset.leer));
+  /* El ejemplo se pega de verdad y se lee de verdad: así se ve el resultado
+     antes de ir a buscar la tabla propia, y se comprueba que la app la entiende. */
+  if($("probarER")) $("probarER").onclick = () => {
+    const ta = $("pegagrid").querySelector('textarea[data-pega="ER"]');
+    if(!ta) return;
+    ta.value = EJEMPLO_ER;
+    leerCaja("ER");
+    ta.scrollIntoView({behavior:modoScroll(), block:"center"});
+  };
   $("pegagrid").querySelectorAll("[data-paso]").forEach(b=>b.onclick=()=>{
     PASO_PEGA = +b.dataset.paso; pintarPegaGrid();
     $("pegagrid").scrollIntoView({behavior:modoScroll(),block:"nearest"});
@@ -3799,6 +3823,48 @@ function aplicarForecast(txt, caja){
   return true;
 }
 
+/* ══════════ EL EJEMPLO DE TESLA, PARA QUE SE VEA LA TABLA BUENA ══════════
+   Diez años reales de la reconciliación del EBITDA de Tesla, leídos de
+   InvestingPro el 9-ago-2026. Está aquí porque la pregunta que más se repite
+   es «¿qué tabla es?»: no basta con nombrarla, hay que enseñarla. Y sobre todo
+   hay que decir que es OTRA PÁGINA, con otra dirección. */
+const EJEMPLO_ER = [
+  "EBT, Incl. Unusual Items","-709.1","-1,841.2","-877.3","-592.8","944.7","5,573.0","12,812.2","9,033.5","8,678.0","4,492.6",
+  "Net Interest Expenses","174.1","381.7","549.1","607.1","587.8","276.8","-99.0","-824.3","-1,176.7","-1,142.3",
+  "Other Non Operating Expenses","-14.8","50.8","-10.5","-75.8","99.9","-118.6","40.2","-155.8","-670.9","356.7",
+  "Depreciation & Amortization","899.8","1,363.6","1,648.0","1,865.0","1,900.8","2,557.6","3,308.8","4,227.4","5,181.7","5,233.2",
+  "Restructuring Charges","0.0","0.0","80.3","77.6","0.0","0.0","33.6","0.0","562.8","0.0",
+  "EBITDA","286.4","3.3","1,427.2","1,936.3","3,497.9","8,288.7","16,095.8","12,280.8","12,575.0","8,940.2",
+  "Diluted EPS, Adjusted","-0.28","-0.64","-0.30","-0.25","0.19","1.61","3.73","4.27","2.29","0.97"
+].join(String.fromCharCode(10));
+
+/* El dibujo de la tabla, con las tres filas que de verdad se usan marcadas. */
+function esquemaER(){
+  const F = [["EBT, Incl. Unusual Items", false],["Net Interest Expenses", true],
+             ["Other Non Operating Expenses", false],["Depreciation & Amortization", true],
+             ["Restructuring Charges", false],["EBITDA", true]];
+  return `<svg viewBox="0 0 640 214" class="esq" role="img"
+    aria-label="La tabla EBITDA Reconciliation de Tesla en InvestingPro, con las tres filas que usa el método marcadas">
+    <rect x="1" y="1" width="638" height="212" rx="10" fill="var(--surface)" stroke="var(--line-strong)"/>
+    <text x="16" y="22" font-family="var(--font-m)" font-size="10" fill="var(--muted-txt)">investing.com/pro/NASDAQGS:TSLA/financials/<tspan fill="var(--amber-strong)" font-weight="700">ebitda</tspan></text>
+    <line x1="1" y1="32" x2="639" y2="32" stroke="var(--line)"/>
+    <rect x="14" y="40" width="168" height="20" rx="5" fill="none" stroke="var(--amber)"/>
+    <text x="24" y="54" font-family="var(--font-b),sans-serif" font-size="11" fill="var(--amber-strong)">EBITDA Reconciliation ▾</text>
+    ${["Fiscal Years","Ascending","10 Years","Millions"].map((t,i)=>`
+      <rect x="${192+i*108}" y="40" width="100" height="20" rx="5" fill="none" stroke="var(--line)"/>
+      <text x="${202+i*108}" y="54" font-family="var(--font-b),sans-serif" font-size="10" fill="var(--muted-txt)">${t}</text>`).join("")}
+    ${["2016","…","2023","2024","2025"].map((a,i)=>`
+      <text x="${332+i*68}" y="80" text-anchor="middle" font-family="var(--font-m)" font-size="9.5" fill="var(--muted-txt)">${a}</text>`).join("")}
+    ${F.map((f,i)=>`
+      ${f[1]?`<rect x="12" y="${86+i*20}" width="616" height="18" rx="4" fill="rgba(245,158,11,.12)"/>`:""}
+      <text x="22" y="${99+i*20}" font-family="var(--font-m)" font-size="9.5"
+        fill="${f[1]?"var(--amber-strong)":"var(--muted-txt)"}" font-weight="${f[1]?"700":"400"}">${f[0]}</text>
+      ${[0,1,2,3,4].map(c=>`<rect x="${306+c*68}" y="${91+i*20}" width="52" height="7" rx="3.5"
+        fill="${f[1]?"var(--amber)":"var(--d2)"}" fill-opacity="${f[1]?".5":".25"}"/>`).join("")}`).join("")}
+    <text x="16" y="207" font-family="var(--font-m)" font-size="9" fill="var(--muted-txt)">En ámbar, las tres filas que usa el método · las demás se ignoran solas</text>
+  </svg>`;
+}
+
 function leerCaja(g){
   const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
   const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
@@ -3865,15 +3931,49 @@ function leerCaja(g){
          «Period Ending» hasta el final y <b>pega</b> aquí (no escribas el texto).`;
     return;
   }
+  /* ── El signo de los intereses depende de la tabla de la que vengan ────────
+     «Net Interest Expenses» aparece en dos pantallas de InvestingPro con el
+     signo CONTRARIO, y es la misma partida:
+        Cuenta de resultados    Tesla 2016 −174,3   ·   2025 +1.142,6
+        EBITDA Reconciliation   Tesla 2016 +174,1   ·   2025 −1.142,3
+     En la reconciliación van sumados, porque el camino es EBT → EBITDA. El
+     método necesita el criterio de la cuenta de resultados (positivo = cobra
+     más de lo que paga; así sale el +958 de META que cuadra con la plantilla).
+     Sin esto, el resultado dependía de EN QUÉ ORDEN pegaras las pestañas. */
+  /* Se mira en el TEXTO pegado, no en las filas reconocidas: «EBT, Incl.
+     Unusual Items» no es una partida que la app use, así que nunca llega a
+     filas — y era justo la que delata de qué pantalla viene la tabla. */
+  const crudo = (HTML_CAJA[g] || ta.value || "");
+  const lineasCrudo = String(crudo).split(String.fromCharCode(10)).map(x => x.trim().toLowerCase());
+  const esReconciliacion = lineasCrudo.some(x => x.indexOf("ebt, incl") === 0)
+                        && lineasCrudo.indexOf("ebitda") >= 0;
+  const volteados = [], descartadas = [];
+
   const puestas = [];
   for(const f of filas){
     const et = normEt(f.et);
     let key = null;
     for(const [k,alts] of Object.entries(SIN)){ if(alts.includes(et)){ key=k; break; } }
-    if(!key || !soloDe.includes(key)) continue;          /* cada cuadro, lo suyo */
+    /* Una fila que SÍ reconozco pero que pertenece a otra pestaña se estaba
+       descartando en silencio. Es exactamente lo que pasa con «Depreciation &
+       Amortization» al pegar la reconciliación del EBITDA en la cuenta de
+       resultados: la app la lee, la tira, y el alumno ve que «no la coge». */
+    if(key && !soloDe.includes(key)){
+      const c2 = CONCEPTOS.find(c => c.k === key);
+      if(c2 && !descartadas.some(x => x.k === key)){
+        const yaEsta = D[key] && D[key].some(v => v !== null);
+        descartadas.push({k:key, lab:c2.lab, g:c2.g, yaEsta});
+      }
+      continue;
+    }
+    if(!key) continue;
     if(puestas.some(p=>p.k===key)) continue;
     const con = CONCEPTOS.find(c=>c.k===key);
     let arr = f.val.slice();
+    if(esReconciliacion && (key === "interes" || key === "intIng" || key === "intGas")){
+      arr = arr.map(v => v === null ? null : -v);
+      volteados.push(con.lab);
+    }
     if(con.pos) arr = arr.map(v=>v===null?null:Math.abs(v));
     if($("invertir").checked) arr.reverse();
     if(arr.length > N) arr = arr.slice(-N);
@@ -3885,7 +3985,26 @@ function leerCaja(g){
   pintarMatriz(); guardarTrabajo();
   const faltan = CONCEPTOS.filter(c=>c.g===g && c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
   const avAnios = avisoAnios((HTML_CAJA[g]||"") + " " + ta.value);
-  caja.innerHTML = avAnios + (puestas.length
+  const avSigno = volteados.length
+    ? `<div class="note" style="margin-top:.4rem"><b>He girado el signo de
+        ${volteados.map(v=>esc(v.toLowerCase())).join(" y ")}.</b> Esta pantalla es una
+        <i>reconciliación</i>: parte del beneficio y va sumando hasta el EBITDA, así que los
+        intereses vienen con el signo al revés que en la cuenta de resultados. El método usa el
+        criterio de la cuenta de resultados, y así el resultado <b>no depende del orden</b> en que
+        pegues las pestañas.</div>` : "";
+  /* Y se cuenta lo que se ha tirado, con el motivo y adónde va. */
+  const G_NOM = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja", ER:"Lo que falte", MK:"Mercado"};
+  const avDesc = descartadas.length
+    ? `<div class="note" style="margin-top:.5rem;border-left:2px solid var(--amber)">
+        <b>He reconocido ${descartadas.length===1?"una fila que aquí no va":"filas que aquí no van"},
+        y no las he metido:</b>
+        <ul style="margin:.4rem 0 0">${descartadas.map(x=>`<li>${esc(x.lab)} — ${
+          x.yaEsta ? `<b>ya la tenías puesta</b>, así que no la piso`
+                   : `va en la pestaña <b>${esc(G_NOM[x.g]||x.g)}</b>${
+                       g==="ER" ? "" : ` · o pégala en <b>Lo que falte</b>, que acepta cualquier tabla`}`
+        }</li>`).join("")}</ul>
+      </div>` : "";
+  caja.innerHTML = avAnios + avSigno + avDesc + (puestas.length
     ? `<span class="bien">✓ ${puestas.length} partidas leídas.</span>
        <ul>${puestas.map(p=>`<li>${esc(p.lab)} · último ${p.ult===null?"—":nf(p.ult,0)}</li>`).join("")}</ul>
        ${faltan.length?`<div style="margin-top:.4rem;color:var(--amber)">Falta: ${esc(faltan.join(", "))}</div>`:""}`
@@ -5655,6 +5774,22 @@ function pasoValoracion(R){
     `<div class="note">Su vara de medir ya la has visto <b>antes de la puerta</b>: esta empresa ha
        cotizado normalmente a <b style="color:var(--amber-strong)">${cm.v!==null?mu(cm.v):"—"}</b>
        su flujo de caja. Ese es el múltiplo con el que trabaja el método.</div>
+     <div class="db" style="margin-top:1rem"><span class="t">Aunque no salga un número, esto sí lo sabes</span>
+       <b>El EV/FCF dice cuántos años de su caja estás pagando.</b> Si una empresa cotiza a 20x, con
+       lo que genera hoy tardaría veinte años en devolverte lo que pagas — sin crecer. Por eso el
+       método usa este múltiplo y no el PER: mide dinero de verdad, no beneficio contable.
+       <br><br>
+       ${cm.v!==null ? `El suyo es <b>${mu(cm.v)}</b>${cm.v>40 ? `, y eso ya es una respuesta: a ese
+         nivel el mercado no está pagando por lo que la empresa genera hoy, sino por lo que espera
+         que genere. La valoración deja de ser aritmética y pasa a ser una apuesta sobre el futuro.`
+         : cm.v>25 ? `, que es caro para este método: se paga bien lo que hace, así que el margen de
+         error es pequeño.` : `, que está dentro de lo razonable.`}`
+        : `Aquí ni siquiera hay múltiplo histórico: sin precios anuales no hay vara de medir.`}
+       <br><br>
+       <b>Y lo que se mira cuando no hay precio:</b> si el flujo de caja va de menos a más, si el
+       margen aguanta, y si lo que invierte le está rindiendo. Todo eso está en las cinco preguntas
+       de arriba, y <b>es el 80% del análisis</b>. El precio es el último paso, no el único.
+     </div>
 
      ${(() => { const via2 = viaAnalistas(); return `
 
@@ -8271,7 +8406,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-16.226fb03";
+const APP_VERSION = "2026-08-16.43195d9";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
