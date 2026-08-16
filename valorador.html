@@ -1350,9 +1350,8 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
     <span id="progFalta" style="color:var(--muted)"></span>
   </div>
 
-  <div class="bar-actions" style="margin-top:1.2rem">
-    <button class="b1" id="analizar" style="font-size:.95rem;padding:.85rem 1.7rem">Analizar la empresa →</button>
-  </div>
+  <div class="note" style="margin-top:1.2rem">Cuando tengas los datos, sigue al
+  <b>paso 3</b>: ahí se ponen los precios y, al final del todo, se analiza la empresa de una vez.</div>
 </section>
 
 <textarea id="promptAnalisisFuente" class="hide" readonly aria-hidden="true">Actúa como analista bursátil. Yo te iré escribiendo tickers de empresas cotizadas en EE.UU. una a una. Por cada ticker devuelves un HTML autocontenido con el nombre {TICKER}_analisis.html. Sin preguntas previas.
@@ -1508,6 +1507,16 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
         cubren la empresa. Con cualquiera de los dos ya sale el mapa; con los dos, mejor.</p>
     </div>
   </div>
+
+  <!-- El botón vive AQUÍ, al final del paso 3, y no al final del paso 2: cuando
+       se pulsa ya están puestos los precios, así que el informe sale completo a
+       la primera —con su mapa de precios— y no hay que volver atrás. -->
+  <div class="bar-actions" style="margin-top:1.6rem;justify-content:center">
+    <button class="b1" id="analizar" style="font-size:1.05rem;padding:1rem 2.2rem">
+      Analizar la empresa →</button>
+  </div>
+  <p class="sub" style="text-align:center;margin-top:.6rem">Con esto se monta el informe completo:
+    las seis preguntas, las gráficas de sus múltiplos históricos y el mapa de precios.</p>
 </section>
 
 <!-- ═══════════ 3 · INFORME ═══════════ -->
@@ -8233,7 +8242,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-16.c7afa10";
+const APP_VERSION = "2026-08-16.01f4741";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
