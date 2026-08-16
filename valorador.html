@@ -5554,8 +5554,28 @@ function pasoValoracion(R){
            <div class="note">Qué haría falta para valorarla con este método: que <b>vuelva a generar
            caja de forma sostenida</b>. Hasta entonces, el número que importa no es el precio: es si
            el negocio se arregla.</div>`
-        : `<div class="warn"><b>No se puede calcular el precio.</b> Falta el múltiplo objetivo o el
-           crecimiento esperado — revisa que haya suficientes años con datos.</div>`),
+        : (() => {
+            /* Decir «revisa que haya suficientes años» cuando los años están
+               todos es mentir. Casi siempre el motivo es otro y es concreto:
+               el flujo de caja fue NEGATIVO algún año, y de un número negativo
+               no sale una tasa de crecimiento. Le pasa a Tesla de 2016 a 2019. */
+            const neg = (R.der && R.der.fcf || []).map((x,i)=>({x,a:R.A[i]}))
+              .filter(o => o.x !== null && o.x < 0);
+            const sinMult = !R.cMult || !R.cMult.evFcf || R.cMult.evFcf.v === null;
+            return `<div class="warn"><b>No se puede calcular el precio, y el motivo importa.</b>
+              ${neg.length ? `Su flujo de caja fue <b>negativo en ${neg.length}
+                ${neg.length===1?"año":"años"}</b> (${neg.map(o=>o.a).join(", ")}), y de un número
+                negativo <b>no sale una tasa de crecimiento</b>: no hay nada que multiplicar.`
+              : sinMult ? `No he podido sacar el <b>múltiplo</b> al que ha cotizado históricamente —
+                hacen falta las acciones y la deuda de los mismos años que el flujo de caja.`
+              : `Falta el múltiplo objetivo o el crecimiento esperado.`}
+              <div class="note" style="margin-top:.6rem;background:transparent;border:0;padding:0">
+                <b>Qué puedes hacer:</b> pegar la pestaña <b>Forecasts</b> —los analistas sí dan un
+                crecimiento para los próximos años— o escribir el crecimiento a mano en el modo
+                manual. Y si ninguna de las dos te convence, esa duda <b>es la respuesta</b>: una
+                empresa cuyo pasado no sirve para proyectar es más difícil de valorar, no más barata.
+              </div></div>`;
+          })()),
       "p6","Precio");
   }
 
@@ -5820,7 +5840,10 @@ function precioNormal(R){
   if(!R || !R.der || R.L === undefined) return null;
   const L = R.L, m = R.cMult && R.cMult.evFcf ? R.cMult.evFcf.v : null;
   const fcf = R.der.fcf[L], acc = R.acciones && R.acciones[L];
-  if(!m || !(fcf > 0) || !acc) return null;
+  /* Con un múltiplo disparatado —Tesla ha llegado a cotizar a 226 veces su
+     flujo— este precio deja de ser una referencia y pasa a ser un espejismo:
+     multiplicar un flujo casi cero por un número enorme no dice nada. */
+  if(!m || !(fcf > 0) || !acc || m > 60) return null;
   const dn = R.der.deudaNeta[L] || 0;
   const x = (m*fcf - dn)/acc;
   return (isFinite(x) && x > 0) ? {x, mult:m} : null;
@@ -8210,7 +8233,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-16.e45eeac";
+const APP_VERSION = "2026-08-16.c7afa10";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
