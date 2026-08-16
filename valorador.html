@@ -475,6 +475,17 @@ svg.esq,svg.ch,svg.dg{cursor:zoom-in}
 .db-m{background:rgba(255,255,255,.07);color:var(--soft)}
 .db-c{background:rgba(245,158,11,.24);color:var(--amber-strong);font-weight:700}
 .via2ok{border-color:rgba(74,222,128,.3)}
+/* el cartel que avisa de dónde está el precio de verdad */
+.puerta-x{border:1px solid var(--amber-line);border-radius:12px;padding:1.1rem 1.2rem;
+  background:linear-gradient(180deg,rgba(245,158,11,.07),transparent)}
+.puerta-x .px-t{font-family:var(--font-m);font-size:.72rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--amber-strong)}
+.puerta-x .px-p{margin:.5rem 0 .8rem;font-size:.9rem;line-height:1.65;color:var(--soft)}
+.px-fv{margin-top:1rem;border-top:1px solid var(--line);padding-top:.9rem}
+.px-fv-t{font-size:.95rem;font-weight:700;color:var(--text)}
+.px-fv-p{margin:.35rem 0 .7rem;font-size:.85rem;line-height:1.6;color:var(--soft)}
+.px-fv-r{display:flex;gap:.8rem;flex-wrap:wrap;align-items:flex-end}
+.px-fv-r>div{flex:0 1 12rem}
 /* la respuesta del buscador cuando no hay empresa que ofrecer */
 .sug .sav{display:block;padding:.7rem .9rem;font-size:.83rem;line-height:1.55;color:var(--soft);
   cursor:default;border-bottom:1px solid var(--line)}
@@ -1461,6 +1472,35 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
 
   <div class="note" style="margin-top:1.2rem">Con el ticker escrito arriba, estos enlaces te llevan
   a donde está cada cosa: <span id="enlacesPrecio"></span></div>
+
+  <!-- Esta fase EXPLICA el precio; el precio en sí vive detrás de la puerta, al
+       final del informe. Sin este cartel, quien pulsa «Paso 3 · Precio» aterriza
+       aquí, no ve ningún número y cree que la app no funciona. -->
+  <div class="puerta-x" id="irPuerta" style="margin-top:1.4rem">
+    <div class="px-t">🔒 El precio está cerrado con llave</div>
+    <p class="px-p">Aquí solo se explica <b>qué precios hacen falta y por qué</b>. El número no sale
+      todavía, y no es un fallo: <b>es la regla del método</b>. Primero se juzga el negocio, y para
+      llegar al precio hay que escribir antes qué opinas de la empresa — al final del informe, en
+      <b>«Hasta aquí no has visto el precio»</b>.</p>
+    <button type="button" class="b2" id="btnIrPuerta">Llévame allí ↓</button>
+
+    <!-- La misma casilla del Fair Value que hay dentro del informe. Se pone
+         aquí porque es DONDE ATERRIZA quien pulsa «Paso 3 · Precio», y el
+         número que necesita es justo este. Las dos escriben en VAL.fv. -->
+    <div class="px-fv">
+      <div class="px-fv-t">Y ya que estás: apunta aquí el <b>Fair Value</b></div>
+      <p class="px-fv-p">Es el número grande junto a <b>«Average»</b>, en la pestaña
+        <b>Overview</b> de InvestingPro. Es <b>el precio en el que se basa el análisis</b>:
+        sin él, el informe no puede decirte si está cara o barata.</p>
+      <div class="px-fv-r">
+        <div><label for="fvFase3">Fair Value · Average</label>
+          <input class="vin" id="fvFase3" data-v="fv" type="number" step="any"
+            placeholder="p. ej. 239.60"></div>
+        <a id="fvEnlace3" class="ab-b" href="#" target="_blank" rel="noopener"
+          style="align-self:end"><span class="ab-n">↗</span> Abrir InvestingPro</a>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ═══════════ 3 · INFORME ═══════════ -->
@@ -6550,6 +6590,7 @@ function veredicto(R){
 }
 
 function enlazarValoracion(){
+  if(typeof sincronizarFV === "function") sincronizarFV();
   document.querySelectorAll(".vin").forEach(inp=>{
     if(inp.classList.contains("pin")) return;          /* los de la tabla van aparte */
     inp.onchange = () => { VAL[inp.dataset.v] = parseNum(inp.value); informe(calcular()); guardarTrabajo(); };
@@ -8035,6 +8076,32 @@ $("demoMsft").onclick = () => cargarEjemplo(EJEMPLO_MSFT,
   "Ejercicios fiscales 2016-2025 (Microsoft cierra en junio, no en diciembre). Los precios son los implícitos de la capitalización a cierre de cada ejercicio, así que los múltiplos coinciden con la plantilla.");
 $("demoMsftNav").onclick = () => $("demoMsft").click();
 
+/* «Llévame allí»: a la puerta si sigue cerrada, y al precio si ya la abriste.
+   Si aún no hay informe, lo dice en vez de no hacer nada. */
+/* La casilla del Fair Value de la fase 3 y la del informe son la misma cosa:
+   escriben en VAL.fv y se copian la una a la otra al repintar. */
+function sincronizarFV(){
+  const c = $("fvFase3"); if(!c) return;
+  if(VAL.fv !== null && VAL.fv !== undefined && isFinite(VAL.fv)) c.value = VAL.fv;
+  const a = $("fvEnlace3");
+  if(a){ const u = (typeof urlProFicha === "function") ? urlProFicha() : null;
+    if(u){ a.href = u; a.classList.remove("hide"); } else { a.classList.add("hide"); } }
+}
+
+if($("btnIrPuerta")) $("btnIrPuerta").onclick = () => {
+  const destino = document.getElementById(VAL.puertaAbierta ? "p6" : "puerta");
+  if(destino && destino.offsetHeight > 0){
+    destino.scrollIntoView({behavior: modoScroll(), block: "start"});
+    const foco = document.getElementById(VAL.puertaAbierta ? "" : "juicioTxt");
+    if(foco) setTimeout(() => foco.focus(), 600);
+  } else {
+    const c = $("irPuerta").querySelector(".px-p");
+    if(c) c.innerHTML = `<b style="color:var(--amber-strong)">Todavía no hay informe.</b>
+      Vuelve al <b>paso 2</b> y pega las cuentas de la empresa: en cuanto haya números, el informe
+      aparece aquí abajo y al final del todo está la puerta del precio.`;
+  }
+};
+
 ANIO_FIN = new Date().getFullYear()-1;
 $("anioFin").value = ANIO_FIN;
 const RECUPERADO = cargarTrabajo();
@@ -8090,7 +8157,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-16.56c752a";
+const APP_VERSION = "2026-08-16.cc9ca2f";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
