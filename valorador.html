@@ -475,6 +475,11 @@ svg.esq,svg.ch,svg.dg{cursor:zoom-in}
 .db-m{background:rgba(255,255,255,.07);color:var(--soft)}
 .db-c{background:rgba(245,158,11,.24);color:var(--amber-strong);font-weight:700}
 .via2ok{border-color:rgba(74,222,128,.3)}
+/* la respuesta del buscador cuando no hay empresa que ofrecer */
+.sug .sav{display:block;padding:.7rem .9rem;font-size:.83rem;line-height:1.55;color:var(--soft);
+  cursor:default;border-bottom:1px solid var(--line)}
+.sug .sav b{color:var(--amber-strong)}
+.sug .sav:last-child{border-bottom:0}
 /* las tres cifras que mandan de lo pegado en Forecasts */
 .fccif{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:.7rem;margin-top:.8rem}
 .fcc{border:1px solid var(--line);border-radius:10px;padding:.8rem .9rem;background:var(--surface)}
@@ -1712,11 +1717,62 @@ function buscarEmpresas(q){
   return porTicker.concat(porNombre).slice(0, 8);
 }
 
+/* ── Lo que la gente escribe y no cotiza ──────────────────────────────────
+   Es la primera pregunta que aparece en cuanto se pone la app delante de
+   alguien: «he puesto SpaceX y no me sale». No sale porque no puede salir —no
+   cotiza, no publica cuentas y no hay nada que valorar—, pero si el buscador
+   se limita a cerrarse sin decir nada, parece que la app está rota.
+   Y de paso, las marcas que sí cotizan bajo otro nombre. */
+const NO_COTIZAN = {
+  "spacex":"SpaceX", "space x":"SpaceX", "starlink":"Starlink (es de SpaceX)",
+  "openai":"OpenAI", "anthropic":"Anthropic", "stripe":"Stripe", "revolut":"Revolut",
+  "bytedance":"ByteDance", "tiktok":"TikTok (es de ByteDance)", "ikea":"IKEA",
+  "mercadona":"Mercadona", "el corte ingles":"El Corte Inglés", "lidl":"Lidl",
+  "decathlon":"Decathlon", "bosch":"Bosch", "huawei":"Huawei", "glovo":"Glovo",
+  "cabify":"Cabify", "ferrero":"Ferrero", "mars":"Mars", "chanel":"Chanel"
+};
+const OTRO_NOMBRE = {
+  "zara":"ITX.MC", "bershka":"ITX.MC", "massimo dutti":"ITX.MC", "pull&bear":"ITX.MC",
+  "instagram":"META", "whatsapp":"META", "facebook":"META", "google":"GOOGL",
+  "youtube":"GOOGL", "android":"GOOGL", "gmail":"GOOGL", "windows":"MSFT",
+  "office":"MSFT", "azure":"MSFT", "xbox":"MSFT", "iphone":"AAPL", "ipad":"AAPL",
+  "ferrari":"RACE", "louis vuitton":"MC.PA", "dior":"MC.PA", "movistar":"TEF.MC",
+  "santander":"SAN.MC", "aws":"AMZN", "chatgpt":"OpenAI"
+};
+
 let SUG = [], SUG_SEL = -1;
 function pintarSugerencias(q){
   SUG = buscarEmpresas(q); SUG_SEL = -1;
   const ul = $("sugerencias");
-  if(!SUG.length){ cerrarSugerencias(); return; }
+  if(!SUG.length){
+    const b = sinTildes(q.trim());
+    if(b.length < 3){ cerrarSugerencias(); return; }
+    /* ¿es una marca de una que sí cotiza? */
+    const alias = Object.keys(OTRO_NOMBRE).find(k => b.includes(k) || k.includes(b));
+    const dueño = alias ? IDX_POR_TICKER[OTRO_NOMBRE[alias]] : null;
+    if(dueño){
+      SUG = [dueño];
+      ul.innerHTML = `<li class="sav">«${esc(q.trim())}» es de <b>${esc(dueño.n)}</b> — es la que cotiza</li>
+        <li role="option" id="sug0" aria-selected="false" data-i="0">
+          <span class="st">${esc(dueño.t)}</span><span class="sn">${esc(dueño.n)}</span>
+          <span class="sx">${dueño.s==="F"||dueño.s==="R" ? "⛔ " : ""}${esc(dueño.b)}</span></li>`;
+    } else {
+      const priv = Object.keys(NO_COTIZAN).find(k => b.includes(k));
+      ul.innerHTML = priv
+        ? `<li class="sav"><b>${esc(NO_COTIZAN[priv])} no cotiza en bolsa.</b> Es privada: no publica
+             cuentas auditadas, no tiene precio de mercado y <b>no se puede valorar con este método</b>.
+             Solo se analiza lo que cotiza.</li>`
+        : `<li class="sav">No está en mi lista de <b>720 empresas</b> (S&amp;P 500, IBEX, DAX, CAC,
+             AEX, MIB, SMI, nórdicos y Londres). Si cotiza, <b>escribe su ticker a mano y sigue</b>:
+             la lista solo sirve para autocompletar y para avisarte del sector.</li>`;
+      SUG = [];
+    }
+    ul.classList.remove("hide");
+    $("ticker").setAttribute("aria-expanded", "true");
+    ul.querySelectorAll("li[data-i]").forEach(li =>
+      li.addEventListener("mousedown", ev => { ev.preventDefault(); elegirEmpresa(+li.dataset.i); }));
+    return;
+  }
   ul.innerHTML = SUG.map((e,i) => `<li role="option" id="sug${i}" aria-selected="false" data-i="${i}">
     <span class="st">${esc(e.t)}</span><span class="sn">${esc(e.n)}</span>
     <span class="sx">${e.s==="F"||e.s==="R" ? "⛔ " : ""}${esc(e.b)}</span></li>`).join("");
@@ -8034,7 +8090,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-09.0ae8179";
+const APP_VERSION = "2026-08-16.56c752a";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
