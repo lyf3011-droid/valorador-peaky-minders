@@ -513,6 +513,9 @@ tr.fpct td.l i{color:var(--amber-strong);font-style:normal}
 .prevlab{font-size:.85rem;margin-bottom:.25rem}
 table.prev{min-width:560px}
 table.prev td,table.prev th{font-size:.76rem;padding:.25rem .4rem}
+/* el Vigia: recuento agregado, detalle bajo demanda */
+.vigia .vg-linea{display:flex;gap:.9rem;flex-wrap:wrap;font-size:.85rem;color:var(--soft)}
+.vigia .vg-chip{white-space:nowrap}
 /* el semaforo del precio: lo bueno en una linea, lo que bloquea con boton */
 .semp .semp-ok{display:flex;flex-direction:column;gap:.3rem}
 .semp .semp-i{font-size:.84rem;color:var(--soft)}
@@ -2548,6 +2551,9 @@ function pintarMatriz(){
     const esHelp = !!inp.dataset.h;
     const destino = () => esHelp ? HELP[inp.dataset.h][inp.dataset.s] : D[inp.dataset.k];
     inp.oninput = () => { const v = parseNum(inp.value); destino()[+inp.dataset.i] = v;
+      /* editar a mano UNA celda es soberano y consciente: no necesita preview,
+         pero SÍ queda registrado — antes pisaba a la SEC sin dejar rastro */
+      if(inp.dataset.k) trazaPon(inp.dataset.k, +inp.dataset.i, v===null?null:{f:"manual"});
       inp.classList.toggle("filled", v!==null); if(!esHelp) progreso(); };
     inp.onpaste = e => {
       const txt = (e.clipboardData||window.clipboardData).getData("text");
@@ -3189,7 +3195,8 @@ async function traerPrecios(){
     ts.forEach((t,i)=>{ if(cl[i]==null) return;
       const d = new Date(t*1000); porAnio[d.getUTCFullYear()] = cl[i]; });
     const A = anios(); let n = 0;
-    A.forEach((a,i)=>{ if(porAnio[a]!=null){ D.precioAno[i] = Math.round(porAnio[a]*100)/100; n++; } });
+    A.forEach((a,i)=>{ if(porAnio[a]!=null){ D.precioAno[i] = Math.round(porAnio[a]*100)/100;
+      trazaPon("precioAno", i, {f:"yahoo", t:"directo", nota:"cierre anual de mercado"}); n++; } });
     pintarMatriz(); PRECIOS_TRAIDOS = n;
     $("progFalta").textContent = n ? `✓ ${n} precios de cierre traídos de Yahoo Finance`
       : "Yahoo no tiene histórico para esos años";
@@ -3874,11 +3881,21 @@ function aplicarForecast(txt, caja){
 
 /* la procedencia de cada dato: 'sec' | 'pegado' | 'manual' — la usa el preview
    para los conflictos y la usará el Vigía (P2) */
-let ORIGEN = {};
-function origenPon(k, i, fuente){
+let ORIGEN = {};      /* vista de compatibilidad: ORIGEN[k][i] = TRAZA[k][i].f */
+
+/* ── TRAZA: el modelo ÚNICO de trazabilidad (P2) ──────────────────────────
+   Cada dato puede llevar: f (fuente), t ('directo'|'reconstruido'), xbrl
+   (la etiqueta usada ESE año), form, fin, cik, pred (registro predecesor),
+   usa (de qué se reconstruyó) y nota. No todos los campos siempre — pero
+   UNA sola arquitectura para todas las vías. */
+let TRAZA = {};
+function trazaPon(k, i, meta){
+  if(!TRAZA[k]) TRAZA[k] = new Array(N).fill(null);
+  TRAZA[k][i] = meta || null;
   if(!ORIGEN[k]) ORIGEN[k] = new Array(N).fill(null);
-  ORIGEN[k][i] = fuente;
+  ORIGEN[k][i] = meta ? meta.f : null;
 }
+function origenPon(k, i, fuente){ trazaPon(k, i, {f: fuente}); }
 
 /* deshacer: la foto de D y ORIGEN justo antes de incorporar nada */
 let UNDO_IMP = null;
@@ -3886,12 +3903,14 @@ function prepararUndo(etiqueta){
   const foto = {};
   CONCEPTOS.forEach(c => { foto[c.k] = D[c.k] ? D[c.k].slice() : null; });
   UNDO_IMP = {etiqueta, foto, origen: JSON.parse(JSON.stringify(ORIGEN)),
+              traza: JSON.parse(JSON.stringify(TRAZA)),
               precio: $("precio").value};
 }
 function deshacerImportacion(){
   if(!UNDO_IMP) return;
   CONCEPTOS.forEach(c => { if(UNDO_IMP.foto[c.k]) D[c.k] = UNDO_IMP.foto[c.k].slice(); });
   ORIGEN = UNDO_IMP.origen;
+  TRAZA = UNDO_IMP.traza || {};
   $("precio").value = UNDO_IMP.precio;
   UNDO_IMP = null;
   pintarMatriz(); guardarTrabajo(); pintarPegaGrid();
@@ -4850,6 +4869,88 @@ function calcular(){
      Antes esta respuesta estaba repartida en cinco mensajes distintos y alguno
      era genérico («falta el múltiplo o el crecimiento»). Cada pieza dice si
      está, qué le pasa y QUÉ BOTÓN la resuelve. El informe lo pinta tal cual. */
+  /* ── EL CENSO DEL VIGÍA (P2) ──────────────────────────────────────────────
+     Recorre TRAZA y clasifica cada dato: 🟢 directo · 🟡 reconstruido, con
+     cambio de etiqueta entre años o de registro predecesor · 🔵 supuesto
+     humano · 🔴 bloqueante (lo declara el semáforo). El Vigía califica LA
+     CALIDAD DEL DATO, nunca la de la empresa: una empresa mediocre puede
+     tener todo 🟢 y una extraordinaria una partida 🔴. */
+  R.vigia = (() => {
+    const det = {verdes:[], amarillos:[], azules:[], rojos:[]};
+    let nv = 0, na = 0;
+    CONCEPTOS.forEach(c => {
+      const arr = D[c.k]; if(!arr || !arr.some(v=>v!==null)) return;
+      const tz = (typeof TRAZA !== "undefined" && TRAZA[c.k]) || [];
+      const motivos = [], tags = new Set(); let anisRec = [], anisPred = [];
+      arr.forEach((v,i) => {
+        if(v === null) return;
+        const m = tz[i];
+        if(m && m.t === "reconstruido"){ anisRec.push(A[i]); }
+        else if(m && m.pred){ anisPred.push(A[i]); }
+        if(m && m.f === "sec" && m.t === "directo" && m.xbrl) tags.add(m.xbrl);
+      });
+      if(tags.size > 1) motivos.push("la serie usa " + tags.size + " etiquetas XBRL distintas (" +
+        [...tags].map(t=>t.slice(0,26)).join(" · ") + ") — puede ser correcto, pero la definición cambió");
+      if(anisRec.length){ const m0 = tz.find(x=>x && x.t==="reconstruido") || {};
+        motivos.push("reconstruido en " + anisRec.join(", ") +
+          (m0.usa ? " a partir de " + m0.usa.join(" + ") : "") + (m0.nota ? " — " + m0.nota : "")); }
+      if(anisPred.length) motivos.push("los años " + anisPred.join(", ") +
+        " vienen del registro PREDECESOR de la empresa (cambió de entidad ante la SEC)");
+      const nDatos = arr.filter(v=>v!==null).length;
+      if(motivos.length){ na++; det.amarillos.push({k:c.k, lab:c.lab, motivos, n:nDatos}); }
+      else { nv++; const m0 = tz.find(x=>x) || {f:"manual"};
+        det.verdes.push({k:c.k, lab:c.lab, n:nDatos, f:m0.f,
+          xbrl: tags.size === 1 ? [...tags][0] : undefined}); }
+    });
+    /* los supuestos humanos: lo que hay en VAL puesto por una persona */
+    const SUP = [["g","Crecimiento año 1"],["g5","Crecimiento año 5"],["gb","Crec. beneficios a1"],
+      ["gb5","Crec. beneficios a5"],["mult","Múltiplo objetivo"],["dn5","Deuda neta 2030e"],
+      ["dil","Dilución anual"],["pint","Intereses proyectados"],["pwcv","Circulante s/ventas"],
+      ["fv","Fair Value de Investing (apuntado)"],["fvAn","Objetivo de analistas (apuntado)"],
+      ["miPrecio","Tu precio antes de mirar"]];
+    SUP.forEach(([k,lab]) => { if(VAL[k] !== null && VAL[k] !== undefined)
+      det.azules.push({k, lab, val: VAL[k]}); });
+    if(VAL.modo === "partidas") det.azules.push({k:"partidas",
+      lab: VAL.origen === "forecast" ? "Proyección por partidas (consenso de analistas)"
+         : "Proyección por partidas (supuestos año a año)", val:"5 años"});
+    det.rojos = (R.semaforo || []).filter(x => !x.ok).map(x => ({k:x.k, lab:x.lab, detalle:x.detalle}));
+    return {nv, na, naz: det.azules.length, nr: det.rojos.length, det};
+  })();
+
+  /* ── DEPENDENCIAS: por qué NO se puede calcular una métrica ──────────────
+     Sustituye a las comprobaciones dispersas: cada métrica sabe qué piezas
+     necesita, y el mensaje nombra la pieza y los años exactos. */
+  R.porque = {};
+  (() => {
+    const faltaEn = k => A.filter((a,i) => D[k][i] === null);
+    if(der.roic.every(v => v === null)){
+      const causas = [];
+      if(der.capInv.every(v => v === null)){
+        const sub = ["equity","deudaCP","deudaLP","inversion"].filter(k => D[k].every(v=>v===null));
+        causas.push("falta capital invertido válido" + (sub.length ? " (" +
+          sub.map(k => (CONCEPTOS.find(c=>c.k===k)||{}).lab || k).join(", ") + " sin datos)" : ""));
+      }
+      if(D.ebit.every(v => v === null)) causas.push("falta el EBIT");
+      if(D.impuestos.every(v => v === null)) causas.push("faltan los impuestos");
+      if(causas.length) R.porque.roic = "No puedo calcular el ROIC: " + causas.join("; ") + ".";
+    } else {
+      const cojos = A.filter((a,i) => der.roic[i] === null && der.ebit !== undefined);
+      if(der.capInv.some(v=>v===null) && der.roic.filter(v=>v!==null).length < 5){
+        const anos = A.filter((a,i) => der.capInv[i] === null && D.ebit[i] !== null);
+        if(anos.length) R.porque.roic = "El ROIC solo sale en " +
+          der.roic.filter(v=>v!==null).length + " años: falta capital invertido en " +
+          anos.slice(0,4).join(", ") + (anos.length>4?"…":"") + ".";
+      }
+    }
+    if(der.fcf[L] === null){
+      const piezas = [["ebitda","el EBITDA"],["impuestos","los impuestos"]]
+        .filter(([k]) => D[k][L] === null).map(([,n2])=>n2);
+      if(D.capex[L] === null && D.capexMant[L] === null) piezas.push("el CapEx");
+      if(piezas.length) R.porque.fcf = "No puedo construir el FCF de " + A[L] + ": falta " +
+        piezas.join(" y ") + ".";
+    }
+  })();
+
   R.semaforo = [];
   const sem = (k, lab, ok, detalle, accion, aviso) =>
     R.semaforo.push({k, lab, ok: !!ok, detalle: detalle || "", accion: accion || null, aviso: !!aviso});
@@ -4904,6 +5005,12 @@ function calcular(){
     gListo ? null : "forecast",
     /* HISTÓRICO ≠ FUTURO: si el crecimiento viene de extrapolar, es aviso siempre */
     gListo && VAL.origen !== "forecast" && VAL.origen !== "analistas" && VAL.g === null);
+
+  /* el semáforo ya está: ahora sí, los rojos del Vigía */
+  if(R.vigia){
+    R.vigia.det.rojos = R.semaforo.filter(x => !x.ok).map(x => ({k:x.k, lab:x.lab, detalle:x.detalle}));
+    R.vigia.nr = R.vigia.det.rojos.length;
+  }
   /* Los atajos también puntúan y también vigilan: una empresa sin precio o que
      quema caja no deja de tener un negocio que juzgar, y es de las que más
      falta hace revisar los datos. */
@@ -5448,6 +5555,48 @@ function animarInforme(){
 /* ══════════════ EL SEMÁFORO DEL PRECIO, PINTADO ══════════════
    Lo que está bien, en una línea; lo que bloquea, con su botón. Sustituye a
    los cinco mensajes repartidos que había — incluido el genérico. */
+/* ══════════════ EL VIGÍA (P2): la calidad del dato, a la vista ══════════════
+   Agregado primero, detalle bajo demanda. Y la regla que no se negocia:
+   el Vigía califica EL DATO, no la empresa. */
+function vigiaPanel(R){
+  const V = R.vigia; if(!V) return "";
+  const F_NOM = {sec:"SEC", pegado:"InvestingPro/pegado", manual:"manual", yahoo:"Yahoo", ejemplo:"ejemplo"};
+  const confianza = V.nr ? "BAJA" : V.na ? "MEDIA" : "ALTA";
+  const valor = (R.sinVal || R.sinPrecio) ? "BLOQUEADA" : "DISPONIBLE";
+  return `<div class="panel vigia">
+    <h3 style="margin-top:0">Vigía · de dónde sale cada número</h3>
+    <div class="vg-linea">
+      <span class="vg-chip">🟢 <b>${V.nv}</b> series directas</span>
+      <span class="vg-chip">🟡 <b>${V.na}</b> reconstruidas o con aviso</span>
+      <span class="vg-chip">🔵 <b>${V.naz}</b> supuestos tuyos</span>
+      <span class="vg-chip">🔴 <b>${V.nr}</b> bloqueantes</span>
+    </div>
+    <div class="vg-linea" style="margin-top:.4rem">
+      <span>Confianza del histórico: <b style="color:${confianza==="ALTA"?"var(--green)":confianza==="MEDIA"?"var(--amber-strong)":"var(--red)"}">${confianza}</b></span>
+      <span>· Valoración: <b style="color:${valor==="DISPONIBLE"?"var(--green)":"var(--red)"}">${valor}</b></span>
+    </div>
+    <details class="noimp" style="margin-top:.6rem"><summary>Ver el detalle, dato a dato</summary>
+      <div class="dbody" style="font-size:.83rem">
+      ${V.det.rojos.length ? `<div class="warn" style="margin-bottom:.6rem">${V.det.rojos.map(x =>
+        `🔴 <b>${esc(x.lab)}</b> — ${x.detalle}`).join("<br>")}</div>` : ""}
+      ${Object.values(R.porque || {}).length ? `<div class="warn" style="margin-bottom:.6rem">${
+        Object.values(R.porque).map(m => `🔴 ${m}`).join("<br>")}</div>` : ""}
+      ${V.det.amarillos.length ? `<div class="note" style="border-left:2px solid var(--amber);margin-bottom:.6rem">
+        ${V.det.amarillos.map(x => `🟡 <b>${esc(x.lab)}</b> · ${x.n} años<br>
+          <span style="color:var(--soft)">${x.motivos.map(esc).join("<br>")}</span>`).join("<br>")}</div>` : ""}
+      ${V.det.azules.length ? `<div class="note" style="border-left:2px solid var(--d2);margin-bottom:.6rem">
+        ${V.det.azules.map(x => `🔵 <b>${esc(x.lab)}</b>${x.val!==undefined && x.val!==null && x.val!==""
+          ? " · " + esc(String(x.val)) : ""}`).join("<br>")}
+        <br><span style="color:var(--muted-txt)">Los supuestos NUNCA se presentan como históricos.</span></div>` : ""}
+      ${V.det.verdes.length ? `<div style="color:var(--soft)">${V.det.verdes.map(x =>
+        `🟢 ${esc(x.lab)} · ${x.n} años · ${esc(F_NOM[x.f]||x.f||"—")}${x.xbrl ? " · <code>"+esc(x.xbrl.slice(0,34))+"</code>" : ""}`)
+        .join("<br>")}</div>` : ""}
+      <div class="note" style="margin-top:.7rem">El Vigía califica <b>la calidad del dato</b>, no la
+      de la empresa: una empresa mediocre puede tener todo 🟢, y una extraordinaria una partida 🔴.</div>
+      </div></details>
+  </div>`;
+}
+
 function semaforoPrecio(R){
   if(!R.semaforo || !R.semaforo.length) return "";
   const ok = R.semaforo.filter(x => x.ok && !x.aviso);
@@ -5893,6 +6042,7 @@ function informe(R){
      </div>`,"p5","Riesgo");
 
   /* ── LA PUERTA · aquí termina el análisis a ciegas ── */
+  H += vigiaPanel(R);               /* P2: la procedencia, antes que nada */
   H += multiplosHistoricos(R);      /* su vara de medir, antes de cerrar con llave */
   H += puerta(R);
 
@@ -7948,6 +8098,25 @@ async function secFacts(cik){
    tiene dos trimestres. Se leen los dos y el antiguo tapa los huecos. */
 const SEC_CIK_ANTERIOR = { XOM: "0000034088" };
 
+/* como secAnual, pero conservando la fecha de cierre — para la traza */
+function secAnualX(datos, instante, unidad){
+  const u = (datos.units && datos.units[unidad || "USD"]) || [];
+  const out = {};
+  if(!Array.isArray(u)) return {};
+  for(const x of u){
+    if(x.form !== "10-K") continue;
+    if(!instante){
+      if(!x.start || x.fp !== "FY") continue;
+      const a = new Date(x.start), b = new Date(x.end);
+      const dias = (b - a) / 86400000;
+      if(dias < 350 || dias > 380) continue;
+    }
+    const y = +x.end.slice(0,4) - (+x.end.slice(5,7) <= 1 ? 1 : 0);
+    if(!out[y] || x.end >= out[y].end) out[y] = {v: x.val/1e6, end: x.end};
+  }
+  return out;
+}
+
 async function traerSEC(desde){
   const T = ($("ticker").value||"").trim().toUpperCase();
   /* hay dos botones —uno arriba y otro en el cuadro de flujo de caja— y el
@@ -7993,9 +8162,16 @@ async function traerSEC(desde){
     const cikViejo = SEC_CIK_ANTERIOR[T];
     if(cikViejo){ try{ FACTS2 = await secFacts(cikViejo); }catch(e){} }
 
-    const deFacts = (g, tag, instante, unidad) => {
+    /* P2: cada año sabe QUÉ etiqueta lo trajo, su fecha de cierre y si vino
+       del registro predecesor. Es lo que permite responder «¿por qué la app
+       cree que el EBIT 2023 es ese número?» y detectar cambios de etiqueta. */
+    const deFacts = (g, tag, instante, unidad, pred) => {
       if(!g || !g[tag] || !g[tag].units) return {};
-      return secAnual({units: g[tag].units}, instante, unidad);
+      const raw = secAnualX({units: g[tag].units}, instante, unidad);
+      const out = {};
+      Object.entries(raw).forEach(([y, o]) => {
+        out[y] = {v: o.v, xbrl: tag, fin: o.end, pred: !!pred || undefined}; });
+      return out;
     };
     const pedir = async (tags, instante, unidad) => {
       let acum = null;
@@ -8005,19 +8181,23 @@ async function traerSEC(desde){
         else Object.entries(s).forEach(([y,v]) => { if(acum[y] === undefined) acum[y] = v; });
       };
       if(FACTS || FACTS2){
-        for(const tag of tags){ junta(deFacts(FACTS, tag, instante, unidad)); }
-        for(const tag of tags){ junta(deFacts(FACTS2, tag, instante, unidad)); }
+        for(const tag of tags){ junta(deFacts(FACTS, tag, instante, unidad, false)); }
+        for(const tag of tags){ junta(deFacts(FACTS2, tag, instante, unidad, true)); }
         return acum;
       }
-      /* respaldo: el camino antiguo, etiqueta a etiqueta por la red */
       for(const tag of tags){
         try{
           const j = await secJSON(`https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`);
-          junta(secAnual(j, instante, unidad));
+          const raw = secAnualX(j, instante, unidad);
+          const s2 = {}; Object.entries(raw).forEach(([y,o]) => { s2[y] = {v:o.v, xbrl:tag, fin:o.end}; });
+          junta(s2);
         }catch(e){ /* esa etiqueta no la usa esta empresa: se prueba la siguiente */ }
       }
       return acum;
     };
+    /* de un mapa con meta, solo los valores (para las reconstrucciones) */
+    const soloV = m => { if(!m) return null; const o = {};
+      Object.entries(m).forEach(([y,x]) => o[y] = x.v); return o; };
     const resultados = await Promise.all(pendientes.map(async ([k, tags]) =>
       [k, await pedir(tags, SEC_INSTANTE.has(k), k === "acciones" ? "shares" : "USD")]));
     for(const [k, serie] of resultados){
@@ -8025,8 +8205,10 @@ async function traerSEC(desde){
       const con = CONCEPTOS.find(c => c.k === k);
       let n = 0;
       A.forEach((a,i) => { if(serie[a] !== undefined){
-        D[k][i] = con && con.pos ? Math.abs(Math.round(serie[a])) : Math.round(serie[a]);
-        origenPon(k, i, "sec"); n++; } });
+        D[k][i] = con && con.pos ? Math.abs(Math.round(serie[a].v)) : Math.round(serie[a].v);
+        trazaPon(k, i, {f:"sec", t:"directo", xbrl:serie[a].xbrl, form:"10-K",
+          fin:serie[a].fin, cik:(serie[a].pred && cikViejo) || cik, pred:serie[a].pred});
+        n++; } });
       if(n) puestas.push({k, lab: con ? con.lab : k, n}); else vacias.push(k);
     }
 
@@ -8042,7 +8224,11 @@ async function traerSEC(desde){
       if(ebt){
         let n = 0;
         A.forEach((a,i) => { if(ebt[a] !== undefined){
-          D.ebit[i] = Math.round(ebt[a] - (D.interes[i] || 0)); n++; } });
+          D.ebit[i] = Math.round(ebt[a].v - (D.interes[i] || 0));
+          trazaPon("ebit", i, {f:"sec", t:"reconstruido", xbrl:ebt[a].xbrl, form:"10-K",
+            usa:["EBT ("+ebt[a].xbrl.slice(0,28)+"…)", "intereses"],
+            nota:"EBIT = beneficio antes de impuestos − intereses; contrástalo con InvestingPro"});
+          n++; } });
         if(n){ puestas.push({k:"ebit", lab:"EBIT (derivado: beneficio antes de impuestos − intereses)", n});
           const j = vacias.indexOf("ebit"); if(j>=0) vacias.splice(j,1);
           R_SEC_EBIT_DERIVADO = true; }
@@ -8054,7 +8240,9 @@ async function traerSEC(desde){
        que si falta la una se usa la otra. */
     if(!D.da.some(v=>v!==null) && D.capexMant.some(v=>v!==null)){
       let n = 0;
-      A.forEach((a,i) => { if(D.capexMant[i]!==null){ D.da[i] = D.capexMant[i]; n++; } });
+      A.forEach((a,i) => { if(D.capexMant[i]!==null){ D.da[i] = D.capexMant[i];
+        trazaPon("da", i, {f:"sec", t:"reconstruido", usa:["Depreciation"],
+          nota:"solo publican la depreciación: se usa como D&A"}); n++; } });
       if(n){ puestas.push({k:"da", lab:"Depreciación y amortización (solo publican la depreciación)", n});
         const j = vacias.indexOf("da"); if(j>=0) vacias.splice(j,1); }
     }
@@ -8065,14 +8253,18 @@ async function traerSEC(desde){
        usa la pura: es el suelo del dato, no un invento, y queda dicho. */
     else if(D.da.some(v=>v===null) && D.capexMant.some(v=>v!==null)){
       let n = 0;
-      A.forEach((a,i) => { if(D.da[i]===null && D.capexMant[i]!==null){ D.da[i] = D.capexMant[i]; n++; } });
+      A.forEach((a,i) => { if(D.da[i]===null && D.capexMant[i]!==null){ D.da[i] = D.capexMant[i];
+        trazaPon("da", i, {f:"sec", t:"reconstruido", usa:["Depreciation"],
+          nota:"hueco tapado con la depreciación pura (cambiaron de etiqueta)"}); n++; } });
       if(n) puestas.push({k:"da", lab:"D&A · " + n + " años tapados con la depreciación (cambiaron de etiqueta)", n});
     }
     /* con la D&A ya completa, el EBITDA derivado también tapa sus huecos */
     if(D.ebitda.some(v=>v===null) && D.ebit.some(v=>v!==null) && D.da.some(v=>v!==null)){
       let n = 0;
       A.forEach((a,i) => { if(D.ebitda[i]===null && D.ebit[i]!==null && D.da[i]!==null){
-        D.ebitda[i] = Math.round(D.ebit[i] + Math.abs(D.da[i])); n++; } });
+        D.ebitda[i] = Math.round(D.ebit[i] + Math.abs(D.da[i]));
+        trazaPon("ebitda", i, {f:"sec", t:"reconstruido", usa:["EBIT","D&A"],
+          nota:"EBITDA = EBIT + D&A, como en la plantilla"}); n++; } });
       if(n && !puestas.some(p=>p.k==="ebitda"))
         puestas.push({k:"ebitda", lab:"EBITDA (calculado: EBIT + D&A)", n});
     }
@@ -8084,7 +8276,9 @@ async function traerSEC(desde){
     if(!D.ebitda.some(v=>v!==null) && D.ebit.some(v=>v!==null) && D.da.some(v=>v!==null)){
       let n = 0;
       A.forEach((a,i) => { if(D.ebit[i]!==null && D.da[i]!==null){
-        D.ebitda[i] = Math.round(D.ebit[i] + Math.abs(D.da[i])); n++; } });
+        D.ebitda[i] = Math.round(D.ebit[i] + Math.abs(D.da[i]));
+        trazaPon("ebitda", i, {f:"sec", t:"reconstruido", usa:["EBIT","D&A"],
+          nota:"EBITDA = EBIT + D&A, como en la plantilla"}); n++; } });
       if(n) puestas.push({k:"ebitda", lab:"EBITDA (calculado: EBIT + D&A)", n});
     }
     if(!D.interes.some(v=>v!==null)){
@@ -8093,10 +8287,13 @@ async function traerSEC(desde){
       if(ing || gas){
         let n = 0;
         A.forEach((a,i) => {
-          const x = ing && ing[a] !== undefined ? ing[a] : null;
-          const y = gas && gas[a] !== undefined ? gas[a] : null;
+          const x = ing && ing[a] !== undefined ? ing[a].v : null;
+          const y = gas && gas[a] !== undefined ? gas[a].v : null;
           if(x === null && y === null) return;
-          D.interes[i] = Math.round((x||0) - Math.abs(y||0)); n++;
+          D.interes[i] = Math.round((x||0) - Math.abs(y||0));
+          trazaPon("interes", i, {f:"sec", t:"reconstruido",
+            usa:[(ing&&ing[a]&&ing[a].xbrl)||"—", (gas&&gas[a]&&gas[a].xbrl)||"—"],
+            nota:"intereses netos = cobrados − pagados"}); n++;
         });
         if(n) puestas.push({k:"interes", lab:"Intereses netos (ingresos − gastos)", n});
         else vacias.push("interes");
@@ -8681,6 +8878,8 @@ function cargarEjemplo(E, nota){
   $("ticker").value=E._id.ticker; $("nombre").value=E._id.nombre;
   $("moneda").value=E._id.moneda; MON=E._id.moneda; $("precio").value=E._id.precio;
   CONCEPTOS.forEach(c=>{ D[c.k]=(E[c.k]||new Array(10).fill(null)).slice(); });
+  TRAZA = {}; ORIGEN = {};
+  CONCEPTOS.forEach(c=>{ D[c.k].forEach((v,i)=>{ if(v!==null) trazaPon(c.k,i,{f:"ejemplo",t:"directo"}); }); });
   Object.keys(VAL).forEach(k=>VAL[k]=null); VAL.obj=15;
   $("idinfo").innerHTML = `<div class="idcard"><div class="n">${esc(E._id.nombre)}</div>
     <div class="m">Ejemplo con 10 ejercicios reales de InvestingPro.</div>
@@ -8798,7 +8997,12 @@ function empaquetar(){
     ticker: $("ticker").value, nombre: $("nombre").value,
     precio: $("precio").value, moneda: $("moneda").value,
     negocio: $("negocio").value, invertir: $("invertir").checked,
-    val: VAL, datos
+    val: VAL, datos,
+    /* P2: la procedencia viaja con los datos — antes moría al recargar */
+    traza: (() => { const t = {};
+      Object.entries(TRAZA).forEach(([k, arr]) => { if(!arr) return;
+        arr.forEach((m,i) => { if(m){ if(!t[k]) t[k]={}; t[k][i]=m; } }); });
+      return t; })()
   };
 }
 
@@ -8806,10 +9010,17 @@ function aplicarPaquete(g){
   if(g.N && g.N !== N){ N = g.N; $("nAnios").value = String(N); }
   CONCEPTOS.forEach(c => D[c.k] = new Array(N).fill(null));
   if(g.anioFin){ ANIO_FIN = g.anioFin; $("anioFin").value = g.anioFin; }
+  TRAZA = {}; ORIGEN = {};
   Object.entries(g.datos || {}).forEach(([k, arr]) => {
     if(!D[k] || !Array.isArray(arr)) return;
     arr.slice(0, N).forEach((v, i) => D[k][i] = (typeof v === "number" ? v : null));
   });
+  /* P2: la procedencia vuelve con los datos; lo guardado ANTES de existir la
+     traza entra como 'manual', que es lo honesto — no se inventa una fuente */
+  Object.entries(g.traza || {}).forEach(([k, filas]) => {
+    Object.entries(filas || {}).forEach(([i, m]) => { if(+i < N) trazaPon(k, +i, m); });
+  });
+  if(!g.traza){ CONCEPTOS.forEach(c => D[c.k].forEach((v,i) => { if(v!==null) trazaPon(c.k,i,{f:"manual"}); })); }
   ["ticker","nombre","precio","moneda","negocio"].forEach(id => $(id).value = g[id] || "");
   MON = $("moneda").value || "$";
   $("invertir").checked = !!g.invertir;
@@ -9049,7 +9260,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-17.779513f";
+const APP_VERSION = "2026-08-17.c8d717e";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
