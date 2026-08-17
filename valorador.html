@@ -506,6 +506,10 @@ tr.fpct td{color:var(--amber-strong);font-size:.76rem;border-bottom:1px dashed v
   padding-top:.05rem}
 tr.fpct td.l{padding-left:1.4rem;color:var(--soft)}
 tr.fpct td.l i{color:var(--amber-strong);font-style:normal}
+/* el semaforo del precio: lo bueno en una linea, lo que bloquea con boton */
+.semp .semp-ok{display:flex;flex-direction:column;gap:.3rem}
+.semp .semp-i{font-size:.84rem;color:var(--soft)}
+.semp .semp-i b{color:var(--green)}
 /* las dos vias de entrada de datos del paso 2 */
 .dosvias{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:.9rem;margin-bottom:.8rem}
 .via{border:1px solid var(--line);border-radius:12px;padding:1rem 1.1rem;display:flex;
@@ -4593,6 +4597,66 @@ function calcular(){
   /* ── VALORACIÓN ── */
   const precio = parseNum($("precio").value);
   R.precio = precio;
+
+  /* ── EL SEMÁFORO DEL PRECIO ────────────────────────────────────────────────
+     La única fuente de verdad de «¿se puede valorar, y si no, qué lo impide?».
+     Antes esta respuesta estaba repartida en cinco mensajes distintos y alguno
+     era genérico («falta el múltiplo o el crecimiento»). Cada pieza dice si
+     está, qué le pasa y QUÉ BOTÓN la resuelve. El informe lo pinta tal cual. */
+  R.semaforo = [];
+  const sem = (k, lab, ok, detalle, accion, aviso) =>
+    R.semaforo.push({k, lab, ok: !!ok, detalle: detalle || "", accion: accion || null, aviso: !!aviso});
+
+  sem("precio", "El precio de hoy", precio !== null,
+    precio !== null ? mo(precio)
+      : "Sin él no hay con qué comparar. El botón «Buscar» lo trae de Yahoo con el ticker.",
+    precio !== null ? null : "buscar");
+
+  const fcfUlt = der.fcf[L];
+  /* La trampa silenciosa que destapó la propia prueba del semáforo: si faltan
+     los impuestos (o el CapEx entero), la fórmula los trata como CERO y el
+     flujo sale INFLADO con cara de bueno — a META le salían 83.281 M en vez de
+     57.807. Un FCF construido sobre un hueco no está «bien»: está mal sin
+     avisar, que es lo peor que puede estar. */
+  const fcfCojo = [];
+  if(D.impuestos[L] === null) fcfCojo.push("los impuestos");
+  if(D.capex[L] === null && D.capexMant[L] === null) fcfCojo.push("el CapEx");
+  sem("fcf", "El flujo de caja del último año",
+    fcfUlt !== null && fcfUlt > 0 && !fcfCojo.length,
+    fcfUlt === null
+      ? "No se puede construir: falta el EBITDA o casi todo lo demás del último año."
+      : fcfCojo.length
+      ? "Sale " + nf(fcfUlt,0) + " M pero SIN " + fcfCojo.join(" ni ") +
+        " — la fórmula los cuenta como cero y el flujo queda inflado. No vale para valorar."
+      : fcfUlt <= 0
+      ? "Salió NEGATIVO (" + nf(fcfUlt,0) + " M): la empresa consumió caja. No es un hueco de datos — es la conclusión."
+      : nf(fcfUlt,0) + " M, construido con la fórmula del método",
+    (fcfUlt === null || fcfCojo.length) ? "sec" : null);
+
+  sem("acciones", "Las acciones diluidas", !!acciones[L],
+    acciones[L] ? nf(acciones[L],0) + " M" : "Sin ellas no hay precio por acción.",
+    acciones[L] ? null : "sec");
+
+  const multListo = (VAL.mult !== null) || (R.cMult.evFcf.v !== null);
+  sem("mult", "El múltiplo (su vara de medir)", multListo,
+    VAL.mult !== null ? mu(VAL.mult) + " — puesto por ti"
+      : R.cMult.evFcf.v !== null ? mu(R.cMult.evFcf.v) + " — la mediana de sus 10 años"
+      : "Faltan los diez cierres anuales (pestaña Mercado). Sin ellos no hay múltiplo histórico.",
+    multListo ? null : "precios",
+    VAL.mult === null && R.cMult.evFcf.v === null ? false : false);
+
+  const gListo = (VAL.g !== null) || (VAL.modo === "partidas") || (R.cagrF !== null);
+  const gOrigen = VAL.origen === "forecast" ? "del consenso de analistas"
+    : VAL.origen === "analistas" ? "de las estimaciones que trajiste"
+    : VAL.g !== null ? "puesto por ti"
+    : R.cagrFDesde ? "extrapolado desde " + R.cagrFDesde.anio + ", su primer año en positivo"
+    : R.cagrF !== null ? "extrapolado del pasado" : "";
+  sem("g", "El crecimiento futuro", gListo,
+    gListo ? gOrigen
+      : "No sale del histórico (años en negativo) y nadie lo ha puesto. Pega Forecasts o escríbelo a mano.",
+    gListo ? null : "forecast",
+    /* HISTÓRICO ≠ FUTURO: si el crecimiento viene de extrapolar, es aviso siempre */
+    gListo && VAL.origen !== "forecast" && VAL.origen !== "analistas" && VAL.g === null);
   /* Los atajos también puntúan y también vigilan: una empresa sin precio o que
      quema caja no deja de tener un negocio que juzgar, y es de las que más
      falta hace revisar los datos. */
@@ -4622,6 +4686,11 @@ function calcular(){
   const gLoco    = !gPuesto && gF > 35;
   if(multLoco || gLoco){
     R.sinVal = true;
+    R.semaforo.push({k:"locos", lab:"Los supuestos", ok:false,
+      detalle:(gLoco ? "El crecimiento extrapolado ("+nf(gF,1)+"%) " : "") +
+              (multLoco ? (gLoco?"y el múltiplo":"El múltiplo")+" histórico ("+mu(multObj)+") " : "") +
+              "no se sostienen: hay números, pero presentarlos como precio sería engañar. Ponlos tú o trae los de analistas.",
+      accion:"forecast", aviso:false});
     R.supuestosLocos = {
       mult: multLoco ? multObj : null,
       g: gLoco ? gF : null,
@@ -5129,6 +5198,52 @@ function animarInforme(){
    precio de hoy —eso sigue detrás de la puerta— sino el rango en el que el
    mercado la ha tratado siempre. Va antes a propósito: sin esto delante, pedir
    un precio propio es pedir que alguien se lo invente. */
+/* ══════════════ EL SEMÁFORO DEL PRECIO, PINTADO ══════════════
+   Lo que está bien, en una línea; lo que bloquea, con su botón. Sustituye a
+   los cinco mensajes repartidos que había — incluido el genérico. */
+function semaforoPrecio(R){
+  if(!R.semaforo || !R.semaforo.length) return "";
+  const ok = R.semaforo.filter(x => x.ok && !x.aviso);
+  const avisos = R.semaforo.filter(x => x.ok && x.aviso);
+  const mal = R.semaforo.filter(x => !x.ok);
+  const boton = a => a === "buscar"
+      ? `<button type="button" class="fx" data-acc="buscar">🔎 Buscar el precio</button>`
+    : a === "sec"
+      ? `<button type="button" class="fx" data-acc="sec">🏛 Traerlo de la SEC</button>`
+    : a === "precios"
+      ? `<button type="button" class="fx" data-acc="precios">📈 Traer los 10 cierres</button>`
+    : a === "forecast"
+      ? `<button type="button" class="fx" data-acc="forecast">📋 Pegar Forecasts</button>`
+    : "";
+  return `<div class="panel semp">
+    <h3 style="margin-top:0">¿Se puede valorar? · las cinco piezas</h3>
+    ${ok.length ? `<div class="semp-ok">${ok.map(x =>
+      `<span class="semp-i">✓ <b>${esc(x.lab)}</b> · ${x.detalle}</span>`).join("")}</div>` : ""}
+    ${avisos.map(x => `<div class="note" style="border-left:2px solid var(--amber);margin-top:.5rem">
+      🟡 <b>${esc(x.lab)}</b> · ${x.detalle}. <b>Histórico no es futuro</b>: el número sirve de punto
+      de partida, no de previsión. Contrástalo con Forecasts o cámbialo a mano.
+      <button type="button" class="fx" data-acc="forecast">📋 Pegar Forecasts</button></div>`).join("")}
+    ${mal.map(x => `<div class="warn" style="margin-top:.5rem">
+      🔴 <b>${esc(x.lab)}</b> · ${x.detalle} ${boton(x.accion)}</div>`).join("")}
+    ${mal.length ? "" : `<div class="note" style="margin-top:.6rem">Las cinco piezas están: el
+      precio de abajo se sostiene sobre esto y nada más.</div>`}
+  </div>`;
+}
+
+/* los botones del semáforo: cada bloqueo lleva a su remedio, no a un texto */
+function enlazarSemaforo(){
+  document.querySelectorAll("[data-acc]").forEach(b => {
+    b.onclick = () => {
+      const a = b.dataset.acc;
+      if(a === "buscar"){ const x = $("buscar"); if(x){ x.click(); x.scrollIntoView({behavior:modoScroll(), block:"center"}); } }
+      else if(a === "sec"){ traerSEC("top"); const x = $("resSECtop"); if(x) x.scrollIntoView({behavior:modoScroll(), block:"center"}); }
+      else if(a === "precios"){ PASO_PEGA = ORDEN_PEGA.indexOf("MK"); pintarPegaGrid();
+        $("pegagrid").scrollIntoView({behavior:modoScroll(), block:"start"}); }
+      else if(a === "forecast"){ if(typeof pedirForecast === "function") pedirForecast(); }
+    };
+  });
+}
+
 function multiplosHistoricos(R){
   if(!R || !R.cMult || !R.der) return "";
   const d = R.der, A = R.A, cm = R.cMult.evFcf;
@@ -5833,7 +5948,7 @@ function pasoValoracion(R){
   const A=R.A, d=R.der, L=R.L;
   if(R.sinPrecio) return paso("Pregunta 6","¿Cuánto cuesta?",
     "Aquí es donde por fin miramos el precio — el último, nunca el primero.",
-    `<div class="warn"><b>Falta el precio de hoy.</b> Escríbelo arriba (o pulsa «Buscar» con el ticker) y vuelve a analizar.</div>`,
+    semaforoPrecio(R),
     "p6","Precio");
 
   const cm = R.cMult.evFcf;
@@ -5853,7 +5968,7 @@ function pasoValoracion(R){
     const nom = ($("nombre").value || $("ticker").value || "la empresa").trim();
     return paso("Pregunta 6","¿Cuánto cuesta?",
       "Aquí es donde por fin miramos el precio — el último, nunca el primero.",
-      multBox + (fcfNeg
+      semaforoPrecio(R) + multBox + (fcfNeg
         ? `<div class="warn"><b>No hay valoración, y no es un fallo: es el resultado.</b><br>
            El método valora multiplicando el dinero real que genera la empresa. En el último ejercicio
            ${nom} <b>no generó dinero: consumió ${nf(Math.abs(d.fcf[L]),0)} millones</b>. Multiplicar un
@@ -5904,7 +6019,7 @@ function pasoValoracion(R){
                 negativo <b>no sale una tasa de crecimiento</b>: no hay nada que multiplicar.`
               : sinMult ? `No he podido sacar el <b>múltiplo</b> al que ha cotizado históricamente —
                 hacen falta las acciones y la deuda de los mismos años que el flujo de caja.`
-              : `Falta el múltiplo objetivo o el crecimiento esperado.`}
+              : `Arriba, en el semáforo, está la pieza exacta que falta y su botón.`}
               <div class="note" style="margin-top:.6rem;background:transparent;border:0;padding:0">
                 <b>Qué puedes hacer:</b> pegar la pestaña <b>Forecasts</b> —los analistas sí dan un
                 crecimiento para los próximos años— o escribir el crecimiento a mano en el modo
@@ -6025,6 +6140,7 @@ function pasoValoracion(R){
         extrapolar el pasado no es un análisis, es un adorno. Con lo de arriba te sobra.`)}
      ${cierrePrecio(R)}
      ` : `
+     ${semaforoPrecio(R)}
      ${tramo(3,"Tu precio, calculado con lo que esperan los analistas",
        `Esto ya es tuyo. No es lo que la empresa vale: es <b>lo máximo que puedes pagar hoy</b>
         para llevarte un ${nf(v.obj*100,0)}% anual durante cinco años.`)}
@@ -6993,6 +7109,7 @@ function veredicto(R){
 
 function enlazarValoracion(){
   if(typeof sincronizarFV === "function") sincronizarFV();
+  enlazarSemaforo();
   document.querySelectorAll(".vin").forEach(inp=>{
     if(inp.classList.contains("pin")) return;          /* los de la tabla van aparte */
     inp.onchange = () => { VAL[inp.dataset.v] = parseNum(inp.value); informe(calcular()); guardarTrabajo(); };
@@ -7746,6 +7863,21 @@ async function traerSEC(desde){
       try{ await traerPrecios(); precios = PRECIOS_TRAIDOS; }catch(e){}
       if(precios) puestas.push({k:"precioAno", lab:"Precio al cierre del año (Yahoo Finance)", n:precios});
     }
+    /* Y el precio de HOY, que es distinto de los diez cierres. La medición del
+       flujo lo dejó en evidencia: la SEC traía 22 partidas perfectas y el
+       recorrido moría igualmente en «falta el precio de hoy», porque esa
+       casilla solo se llenaba pulsando «Buscar». Mismo viaje, mismo Yahoo. */
+    if(!parseNum($("precio").value)){
+      try{
+        const T2 = ($("ticker").value||"").trim().toUpperCase();
+        const rj = await secJSON(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(T2)}?range=1d&interval=1d`, 9000);
+        const m = rj && rj.chart && rj.chart.result && rj.chart.result[0] && rj.chart.result[0].meta;
+        if(m && m.regularMarketPrice){
+          $("precio").value = String(Math.round(m.regularMarketPrice*100)/100);
+          puestas.push({k:"precio", lab:"Precio de hoy (Yahoo Finance)", n:1});
+        }
+      }catch(e){}
+    }
 
     pintarMatriz(); pintarPegaGrid(); guardarTrabajo();
     const nom = k => (CONCEPTOS.find(c=>c.k===k)||{}).lab || k;
@@ -7759,7 +7891,11 @@ async function traerSEC(desde){
          ${yaEstaban.length?`<div style="color:var(--muted-txt)">Intactas porque ya tenían datos:
            ${esc(yaEstaban.map(nom).join(", "))}.</div>`:""}
          <div style="margin-top:.5rem">Datos de los <b>10-K</b> depositados en la SEC. Es la fuente
-         oficial: si no cuadran con Investing, manda esta.</div>`
+         oficial: si no cuadran con Investing, manda esta.</div>
+         <div class="bar-actions" style="margin-top:.7rem">
+           <button type="button" class="b1" onclick="document.getElementById('analizar').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>document.getElementById('analizar').focus(),600)">
+             Siguiente: Analizar la empresa ↓</button>
+         </div>`
       : `<div class="warn"><b>No he podido traer nada.</b> ${yaEstaban.length
            ? "Todas las partidas que busco ya tenían datos."
            : "Puede que esta empresa use otras etiquetas contables."}</div>`;
@@ -8663,7 +8799,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-17.1f8fcd5";
+const APP_VERSION = "2026-08-17.430e602";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
