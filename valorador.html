@@ -506,6 +506,13 @@ tr.fpct td{color:var(--amber-strong);font-size:.76rem;border-bottom:1px dashed v
   padding-top:.05rem}
 tr.fpct td.l{padding-left:1.4rem;color:var(--soft)}
 tr.fpct td.l i{color:var(--amber-strong);font-style:normal}
+/* la previsualizacion del pegado: nada entra sin verse */
+.prevbox{margin-top:.6rem}
+.prevfila{border-top:1px solid var(--line);padding:.5rem 0}
+.prevfila.mal2{opacity:.85}
+.prevlab{font-size:.85rem;margin-bottom:.25rem}
+table.prev{min-width:560px}
+table.prev td,table.prev th{font-size:.76rem;padding:.25rem .4rem}
 /* el semaforo del precio: lo bueno en una linea, lo que bloquea con boton */
 .semp .semp-ok{display:flex;flex-direction:column;gap:.3rem}
 .semp .semp-i{font-size:.84rem;color:var(--soft)}
@@ -3855,6 +3862,200 @@ function aplicarForecast(txt, caja){
   return true;
 }
 
+/* ════════════════════ EL PARSER DE VERDAD (P1) ════════════════════
+   La autopsia del anterior encontró tres causas raíz:
+   R1 · los huecos («—», N/A, %) se BORRABAN de la lista y todo se desplazaba;
+   R2 · sin años por columna, se alineaba a la derecha a ciegas y una columna
+        TTM entraba como si fuera el último ejercicio;
+   R3 · ni unidades ni escala: miles podían entrar como millones sin alarma.
+   Este parser conserva cada celda EN SU POSICIÓN, lee los años de la cabecera,
+   marca TTM/LTM para excluirlos, vota el estilo decimal a nivel de tabla y
+   detecta unidad y divisa. Y nada entra sin previsualización. */
+
+/* la procedencia de cada dato: 'sec' | 'pegado' | 'manual' — la usa el preview
+   para los conflictos y la usará el Vigía (P2) */
+let ORIGEN = {};
+function origenPon(k, i, fuente){
+  if(!ORIGEN[k]) ORIGEN[k] = new Array(N).fill(null);
+  ORIGEN[k][i] = fuente;
+}
+
+/* deshacer: la foto de D y ORIGEN justo antes de incorporar nada */
+let UNDO_IMP = null;
+function prepararUndo(etiqueta){
+  const foto = {};
+  CONCEPTOS.forEach(c => { foto[c.k] = D[c.k] ? D[c.k].slice() : null; });
+  UNDO_IMP = {etiqueta, foto, origen: JSON.parse(JSON.stringify(ORIGEN)),
+              precio: $("precio").value};
+}
+function deshacerImportacion(){
+  if(!UNDO_IMP) return;
+  CONCEPTOS.forEach(c => { if(UNDO_IMP.foto[c.k]) D[c.k] = UNDO_IMP.foto[c.k].slice(); });
+  ORIGEN = UNDO_IMP.origen;
+  $("precio").value = UNDO_IMP.precio;
+  UNDO_IMP = null;
+  pintarMatriz(); guardarTrabajo(); pintarPegaGrid();
+}
+
+/* ── estilo decimal, votado con TODA la tabla ─────────────────────────────
+   `1,234.56` y `1.234,56` son el mismo número en dos idiomas, y decidirlo
+   token a token es jugársela. Se cuentan las pruebas de cada estilo en el
+   texto entero y gana el que más tenga. */
+function estiloTabla(txt){
+  const t = String(txt);
+  let us = 0, eu = 0;
+  us += (t.match(/\d,\d{3}(?:[^\d]|$)/g) || []).length;      /* 1,234  */
+  us += (t.match(/\d\.\d{1,2}(?:[^\d]|$)/g) || []).length;   /* 12.5   */
+  eu += (t.match(/\d\.\d{3}(?:[^\d]|$)/g) || []).length;     /* 1.234  */
+  eu += (t.match(/\d,\d{1,2}(?:[^\d]|$)/g) || []).length;    /* 12,5   */
+  if(us === eu) return null;
+  return us > eu ? "us" : "eu";
+}
+
+/* parsea UNA celda respetando el estilo de la tabla; los huecos son null */
+function parseCelda(t, estilo){
+  if(t === null || t === undefined) return null;
+  let x = String(t).trim();
+  if(!x || /^[-–—]$/.test(x) || /^n\/?a$/i.test(x) || /^nd$/i.test(x)) return null;
+  if(x.includes("%")) return null;                       /* un % no es un importe */
+  if(/^\(?[\d.,\s]+x\)?$/i.test(x)) return null;         /* 23,4x es un múltiplo */
+  if(/^\(?[\d.,\s]+\s*[bmk]\)?$/i.test(x)) return null;   /* «2.5B»: escala ambigua — nunca en silencio */
+  const neg = /^\(.*\)$/.test(x) || x.startsWith("-") || x.startsWith("−");
+  x = x.replace(/[()−+$€£]/g,"").replace(/^-/,"").replace(/\s|\u00a0|\u202f/g,"");
+  const hasC = x.includes(","), hasP = x.includes(".");
+  if(hasC && hasP) x = (x.lastIndexOf(",") > x.lastIndexOf(".")) ? x.replace(/\./g,"").replace(",",".") : x.replace(/,/g,"");
+  else if(hasC) x = (estilo === "eu") ? x.replace(",",".")
+               : (estilo === "us") ? x.replace(/,/g,"")
+               : /,\d{3}(\D|$)/.test(x+" ") ? x.replace(/,/g,"") : x.replace(",",".");
+  else if(hasP) x = (estilo === "eu" && /\.\d{3}(\D|$)/.test(x+" ")) ? x.replace(/\./g,"") : x;
+  const v = parseFloat(x);
+  if(!isFinite(v)) return null;
+  return neg ? -v : v;
+}
+
+/* parte una línea en celdas SIN perder los huecos: con tabuladores cada tramo
+   es una celda (vacía incluida); sin ellos se parte por espacios, donde un
+   hueco solo puede venir como «—» explícito */
+function celdasLinea(linea, estilo){
+  const partes = linea.includes("\t")
+    ? linea.split("\t").map(x=>x.trim())
+    : linea.trim().split(/\s+/);
+  return partes.map(t => ({t, v: parseCelda(t, estilo)}));
+}
+
+/* ¿es esta celda un hueco declarado (no un texto)? */
+function esHueco(t){ return /^[-–—]$/.test(String(t).trim()) || /^n\/?a$/i.test(String(t).trim()) || String(t).trim()===""; }
+
+/* ── la cabecera: qué año es cada columna ─────────────────────────────────
+   Se lee la zona ANTES de la primera partida reconocida y se extraen, en
+   orden, fechas (2016-12-31), años sueltos y las marcas TTM/LTM. Con eso cada
+   columna tiene nombre y una TTM jamás puede acabar dentro de un año. */
+function cabeceraPegado(txt){
+  const L = String(txt).split(/\n/);
+  let corte = L.length;
+  for(let i=0;i<L.length;i++){
+    const bajo = L[i].normalize("NFC").toLowerCase().replace(/\s+/g," ").trim();
+    if(Object.values(SIN).some(alts => alts.some(a => bajo === a || bajo.startsWith(a+" ") || bajo.startsWith(a+"\t")))){ corte = i; break; }
+  }
+  const zona = L.slice(0, corte).join(" ");
+  const cols = [];
+  const re = /\b(?:(19[89]\d|20[0-4]\d)-\d{2}-\d{2}|(19[89]\d|20[0-4]\d)|(TTM|LTM))\b/gi;
+  let m;
+  while((m = re.exec(zona))){
+    if(m[3]) cols.push({ttm:true, anio:null});
+    else {
+      const a = +(m[1] || m[2]);
+      /* un año suelto repetido (encabezados duplicados) no se apunta dos veces seguidas */
+      if(cols.length && !cols[cols.length-1].ttm && cols[cols.length-1].anio === a) continue;
+      cols.push({ttm:false, anio:a});
+    }
+  }
+  const anios = cols.filter(c=>!c.ttm);
+  if(anios.length < 3) return null;
+  return {cols, ttm: cols.some(c=>c.ttm)};
+}
+
+/* ── unidad y divisa, del propio texto ── */
+function unidadPegado(txt){
+  const t = String(txt);
+  const escala = /millions|millones/i.test(t) ? "millones"
+    : /thousands|miles\b|millares/i.test(t) ? "miles"
+    : /billions|billones/i.test(t) ? "miles de millones" : null;
+  const divisa = /\bUSD\b|\$/.test(t) ? "USD" : /\bEUR\b|€/.test(t) ? "EUR"
+    : /\bGBP\b|£/.test(t) ? "GBP" : /\bCHF\b/.test(t) ? "CHF" : null;
+  return {escala, divisa};
+}
+
+/* ── el parser entero: filas con celdas EN SU SITIO ── */
+function parsearPegado(txt){
+  const estilo = estiloTabla(txt);
+  const cab = cabeceraPegado(txt);
+  const unidad = unidadPegado(txt);
+  const L = String(txt).split(/\n/).map(x=>x.replace(/\r/g,""));
+  const filas = [];
+  for(let i=0;i<L.length;i++){
+    const linea = L[i]; if(!linea.trim()) continue;
+    const bajo = linea.normalize("NFC").toLowerCase().replace(/\s+/g," ").trim();
+    if(ES_PREVISION.test(bajo)) continue;
+    for(const [k,alts] of Object.entries(SIN)){
+      const alt = alts.find(a => bajo === a || ((bajo.startsWith(a+" ")||bajo.startsWith(a+"\t")) && SOLO_CIFRAS.test(bajo.slice(a.length).replace(/n\/?a|(^|\s)nd(\s|$)/gi, " "))));   /* N-A y ND son huecos, no texto */
+      if(!alt) continue;
+      /* celdas en la MISMA línea, detrás del nombre. OJO: solo se tira la
+         PRIMERA celda vacía (el tabulador pegado al nombre); una vacía
+         interior es un HUECO y borrarla desplaza todo — la causa raíz R1. */
+      let celdas = celdasLinea(linea.slice(alt.length), estilo);
+      while(celdas.length && celdas[0].t === "" ) celdas.shift();
+      /* formato vertical: el nombre en una línea y cada celda en la suya */
+      if(celdas.filter(c=>c.v!==null||esHueco(c.t)).length < 3){
+        const acc = [];
+        for(let j=i+1;j<L.length && acc.length<24;j++){
+          const lj = L[j].trim(); if(!lj) continue;
+          if(!esCeldaNumerica(lj)) break;
+          acc.push({t:lj, v:parseCelda(lj, estilo)});
+        }
+        if(acc.length >= 3) celdas = acc;
+      }
+      /* fuera solo la basura de VERDAD (texto no numérico que no es hueco);
+         los huecos —incluida la celda vacía— se quedan EN SU POSICIÓN */
+      celdas = celdas.filter(c => c.v !== null || esHueco(c.t));
+      if(celdas.filter(c=>c.v!==null).length >= 2 || celdas.length >= 3)
+        filas.push({et: alt, k, celdas});
+      break;
+    }
+  }
+  return {filas, cab, estilo, unidad};
+}
+
+/* ── colocar una fila en los años del análisis ─────────────────────────────
+   Devuelve {vals:[N], estado:'porAnio'|'posicional'|'incierto', fuera} —
+   'incierto' significa que NO se importa sin que el usuario fije el año. */
+function colocarFila(celdas, cab, primerAnio){
+  const A = anios();
+  const vals = new Array(N).fill(null);
+  if(cab && cab.cols.length === celdas.length){
+    let fuera = 0;
+    cab.cols.forEach((c,x) => {
+      if(c.ttm) return;                          /* TTM: JAMÁS dentro de un año */
+      const i = A.indexOf(c.anio);
+      if(i >= 0) vals[i] = celdas[x].v; else if(celdas[x].v !== null) fuera++;
+    });
+    return {vals, estado:"porAnio", fuera};
+  }
+  if(primerAnio){
+    let fuera = 0;
+    celdas.forEach((c,x) => {
+      const i = A.indexOf(primerAnio + x);
+      if(i >= 0) vals[i] = c.v; else if(c.v !== null) fuera++;
+    });
+    return {vals, estado:"porAnio", fuera};
+  }
+  if(celdas.length === N){
+    celdas.forEach((c,x) => { vals[x] = c.v; });
+    return {vals, estado:"posicional", fuera:0};
+  }
+  return {vals, estado:"incierto", fuera:0};
+}
+
 /* ══════════ EL EJEMPLO DE TESLA, PARA QUE SE VEA LA TABLA BUENA ══════════
    Diez años reales de la reconciliación del EBITDA de Tesla, leídos de
    InvestingPro el 9-ago-2026. Está aquí porque la pregunta que más se repite
@@ -3901,156 +4102,202 @@ function leerCaja(g){
   const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
   const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
   if(g==="MK"){ leerPrecios(ta, caja); return; }
-  /* Este cuadro no tiene partidas propias: es el cajón de lo que falte. Acepta
-     cualquier tabla —EBITDA Reconciliation, un flujo de caja ampliado, lo que
-     sea— y se queda solo con las partidas que sigan VACÍAS, así que nunca pisa
-     nada de lo que ya hayas metido. */
   const soloDe = g === "ER"
     ? CONCEPTOS.filter(c => !c.auto && D[c.k].every(v => v === null)).map(c => c.k)
     : CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
-  /* Antes de nada: ¿es esto una tabla de PREVISIONES? El filtro que impide que
-     el futuro se cuele como pasado dejaba ciego a este cuadro, que es justo
-     donde la app dice que se pegue Forecasts. Se mira primero y se aplica con
-     el lector que sí sabe leerla. */
+  /* ¿es una tabla de PREVISIONES? Se va por su lector, que sí sabe lo que es */
   if(ta.value.trim() && ES_PREVISION.test(ta.value) && aplicarForecast(ta.value, caja)) return;
 
-  let filas = [];
-  if(HTML_CAJA[g]){ try{ filas = leerHTMLInvesting(HTML_CAJA[g]); }catch(e){} }
-  if(!filas.length && ta.value.trim()) filas = leerTextoPlano(ta.value);
+  const crudo = (HTML_CAJA[g] || ta.value || "");
+  if(!crudo.trim()){ caja.innerHTML = ""; return; }
 
-  if(!filas.length){
-    /* El caso más frecuente, y hasta ahora el peor explicado: viene la columna
-       de números pero SIN los nombres de fila. Pasa al arrastrar el ratón por
-       la tabla del InvestingPro nuevo, donde la primera columna va congelada y
-       no se arrastra con las demás. Sin etiqueta no hay nada que reconocer, y
-       decir «copia desde Period Ending» ahí no ayuda: manda a otra página. */
-    const lineas = ta.value.trim().split(/\r?\n/).filter(x=>x.trim());
-    /* La trampa de este mensaje: en el formato vertical el 90% de las líneas
-       SON números aunque los nombres estén, así que contar números no vale
-       para acusar de que faltan. Lo que decide es si hay líneas que PARECEN
-       nombres de fila: si las hay y aun así no se ha leído nada, el problema
-       es que no las reconozco — y entonces hay que enseñarlas, no culpar al
-       usuario de un copiado que hizo bien. Así el error se diagnostica solo. */
+  /* ══ PARSEAR — nada se escribe todavía ══ */
+  const R = parsearPegado(crudo);
+  if(!R.filas.length){
+    const lineas = crudo.trim().split(/\r?\n/).filter(x=>x.trim());
     const esNum = x => /^[\s(]*[-\u2212+]?[\d.,]+[\s)%x]*$/.test(x.trim()) || /^[-\u2013\u2014]$/.test(x.trim());
-    const nombres = lineas.filter(x => !esNum(x))
-      .map(x => x.trim()).filter(x => x.length > 2 && x.length < 70)
+    const nombres = lineas.filter(x => !esNum(x)).map(x=>x.trim())
+      .filter(x => x.length > 2 && x.length < 70)
       .filter(x => !/all rights reserved|terms of use|usd in|eur in/i.test(x));
-    const soloNum = lineas.length >= 3 && nombres.length === 0;
-    caja.innerHTML = (!soloNum && nombres.length)
+    caja.innerHTML = nombres.length
       ? `<span class="mal">He leído la tabla pero no reconozco ninguna de sus filas.</span>
          Los nombres que veo: ${nombres.slice(0,6).map(n=>`<code>${esc(n)}</code>`).join(" · ")}${
            nombres.length>6?` y ${nombres.length-6} más`:""}.<br>
-         Puede que la tabla esté en un idioma o con unos nombres que no conozco todavía.
-         <b>Haz una captura de esto y mándala</b> — se añade el diccionario y queda arreglado
-         para todos. Mientras, puedes escribir esas cifras a mano en su casilla de arriba.`
-      : soloNum
-      ? `<span class="mal">Han venido los números, pero sin los nombres de las filas.</span>
-         Sin el nombre no puedo saber cuál es cuál.<br>
-         <b>Lo que ha pasado:</b> en las tablas de InvestingPro la <b>primera columna va
-         congelada</b>, y al arrastrar el ratón se queda fuera.<br>
-         <b>Solución:</b> haz clic en una celda de la tabla y pulsa
-         <kbd>Ctrl</kbd>+<kbd>A</kbd> y luego <kbd>Ctrl</kbd>+<kbd>C</kbd>, o empieza a
-         seleccionar <b>desde el nombre de la primera fila</b> —a la izquierda del todo— y
-         arrastra hasta la última cifra de abajo a la derecha.`
-      : g === "ER"
-      ? `<span class="mal">No he leído ninguna tabla.</span> Selecciona <b>desde el nombre de la
-         primera fila</b> hasta la última cifra y <b>pega</b> aquí con
-         <kbd>Ctrl</kbd>+<kbd>V</kbd> (no escribas el texto a mano).`
-      : g === "MK"
-      ? `<span class="mal">No he leído ningún precio.</span> Pega los <b>${N} cierres</b> en una
-         línea o una columna, o usa el botón de Yahoo del paso del precio.`
-      : `<span class="mal">No he leído ninguna tabla.</span> Copia desde
-         «Period Ending» hasta el final y <b>pega</b> aquí (no escribas el texto).`;
+         ¿Es la tabla en inglés y en <code>Annual</code>? Son los dos requisitos del método.`
+      : `<span class="mal">Ha llegado la columna de números pero SIN los nombres de fila.</span>
+         Vuelve a copiar arrastrando <b>desde el nombre de la primera fila</b>: la primera columna
+         va congelada y no se arrastra con las demás.`;
     return;
   }
-  /* ── El signo de los intereses depende de la tabla de la que vengan ────────
-     «Net Interest Expenses» aparece en dos pantallas de InvestingPro con el
-     signo CONTRARIO, y es la misma partida:
-        Cuenta de resultados    Tesla 2016 −174,3   ·   2025 +1.142,6
-        EBITDA Reconciliation   Tesla 2016 +174,1   ·   2025 −1.142,3
-     En la reconciliación van sumados, porque el camino es EBT → EBITDA. El
-     método necesita el criterio de la cuenta de resultados (positivo = cobra
-     más de lo que paga; así sale el +958 de META que cuadra con la plantilla).
-     Sin esto, el resultado dependía de EN QUÉ ORDEN pegaras las pestañas. */
-  /* Se mira en el TEXTO pegado, no en las filas reconocidas: «EBT, Incl.
-     Unusual Items» no es una partida que la app use, así que nunca llega a
-     filas — y era justo la que delata de qué pantalla viene la tabla. */
-  const crudo = (HTML_CAJA[g] || ta.value || "");
+
+  /* el giro de signo de la reconciliación, y las filas de otra pestaña */
   const lineasCrudo = String(crudo).split(String.fromCharCode(10)).map(x => x.trim().toLowerCase());
   const esReconciliacion = lineasCrudo.some(x => x.indexOf("ebt, incl") === 0)
                         && lineasCrudo.indexOf("ebitda") >= 0;
-  const volteados = [], descartadas = [];
-
-  const puestas = [];
-  for(const f of filas){
-    const et = normEt(f.et);
-    let key = null;
-    for(const [k,alts] of Object.entries(SIN)){ if(alts.includes(et)){ key=k; break; } }
-    /* Una fila que SÍ reconozco pero que pertenece a otra pestaña se estaba
-       descartando en silencio. Es exactamente lo que pasa con «Depreciation &
-       Amortization» al pegar la reconciliación del EBITDA en la cuenta de
-       resultados: la app la lee, la tira, y el alumno ve que «no la coge». */
-    if(key && !soloDe.includes(key)){
-      const c2 = CONCEPTOS.find(c => c.k === key);
-      if(c2 && !descartadas.some(x => x.k === key)){
-        const yaEsta = D[key] && D[key].some(v => v !== null);
-        descartadas.push({k:key, lab:c2.lab, g:c2.g, yaEsta});
-      }
+  const descartadas = [];
+  const filasUtiles = [];
+  for(const f of R.filas){
+    if(!soloDe.includes(f.k)){
+      const c2 = CONCEPTOS.find(c => c.k === f.k);
+      if(c2 && !descartadas.some(x => x.k === f.k))
+        descartadas.push({k:f.k, lab:c2.lab, g:c2.g, yaEsta: D[f.k] && D[f.k].some(v=>v!==null)});
       continue;
     }
-    if(!key) continue;
-    if(puestas.some(p=>p.k===key)) continue;
-    const con = CONCEPTOS.find(c=>c.k===key);
-    let arr = f.val.slice();
-    if(esReconciliacion && (key === "interes" || key === "intIng" || key === "intGas")){
-      arr = arr.map(v => v === null ? null : -v);
-      volteados.push(con.lab);
-    }
-    if(con.pos) arr = arr.map(v=>v===null?null:Math.abs(v));
-    if($("invertir").checked) arr.reverse();
-    if(arr.length > N) arr = arr.slice(-N);
-    D[key] = new Array(N).fill(null);
-    arr.forEach((v,x)=>{ const p = N-arr.length+x; if(p>=0) D[key][p]=v; });
-    const llenos = arr.filter(v=>v!==null);
-    puestas.push({k:key, lab:con.lab, ult:llenos.length?llenos[llenos.length-1]:null});
+    if(filasUtiles.some(x=>x.k===f.k)) continue;
+    filasUtiles.push(f);
   }
-  pintarMatriz(); guardarTrabajo();
-  const faltan = CONCEPTOS.filter(c=>c.g===g && c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
-  const avAnios = avisoAnios((HTML_CAJA[g]||"") + " " + ta.value);
-  const avSigno = volteados.length
-    ? `<div class="note" style="margin-top:.4rem"><b>He girado el signo de
-        ${volteados.map(v=>esc(v.toLowerCase())).join(" y ")}.</b> Esta pantalla es una
-        <i>reconciliación</i>: parte del beneficio y va sumando hasta el EBITDA, así que los
-        intereses vienen con el signo al revés que en la cuenta de resultados. El método usa el
-        criterio de la cuenta de resultados, y así el resultado <b>no depende del orden</b> en que
-        pegues las pestañas.</div>` : "";
-  /* Y se cuenta lo que se ha tirado, con el motivo y adónde va. */
-  const G_NOM = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja", ER:"Lo que falte", MK:"Mercado"};
-  const avDesc = descartadas.length
-    ? `<div class="note" style="margin-top:.5rem;border-left:2px solid var(--amber)">
-        <b>He reconocido ${descartadas.length===1?"una fila que aquí no va":"filas que aquí no van"},
-        y no las he metido:</b>
-        <ul style="margin:.4rem 0 0">${descartadas.map(x=>`<li>${esc(x.lab)} — ${
-          x.yaEsta ? `<b>ya la tenías puesta</b>, así que no la piso`
-                   : `va en la pestaña <b>${esc(G_NOM[x.g]||x.g)}</b>${
-                       g==="ER" ? "" : ` · o pégala en <b>Lo que falte</b>, que acepta cualquier tabla`}`
-        }</li>`).join("")}</ul>
-      </div>` : "";
-  caja.innerHTML = avAnios + avSigno + avDesc + (puestas.length
-    ? `<span class="bien">✓ ${puestas.length} partidas leídas.</span>
-       <ul>${puestas.map(p=>`<li>${esc(p.lab)} · último ${p.ult===null?"—":nf(p.ult,0)}</li>`).join("")}</ul>
-       ${faltan.length?`<div style="margin-top:.4rem;color:var(--amber)">Falta: ${esc(faltan.join(", "))}</div>`:""}`
-    : `<span class="mal">He leído la tabla pero no reconozco sus filas.</span>
-       ¿Es la tabla de ${esc(G[g].toLowerCase())} en inglés?`);
-  pintarPegaGrid();
-  $("pegagrid").querySelector(`textarea[data-pega="${g}"]`).value = ta.value;
-  $("pegagrid").querySelector(`[data-res="${g}"]`).innerHTML = caja.innerHTML;
-  /* el botón de ajustar los años nace aquí, después de repintar la rejilla,
-     así que hay que darle su función ahora o no responde a nada */
-  enlazarAjusteAnios();
+
+  /* ══ PREVISUALIZAR ══ */
+  PEND_IMP[g] = {g, filas: filasUtiles, cab: R.cab, estilo: R.estilo,
+                 unidad: R.unidad, esReconciliacion, descartadas, primerAnio: null};
+  pintarPreview(g, caja);
 }
 
-/* el cuadro de mercado: una lista de cierres, o la tabla de datos históricos entera */
+/* lo pendiente de confirmar, por caja */
+const PEND_IMP = {};
+
+/* ¿difieren dos valores más de un 0,5%? (los redondeos de las fuentes no son conflicto) */
+function difiere(a, b){
+  if(a === null || b === null) return false;
+  if(a === 0 || b === 0) return a !== b;
+  return Math.abs(a-b) / Math.max(Math.abs(a), Math.abs(b)) > 0.005;
+}
+
+function pintarPreview(g, caja){
+  const P = PEND_IMP[g]; if(!P) return;
+  const A = anios();
+  const G_NOM = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja", ER:"Lo que falte", MK:"Mercado"};
+
+  /* colocar cada fila y detectar conflictos y escalas raras */
+  let hayIncierto = false, hayConflicto = false, hayEscala = false;
+  P.colocadas = P.filas.map(f => {
+    const col = colocarFila(f.celdas, P.cab, P.primerAnio);
+    let vals = col.vals.slice();
+    const con = CONCEPTOS.find(c=>c.k===f.k);
+    if(P.esReconciliacion && (f.k==="interes"||f.k==="intIng"||f.k==="intGas"))
+      vals = vals.map(v => v===null?null:-v);
+    if(con && con.pos) vals = vals.map(v => v===null?null:Math.abs(v));
+    if(col.estado === "incierto") hayIncierto = true;
+    /* conflicto: ya hay un dato DISTINTO para ese año */
+    const conflictos = [];
+    vals.forEach((v,i) => { if(v!==null && D[f.k][i]!==null && difiere(v, D[f.k][i]))
+      conflictos.push({i, viejo:D[f.k][i], nuevo:v,
+        fuente:(ORIGEN[f.k]&&ORIGEN[f.k][i])||"manual"}); });
+    if(conflictos.length) hayConflicto = true;
+    /* guardia de escala: comparado con lo que ya hay de esa partida */
+    const viejos = D[f.k].filter(v=>v!==null).map(Math.abs).filter(v=>v>0);
+    const nuevos = vals.filter(v=>v!==null).map(Math.abs).filter(v=>v>0);
+    let escalaRara = false;
+    if(viejos.length >= 2 && nuevos.length >= 2){
+      const mv = mediana(viejos), mn = mediana(nuevos);
+      if(mv && mn && (mn/mv > 100 || mv/mn > 100)) escalaRara = true;
+    }
+    if(escalaRara) hayEscala = true;
+    return {k:f.k, lab:(con?con.lab:f.k), et:f.et, vals, estado:col.estado,
+            fuera:col.fuera, conflictos, escalaRara};
+  });
+
+  const cabTxt = P.cab
+    ? `los años vienen <b>de la cabecera</b>${P.cab.ttm ? " · columna <b>TTM excluida</b>" : ""}`
+    : P.primerAnio
+    ? `primer año fijado a <b>${P.primerAnio}</b>`
+    : `sin cabecera: colocación <b>posicional</b> (${N} celdas = ${N} años)`;
+  const uTxt = [P.unidad.escala, P.unidad.divisa].filter(Boolean).join(" · ") || "no declarada en el texto";
+
+  const tabla = f => `<div class="tw"><table class="rs prev"><thead><tr>
+      ${A.map(a=>`<th style="text-align:right">${a}</th>`).join("")}</tr></thead>
+    <tbody><tr>${f.vals.map((v,i)=>{
+      const c = f.conflictos.find(x=>x.i===i);
+      return `<td class="n" style="${c?"color:var(--amber-strong)":""}">${v===null?"—":nf(v, Math.abs(v)<100?2:0)}</td>`;
+    }).join("")}</tr></tbody></table></div>`;
+
+  caja.innerHTML = `<div class="panel prevbox">
+    <div class="pt" style="margin-bottom:.4rem"><span class="pn">Previsualización — todavía
+      <b>no se ha incorporado nada</b></span></div>
+    <div style="font-size:.8rem;color:var(--soft);margin-bottom:.6rem">
+      ${cabTxt} · unidad: <b>${esc(uTxt)}</b> · origen: <b>pegado</b>
+      ${P.estilo ? ` · decimales estilo <b>${P.estilo==="eu"?"europeo (1.234,56)":"inglés (1,234.56)"}</b>` : ""}</div>
+    ${P.colocadas.map(f => `
+      <div class="prevfila${f.estado==="incierto"||f.escalaRara?" mal2":""}">
+        <div class="prevlab"><b>${esc(f.lab)}</b>
+          <span style="color:var(--muted-txt);font-family:var(--font-m);font-size:.7rem">${esc(f.et)}</span></div>
+        ${f.estado==="incierto"
+          ? `<div class="warn" style="margin:.3rem 0">🔴 <b>No puedo asegurar qué año es cada valor</b>
+             (${f.vals.filter(v=>v!==null).length || "?"} celdas y sin cabecera de años).
+             <b>No se importa</b> hasta que fijes el primer año abajo.</div>`
+          : tabla(f)}
+        ${f.escalaRara ? `<div class="warn" style="margin:.3rem 0">🔴 <b>La escala no cuadra:</b> lo
+          pegado difiere en más de 100× de lo que ya hay en esta partida. ¿Miles contra millones?
+          <b>Esta fila no se importa.</b></div>` : ""}
+        ${f.fuera ? `<div class="note" style="margin:.3rem 0">${f.fuera}
+          ${f.fuera===1?"valor cae":"valores caen"} fuera de ${A[0]}–${A[N-1]} y se ignoran.</div>` : ""}
+        ${f.conflictos.length ? `<div class="note" style="margin:.3rem 0;border-left:2px solid var(--amber)">
+          ⚠️ <b>Ya hay otro dato</b> en ${f.conflictos.length} ${f.conflictos.length===1?"año":"años"}:
+          ${f.conflictos.slice(0,4).map(c=>`${A[c.i]}: ${c.fuente==="sec"?"🟢 SEC":"🔵 "+c.fuente} ${nf(c.viejo,0)}
+            → pegado ${nf(c.nuevo,0)}`).join(" · ")}${f.conflictos.length>4?" · …":""}
+          <label style="display:block;margin-top:.3rem"><input type="radio" name="cf-${g}-${f.k}" value="mantener" checked>
+            mantener lo que hay</label>
+          <label style="display:block"><input type="radio" name="cf-${g}-${f.k}" value="pegado">
+            usar lo pegado (🔵)</label></div>` : ""}
+      </div>`).join("")}
+    ${hayIncierto ? `<div class="vgrid" style="margin:.6rem 0 0;max-width:14rem">
+      <div><label>El primer año de la tabla es…</label>
+        <input type="number" step="1" id="prevAnio-${g}" placeholder="${A[0]}"></div></div>` : ""}
+    ${P.esReconciliacion ? `<div class="note" style="margin-top:.5rem">He girado el signo de los
+      <b>intereses</b>: esta pantalla es una reconciliación y los trae al revés que la cuenta de
+      resultados.</div>` : ""}
+    ${P.descartadas.length ? `<div class="note" style="margin-top:.5rem;border-left:2px solid var(--amber)">
+      Filas que aquí no van (no se importan): ${P.descartadas.map(x=>`<b>${esc(x.lab)}</b>${
+        x.yaEsta?" (ya la tenías)":" → "+esc(G_NOM[x.g]||x.g)}`).join(" · ")}</div>` : ""}
+    <div class="bar-actions" style="margin-top:.7rem">
+      <button type="button" class="pri" data-confirmar="${g}"
+        ${P.colocadas.every(f=>f.estado==="incierto"||f.escalaRara) ? "disabled" : ""}>
+        ✓ Incorporar ${P.colocadas.filter(f=>f.estado!=="incierto"&&!f.escalaRara).length} de
+        ${P.colocadas.length} filas</button>
+      <button type="button" class="b2" data-cancelar="${g}">Cancelar</button>
+    </div>
+  </div>`;
+
+  const bi = $(`prevAnio-${g}`);
+  if(bi) bi.onchange = () => { PEND_IMP[g].primerAnio = parseInt(bi.value,10)||null; pintarPreview(g, caja); };
+  caja.querySelector(`[data-confirmar]`).onclick = () => confirmarImportacion(g, caja);
+  caja.querySelector(`[data-cancelar]`).onclick = () => { delete PEND_IMP[g]; caja.innerHTML =
+    `<div class="note">Cancelado: no se ha incorporado nada.</div>`; };
+}
+
+/* ══ CONFIRMAR → INCORPORAR (lo único que escribe en D) ══ */
+function confirmarImportacion(g, caja){
+  const P = PEND_IMP[g]; if(!P) return;
+  prepararUndo("pegado " + g);
+  const puestas = [];
+  for(const f of P.colocadas){
+    if(f.estado === "incierto" || f.escalaRara) continue;
+    const usarPegado = !f.conflictos.length ||
+      (caja.querySelector(`input[name="cf-${g}-${f.k}"][value="pegado"]`) || {}).checked;
+    let n = 0;
+    f.vals.forEach((v,i) => {
+      if(v === null) return;
+      if(D[f.k][i] !== null && difiere(v, D[f.k][i]) && !usarPegado) return;   /* gana lo que había */
+      D[f.k][i] = v; origenPon(f.k, i, "pegado"); n++;
+    });
+    if(n) puestas.push({lab:f.lab, n});
+  }
+  delete PEND_IMP[g];
+  pintarMatriz(); guardarTrabajo();
+  const faltan = CONCEPTOS.filter(c=>c.g===g && c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
+  caja.innerHTML = (puestas.length
+    ? `<span class="bien">✓ ${puestas.length} partidas incorporadas.</span>
+       <ul>${puestas.map(p=>`<li>${esc(p.lab)} · ${p.n} años</li>`).join("")}</ul>`
+    : `<div class="note">No se ha incorporado nada (conflictos resueltos a favor de lo que había).</div>`)
+    + (faltan.length ? `<div style="margin-top:.4rem;color:var(--muted-txt)">Aún sin datos:
+        ${esc(faltan.join(", "))}.</div>` : "")
+    + `<div class="bar-actions" style="margin-top:.6rem">
+        <button type="button" class="b2" data-deshacer="1">↩ Deshacer esta importación</button></div>`;
+  const bu = caja.querySelector("[data-deshacer]");
+  if(bu) bu.onclick = () => { deshacerImportacion();
+    caja.innerHTML = `<div class="note">Deshecho: los datos han vuelto a como estaban.</div>`; };
+}
+
 function leerPrecios(ta, caja){
   const txt = ta.value.trim();
   if(!txt){ caja.innerHTML = `<span class="mal">Pega aquí los precios.</span>`; return; }
@@ -4096,7 +4343,7 @@ function esCeldaNumerica(linea){
    Se busca como palabra suelta para no descartar de más. */
 const ES_PREVISION = /\b(forecast|forecasts|consensus|estimate|estimates|estimated|guidance|proyecci[oó]n|previsi[oó]n|estimaci[oó]n|consenso)\b/i;
 /* lo que puede venir DETRAS del nombre de una partida: solo cifras y signos */
-const SOLO_CIFRAS = /^[\s\d.,()%+\-\u2013\u2014x]*$/;
+const SOLO_CIFRAS = /^[\s\d.,()%+\-\u2013\u2014x$\u20ac\u00a3]*$/;   /* con $ € £: «EBITDA $12,575» es la misma fila */
 
 function leerTextoPlano(txt){
   const out = [];
@@ -7721,6 +7968,7 @@ async function traerSEC(desde){
   try{
     const cik = await secCIK(T);
     if(!cik) throw new Error(`la SEC no conoce el ticker ${T}`);
+    prepararUndo("SEC " + T);              /* reversible, como el pegado */
     const A = anios(), puestas = [], vacias = [], yaEstaban = [];
     const pendientes = Object.entries(SEC_TAGS).filter(([k]) => {
       if(D[k].some(v => v !== null)){ yaEstaban.push(k); return false; }  /* nunca pisa lo tuyo */
@@ -7777,7 +8025,8 @@ async function traerSEC(desde){
       const con = CONCEPTOS.find(c => c.k === k);
       let n = 0;
       A.forEach((a,i) => { if(serie[a] !== undefined){
-        D[k][i] = con && con.pos ? Math.abs(Math.round(serie[a])) : Math.round(serie[a]); n++; } });
+        D[k][i] = con && con.pos ? Math.abs(Math.round(serie[a])) : Math.round(serie[a]);
+        origenPon(k, i, "sec"); n++; } });
       if(n) puestas.push({k, lab: con ? con.lab : k, n}); else vacias.push(k);
     }
 
@@ -7895,6 +8144,7 @@ async function traerSEC(desde){
          <div class="bar-actions" style="margin-top:.7rem">
            <button type="button" class="b1" onclick="document.getElementById('analizar').scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>document.getElementById('analizar').focus(),600)">
              Siguiente: Analizar la empresa ↓</button>
+           <button type="button" class="b2" onclick="deshacerImportacion();this.closest('.pr').innerHTML='<div class=note>Deshecho: los datos han vuelto a como estaban.</div>'">↩ Deshacer</button>
          </div>`
       : `<div class="warn"><b>No he podido traer nada.</b> ${yaEstaban.length
            ? "Todas las partidas que busco ya tenían datos."
@@ -8799,7 +9049,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-17.430e602";
+const APP_VERSION = "2026-08-17.779513f";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
