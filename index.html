@@ -504,20 +504,33 @@ button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:3px}
   <p class="sub">Se copia y se pega, y la herramienta reparte cada fila en su sitio.</p>
   <details class="mas plegable"><summary>Enséñame cómo se pega, paso a paso</summary><div class="dbody">
 
-  <div class="note" style="margin-bottom:1.2rem"><b>El camino rápido — empieza por aquí.</b>
-  En el valorador, el botón <b>«📋 Pegar la tabla entera de Investing»</b> abre <b>un cuadro por
-  cuenta</b>: resultados, balance, flujo de caja y mercado. Copias la tabla completa de InvestingPro,
-  la sueltas en el cuadro de su cuenta y las filas se reconocen solas — te dice cuáles ha
-  encontrado y cuáles faltan. Puedes pegarlas en cualquier orden, y cada cuadro solo escribe
-  en las partidas de su cuenta. <b>Los tres pasos de abajo son para completar lo que falte</b>,
-  fila a fila.</div>
+  <div class="note" style="margin-bottom:1.2rem;border-left:2px solid var(--amber)">
+  <b>Opción 1 — para empresas de EE. UU., ni siquiera hay que pegar.</b>
+  Escribe el ticker y pulsa <b>«🏛 Rellenar solo desde la SEC»</b>: las cuentas llegan de los
+  <b>10-K oficiales</b> —los informes que la empresa deposita ante el regulador americano— y los
+  diez precios de cierre llegan de Yahoo en el mismo viaje. Funciona con <b>cualquier cotizada
+  americana</b>, no solo con las famosas, es gratis, y <b>nunca pisa</b> lo que ya hayas metido.
+  Si alguna partida no llega, la herramienta te dice cuál y dónde encontrarla.</div>
+
+  <div class="note" style="margin-bottom:1.2rem"><b>Opción 2 — copiar de InvestingPro.</b>
+  Para <b>europeas</b>, para completar lo que la SEC no traiga, o si prefieres ver los datos con
+  tus ojos antes de meterlos. El recorrido guiado va en <b>cinco pasos</b> y cada uno te dice qué
+  página abrir y qué copiar: las <b>tres cuentas</b> (2.1), <b>«Lo que falte»</b> (2.2) y los
+  <b>precios</b> (2.3). Ojo con el 2.2, que es donde más se atasca la gente: es <b>otra página
+  distinta</b> —el InvestingPro nuevo, <code>investing.com/pro/…/financials/ebitda</code>— y ahí
+  viven la <code>Depreciation</code> sola y las previsiones de analistas. El cuadro trae un
+  <b>ejemplo real de Tesla</b> para que veas la tabla antes de ir a buscarla.</div>
 
   <div class="note" style="margin-bottom:1.2rem"><b>Antes de nada, el ticker.</b> No hace falta que te
-  lo sepas: empieza a escribir el ticker <b>o el nombre</b> y sale una lista. Están guardadas las
-  <b>578 empresas del S&amp;P 500, el IBEX 35 y el DAX 40</b> dentro de la propia página, así que el
-  nombre y la moneda se rellenan solos aunque no tengas internet — y en euros o en dólares según
-  dónde cotice. Y si la empresa es <b>un banco, una aseguradora o una inmobiliaria</b>, te avisa ahí
-  mismo de que este método no le sirve — son 123 de las 578.</div>
+  lo sepas: empieza a escribir el ticker <b>o el nombre</b> y sale una lista. Están guardadas
+  <b>720 empresas de nueve índices</b> —S&amp;P 500, IBEX 35, DAX 40, CAC 40, AEX, MIB, SMI,
+  nórdicos y Londres— dentro de la propia página, así que el nombre y la moneda se rellenan solos
+  aunque no tengas internet. Y si la empresa es <b>un banco, una aseguradora o una
+  inmobiliaria</b>, te avisa ahí mismo de que este método no le sirve — son 160 de las 720
+  (las financieras <b>de servicios</b>, como Visa o Mastercard, sí se valoran, y también lo dice).
+  ¿No está en la lista? <b>Escribe el ticker igualmente y funciona todo</b>: la lista solo sirve
+  para autocompletar y avisar del sector. Y si escribes algo que no cotiza —SpaceX, Mercadona—
+  te lo explica en vez de quedarse mudo.</div>
 
   <div class="warn" style="margin-bottom:1.6rem"><b>Ponlo en inglés. No es una manía: es el método.</b>
   Las instrucciones de la plantilla original lo dicen con estas palabras — <i>«Solo es válido para
@@ -561,6 +574,10 @@ button:focus-visible{outline:2px solid var(--amber-strong);outline-offset:3px}
 <section><div class="wrap">
   <div class="snum">El grueso</div>
   <h2 id="datos25">Los 25 datos, uno a uno</h2>
+  <p class="sub" style="margin-top:.4rem">Estos 25 son <b>el núcleo del método</b>. En el valorador
+  verás además unas pocas casillas <b>opcionales</b> —intereses cobrados y pagados por separado, el
+  FCF que publica Investing, otros ajustes— que afinan el resultado pero no hacen falta para
+  empezar. Y recuerda: <b>con el botón de la SEC, casi todos se rellenan solos</b>.</p>
   <p class="sub">Cada dato tiene su nombre literal en Investing, y aquí está la ficha de todos.</p>
   <details class="mas plegable"><summary>Ver los 25 datos y dónde está cada uno</summary><div class="dbody">
 
@@ -911,8 +928,26 @@ Partida en 100 participaciones (+5 prometidas al panadero jefe)</div>
 <section><div class="wrap">
   <div class="snum">El dato que no está en las cuentas</div>
   <h2>El precio, explicado de una vez</h2>
-  <p class="sub">Proyectas cinco años, aplicas el múltiplo que la gente ha pagado siempre, y traes ese precio a hoy exigiendo un 15% anual. Eso es el IDC.</p>
-  <details class="mas plegable"><summary>Ver el cálculo entero, número a número</summary><div class="dbody">
+  <p class="sub">En la herramienta el precio va <b>detrás de una puerta</b> y tiene <b>dos vías</b>: leer el que ya está calculado, o —si quieres— calcular el tuyo.</p>
+
+  <div class="pasos" style="margin-top:1.4rem">
+    <div class="paso"><div class="p">🔒</div><div class="h">Primero, la puerta</div>
+      <div class="t">El precio no aparece hasta que <b>escribes qué opinas de la empresa</b> —dos
+      líneas bastan—. No es un capricho: en cuanto ves el precio, tu cabeza decide y el resto del
+      análisis solo le da la razón. Tu juicio de antes es lo único no contaminado, y la herramienta
+      te obliga a guardarlo.</div></div>
+    <div class="paso"><div class="p">1</div><div class="h">Vía 1 · leer el precio que ya existe</div>
+      <div class="t">El <b>Fair Value de InvestingPro</b> —la media de sus modelos— y el
+      <b>objetivo de los analistas</b>. Se apuntan, no se calculan, y salen los cuatro precios en
+      un mismo mapa: mercado, analistas, modelos y el múltiplo de siempre de la empresa.
+      <b>Con esto solo ya se cierra un análisis honesto.</b></div></div>
+    <div class="paso"><div class="p">2</div><div class="h">Vía 2 · opcional: calcular el tuyo</div>
+      <div class="t">Pegas <b>una sola pestaña</b> —Forecasts, lo que los analistas esperan que
+      venda y gane— y el <b>IDC</b> sale solo: tu precio máximo para ganar un 15% anual. Es el
+      método completo, el de abajo, y <b>no hace falta para aprobar el análisis</b>.</div></div>
+  </div>
+
+  <details class="mas plegable" style="margin-top:1.2rem"><summary>Ver el cálculo del IDC entero, número a número · la vía 2</summary><div class="dbody">
 
   <div class="pasos" style="margin-top:1.6rem">
     <div class="paso"><div class="p">1</div><div class="h">Diez precios, uno por ejercicio</div>
