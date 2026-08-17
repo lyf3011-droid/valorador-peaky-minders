@@ -4464,6 +4464,39 @@ function calcular(){
   R.cagrF = cagr(der.fcf[L],der.fcf[fp.i],fp.n);
   R.spanB = bp.n; R.spanF = fp.n;
 
+  /* ── SI EMPEZÓ EN NEGATIVO, SE MIDE DESDE QUE SE PUSO EN POSITIVO ─────────
+     Arrancar en el primer año NO NULO deja fuera a toda empresa que haya
+     salido de pérdidas: Tesla genera caja desde 2018 —de 160 a 2.978 M en
+     siete años— y ese crecimiento SÍ se puede calcular. Antes la app lo daba
+     por imposible porque 2016 fue negativo, y con él se caía la valoración
+     entera de una empresa que lleva ocho años generando caja.
+     El número que sale es real, pero nace de una base pequeña y por eso sale
+     enorme: se calcula, se usa, y se AVISA de las dos cosas — desde qué año
+     se mide y cuántos años se han quedado fuera. */
+  const desdeSuPrimeroPositivo = arr => {
+    let i = 0; while(i < L && (arr[i] === null || arr[i] === undefined || arr[i] <= 0)) i++;
+    return (i < L) ? {i, n: L - i} : null;
+  };
+  R.cagrFDesde = null;
+  if(R.cagrF === null){
+    const fpp = desdeSuPrimeroPositivo(der.fcf);
+    if(fpp && fpp.n >= 3 && der.fcf[L] > 0){
+      const c = cagr(der.fcf[L], der.fcf[fpp.i], fpp.n);
+      if(c !== null && isFinite(c)){
+        R.cagrF = c; R.spanF = fpp.n;
+        R.cagrFDesde = {anio: A[fpp.i], anios: fpp.n, base: der.fcf[fpp.i],
+                        fuera: fpp.i - fp.i};
+      }
+    }
+  }
+  if(R.cagrB === null){
+    const bpp = desdeSuPrimeroPositivo(der.bpa);
+    if(bpp && bpp.n >= 3 && der.bpa[L] > 0){
+      const c = cagr(der.bpa[L], der.bpa[bpp.i], bpp.n);
+      if(c !== null && isFinite(c)){ R.cagrB = c; R.spanB = bpp.n; }
+    }
+  }
+
   /* ── CUANDO EL CRECIMIENTO NO SE PUEDE EXPRESAR EN % ──────────────────────
      El crecimiento compuesto no existe si se parte de un número negativo: la
      fórmula es (final/inicial)^(1/años)−1 y con un negativo dentro sale un
@@ -4547,6 +4580,27 @@ function calcular(){
      Se define el crecimiento del año 1 y el del año 5; los intermedios se interpolan.
      Por defecto el año 5 es la mitad del año 1 (desvanecimiento conservador).
      Con los números de los analistas o del guidance, reproduce la plantilla original. */
+  /* ── LOS SUPUESTOS QUE NO SE SOSTIENEN ────────────────────────────────────
+     Desbloquear el crecimiento de las que salieron de pérdidas destapó algo
+     peor que no dar precio: darlo malo. Tesla, medida desde su primer año en
+     positivo, crece al 51,8% —de una base de 160 M— y ha cotizado a 241 veces
+     su caja. Con esos dos números el IDC sale en 436 $ contra 340 de mercado,
+     o sea «está barata», que es exactamente lo contrario de lo que dicen sus
+     cuentas. Un número así no es una valoración: es una trampa.
+     Así que se calcula, se enseña de dónde sale, y NO se presenta como precio
+     mientras los supuestos no los ponga una persona. */
+  const gPuesto = VAL.g !== null, mPuesto = VAL.mult !== null;
+  const multLoco = !mPuesto && multObj > 60;
+  const gLoco    = !gPuesto && gF > 35;
+  if(multLoco || gLoco){
+    R.sinVal = true;
+    R.supuestosLocos = {
+      mult: multLoco ? multObj : null,
+      g: gLoco ? gF : null,
+      desde: R.cagrFDesde || null
+    };
+    puntuar(R); R.raros = vigilarDatos(R); return R;
+  }
   const gF5 = VAL.g5!==null ? VAL.g5 : Math.round(gF/2*10)/10;
   const gB5 = VAL.gb5!==null ? VAL.gb5 : Math.round(gB/2*10)/10;
   const dil = VAL.dil!==null ? VAL.dil/100 : (R.c.dil.v!==null ? R.c.dil.v : 0);
@@ -5740,6 +5794,30 @@ function pasoValoracion(R){
                todos es mentir. Casi siempre el motivo es otro y es concreto:
                el flujo de caja fue NEGATIVO algún año, y de un número negativo
                no sale una tasa de crecimiento. Le pasa a Tesla de 2016 a 2019. */
+            /* El caso nuevo: SÍ hay números, pero no se sostienen. */
+            const SL = R.supuestosLocos;
+            if(SL) return `<div class="warn"><b>Aquí sí salen números, pero no me fío — y tú tampoco
+              deberías.</b>
+              <div class="tw" style="margin-top:.6rem"><table class="rs"><tbody>
+                ${SL.g!==null?`<tr><td class="l">Crecimiento que saldría del pasado</td>
+                  <td class="n"><b style="color:var(--red)">${nf(SL.g,1)}% al año</b></td></tr>`:""}
+                ${SL.desde?`<tr><td class="l">…medido desde ${SL.desde.anio}, su primer año en positivo</td>
+                  <td class="n">base de ${nf(SL.desde.base,0)} M</td></tr>`:""}
+                ${SL.mult!==null?`<tr><td class="l">Múltiplo al que ha cotizado</td>
+                  <td class="n"><b style="color:var(--red)">${mu(SL.mult)}</b></td></tr>`:""}
+              </tbody></table></div>
+              <div style="margin-top:.7rem">${SL.g!==null?`Crecer un <b>${nf(SL.g,1)}% anual</b> cinco
+                años más no lo hace nadie: ese número sale de una base diminuta, no de una tendencia.
+                `:""}${SL.mult!==null?`Y pagar <b>${mu(SL.mult)}</b> su caja significa que el mercado
+                no está pagando por lo que genera hoy, sino por lo que espera. <b>Eso no se valora
+                con este método</b>: se valora con una opinión sobre el futuro.`:""}
+              </div>
+              <div class="note" style="margin-top:.7rem;background:transparent;border:0;padding:0">
+                <b>Las dos salidas honestas:</b> pegar la pestaña <b>Forecasts</b> —que da un
+                crecimiento de analistas en vez de uno extrapolado— o poner tú el múltiplo y el
+                crecimiento en el modo manual, y defenderlos. Lo que no voy a hacer es darte un
+                precio construido sobre esto.
+              </div></div>`;
             const neg = (R.der && R.der.fcf || []).map((x,i)=>({x,a:R.A[i]}))
               .filter(o => o.x !== null && o.x < 0);
             const sinMult = !R.cMult || !R.cMult.evFcf || R.cMult.evFcf.v === null;
@@ -8406,7 +8484,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-16.43195d9";
+const APP_VERSION = "2026-08-17.fe9b68d";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
