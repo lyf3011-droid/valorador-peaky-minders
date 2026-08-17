@@ -501,6 +501,21 @@ svg.esq,svg.ch,svg.dg{cursor:zoom-in}
 /* el mapa de precios no baja de 560 px: por debajo el texto deja de leerse y es
    preferible que la caja se deslice, como ya hacen las tablas anchas */
 .mapa-p{min-width:560px}
+/* las filas de porcentaje bajo cada partida, como en la plantilla */
+tr.fpct td{color:var(--amber-strong);font-size:.76rem;border-bottom:1px dashed var(--line);
+  padding-top:.05rem}
+tr.fpct td.l{padding-left:1.4rem;color:var(--soft)}
+tr.fpct td.l i{color:var(--amber-strong);font-style:normal}
+/* las dos vias de entrada de datos del paso 2 */
+.dosvias{display:grid;grid-template-columns:repeat(auto-fit,minmax(19rem,1fr));gap:.9rem;margin-bottom:.8rem}
+.via{border:1px solid var(--line);border-radius:12px;padding:1rem 1.1rem;display:flex;
+  flex-direction:column;gap:.55rem;align-items:flex-start}
+.via-1{border-color:var(--amber-line);background:linear-gradient(180deg,rgba(245,158,11,.06),transparent)}
+.via-t{font-size:.95rem;font-weight:700}
+.via-n{font-family:var(--font-m);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--amber-strong);border:1px solid var(--amber-line);border-radius:5px;
+  padding:.15rem .45rem;margin-right:.4rem}
+.via-p{font-size:.83rem;line-height:1.6;color:var(--soft);margin:0}
 /* las dos opiniones del Fair Value: su explicación a la izquierda, sus casillas a la derecha */
 .fvfila{display:flex;gap:1.1rem;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;
   border-top:1px solid var(--line);padding-top:.9rem;margin-top:.9rem}
@@ -1320,14 +1335,27 @@ summary:focus-visible{outline:2px solid var(--amber-strong);outline-offset:-2px}
       copiar y qué llevas hecho.</div>
   </div>
 
-  <div class="bar-actions" style="margin-bottom:.6rem">
-    <button class="b2" id="btnSECtop" style="border-color:var(--amber-line);color:var(--amber-strong)">
-      🏛 Rellenar gratis desde la SEC · EE. UU.</button>
-    <button class="b2" id="btn10K">📄 Ver los informes anuales</button>
-    <button class="b2" id="btnEU">🇪🇺 Cuentas oficiales europeas</button>
-    <span style="font-size:.8rem;color:var(--soft);align-self:center">
-      La <b>vía gratuita</b>, y también el rescate cuando a Investing le falte algo.
-      <b>Nunca pisa</b> lo que ya has metido.</span>
+  <!-- La SEC es la OPCIÓN 1 a propósito: 10.398 empresas de EE. UU. se
+       rellenan solas desde la fuente oficial, sin copiar nada. El pegado de
+       InvestingPro queda como la vía para el resto del mundo y para afinar. -->
+  <div class="dosvias">
+    <div class="via via-1">
+      <div class="via-t"><span class="via-n">Opción 1</span> Se rellena sola · EE. UU.</div>
+      <p class="via-p">Escribe el ticker y pulsa. Los <b>10-K oficiales de la SEC</b> traen las
+        cuentas de <b>cualquier cotizada americana</b> —no solo las famosas— y los precios llegan
+        de Yahoo en el mismo viaje. Gratis, y <b>nunca pisa</b> lo que ya hayas metido.</p>
+      <button class="b1" id="btnSECtop" style="font-size:.92rem">🏛 Rellenar solo desde la SEC</button>
+    </div>
+    <div class="via via-2">
+      <div class="via-t"><span class="via-n">Opción 2</span> Copiar de InvestingPro · cualquier país</div>
+      <p class="via-p">Para <b>europeas</b>, para cuando la SEC no traiga alguna partida, o si
+        prefieres ver los datos con tus ojos antes de meterlos. Es el recorrido guiado de abajo:
+        cada paso te dice qué página abrir y qué copiar.</p>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="b2" id="btn10K">📄 Informes anuales</button>
+        <button class="b2" id="btnEU">🇪🇺 Cuentas europeas</button>
+      </div>
+    </div>
   </div>
   <div class="pr" id="resSECtop" style="margin-bottom:.8rem"></div>
   <div class="pr" id="res10K" style="margin-bottom:.8rem"></div>
@@ -4371,7 +4399,7 @@ function calcular(){
      dice con claridad qué falta y qué impide cada ausencia. */
   R.faltan = REQ.filter(k=>!has(k)).map(k=>{
     const c = CONCEPTOS.find(x=>x.k===k);
-    return {lab:c.lab, src:c.src, tab:G[c.g], impide:BLOQUEA[k]||"parte del análisis"};
+    return {lab:c.lab, src:c.src, tab:G[c.g], g:c.g, k, impide:BLOQUEA[k]||"parte del análisis"};
   });
   if(typeof R_SEC_EBIT_DERIVADO !== "undefined" && R_SEC_EBIT_DERIVADO)
     R.aviso.push("El <b>EBIT</b> no lo publica esta empresa con ninguna etiqueta estándar, así que se ha derivado restando los intereses al beneficio antes de impuestos. Sirve para hacerse una idea, pero <b>contrástalo con InvestingPro</b>: ahí el dato viene ya normalizado.");
@@ -5258,20 +5286,42 @@ function informe(R){
      y lo primero que veías era lo que NO tenías. Ahora el informe empieza por
      el análisis; lo que falta se dice al final, en una línea, y con el detalle
      a un clic. Se calcula igual todo lo que los datos permitan. */
-  AVISO_FALTAN = (R.faltan && R.faltan.length) ? `
-    <details class="faltan">
+  /* ── EL VIGÍA HABLA: no solo dice qué falta, dice de dónde sacarlo ────────
+     Cada hueco lleva sus dos salidas al lado: el botón de la SEC —que rellena
+     solo, si la empresa es de EE. UU.— y el enlace directo a la página de
+     InvestingPro donde vive esa partida. Antes esto era una tabla que
+     diagnosticaba; ahora es una que resuelve. */
+  AVISO_FALTAN = (R.faltan && R.faltan.length) ? (() => {
+    const T = ($("ticker").value||"").trim().toUpperCase();
+    const esUSA = T && !/\./.test(T);
+    const urlDe = f => {
+      if(typeof urlPro !== "function") return null;
+      const F2 = (typeof FUENTE !== "undefined" && FUENTE[f.g]) ? FUENTE[f.g] : null;
+      if(F2 && F2.pro) return urlPro(F2.pro);
+      if(f.g === "ER") return urlPro("ebitda");
+      return null;
+    };
+    return `
+    <details class="faltan" ${R.faltan.some(f=>/valoraci|precio|CapEx/i.test(f.impide))?"open":""}>
       <summary>${R.faltan.length} ${R.faltan.length>1?"partidas sin rellenar":"partida sin rellenar"} ·
         el resto del informe está calculado con lo que hay</summary>
-      <div class="tw" style="margin-top:.8rem"><table class="rs">
+      ${esUSA ? `<div class="note" style="margin:.8rem 0 .4rem;border-left:2px solid var(--amber)">
+        <b>${esc(T)} cotiza en EE. UU., así que casi todo esto se rellena solo:</b> pulsa
+        <button type="button" class="fx" onclick="traerSEC('top');document.getElementById('resSECtop').scrollIntoView({behavior:'smooth',block:'center'})">🏛
+        Traerlas de la SEC</button> — la fuente oficial, gratis, y nunca pisa lo que ya has metido.</div>` : ""}
+      <div class="tw" style="margin-top:.6rem"><table class="rs">
         <thead><tr><th>Falta</th><th>Dónde está</th><th>Qué deja fuera</th></tr></thead>
-        <tbody>${R.faltan.map(f=>`<tr>
+        <tbody>${R.faltan.map(f=>{
+          const u = urlDe(f);
+          return `<tr>
           <td class="l"><b style="color:var(--amber-strong)">${esc(f.lab)}</b></td>
-          <td class="l" style="font-family:var(--font-m);font-size:.76rem">${esc(f.tab)} → ${esc(f.src)}</td>
-          <td class="l">${esc(f.impide)}</td></tr>`).join("")}</tbody>
+          <td class="l" style="font-family:var(--font-m);font-size:.76rem">${esc(f.tab)} → ${esc(f.src)}
+            ${u?`<br><a href="${u}" target="_blank" rel="noopener" style="font-size:.74rem">abrir en InvestingPro ↗</a>`:""}</td>
+          <td class="l">${esc(f.impide)}</td></tr>`;}).join("")}</tbody>
       </table></div>
       <div class="note" style="margin-top:.6rem">Rellénalas arriba y vuelve a pulsar
       <b>Analizar la empresa</b>. Lo que ya está calculado no se pierde.</div>
-    </details>` : "";
+    </details>`; })() : "";
 
 
   /* vetos */
@@ -5603,6 +5653,30 @@ function bandaVeredicto(R){
    le pide a un informe. */
 function tablaCuentas(R){
   const A = R.A, L = R.L;
+  /* ── Los porcentajes de la plantilla, debajo de cada cuenta ───────────────
+     En el Excel, debajo de las ventas está su crecimiento año a año; debajo
+     del EBIT, su margen; debajo del impuesto, la tasa efectiva. Son los que
+     convierten una tabla de millones en algo que se puede leer: los números
+     absolutos no se comparan entre años, los porcentajes sí. Se calculan solos
+     a partir de lo ya pegado — cero trabajo extra para el alumno. */
+  const filaPct = (lab, f, clase) => {
+    const vals = A.map((_,i) => f(i));
+    if(!vals.some(v => v !== null && isFinite(v))) return "";
+    return `<tr class="fpct"><td class="l">${lab}</td>
+      ${vals.map(v => `<td class="n">${(v===null||!isFinite(v)) ? "—" : nf(v*100,1)+"%"}</td>`).join("")}
+    </tr>`;
+  };
+  const dv = (a,b) => (a===null||b===null||!b) ? null : a/b;
+  const PCT = {
+    ventas: [["<i>crece</i>", i => i===0 ? null : dv((D.ventas[i]??null)===null||(D.ventas[i-1]??null)===null?null:D.ventas[i]-D.ventas[i-1], D.ventas[i-1])]],
+    ebitda: [["<i>margen EBITDA</i>", i => dv(D.ebitda[i], D.ventas[i])]],
+    ebit:   [["<i>margen EBIT</i>",   i => dv(D.ebit[i],   D.ventas[i])]],
+    impuestos: [["<i>tasa efectiva</i>", i => {
+      const base = (D.ebit[i]===null) ? null : D.ebit[i] + (D.interes[i]||0);
+      return (D.impuestos[i]===null || base===null || base<=0) ? null : Math.abs(D.impuestos[i])/base; }]],
+    capex:  [["<i>CapEx sobre ventas</i>", i => dv(D.capex[i]===null?null:Math.abs(D.capex[i]), D.ventas[i])]],
+    da:     [["<i>D&amp;A sobre ventas</i>", i => dv(D.da[i]===null?null:Math.abs(D.da[i]), D.ventas[i])]],
+  };
   const bloque = (g, titulo) => {
     const cs = CONCEPTOS.filter(c => c.g === g && !c.auto && D[c.k].some(v => v !== null));
     if(!cs.length) return "";
@@ -5613,14 +5687,17 @@ function tablaCuentas(R){
           <td class="l">${esc(c.lab)}
             <span style="color:var(--muted-txt);font-family:var(--font-m);font-size:.7rem">${esc(c.src)}</span></td>
           ${A.map((_,i)=>`<td class="n">${D[c.k][i]===null ? "—" : nf(D[c.k][i], Math.abs(D[c.k][i])<100 ? 1 : 0)}</td>`).join("")}
-        </tr>`).join("")}</tbody></table></div>`;
+        </tr>`).join("") + cs.map(c => (PCT[c.k]||[]).map(([lab,f]) => filaPct(lab,f)).join("")).join("")}
+        </tbody></table></div>`;
   };
   const der = [
     ["Flujo de caja libre (construido)", R.der.fcf],
+    ["<i>margen FCF</i> · %", A.map((_,i)=> (R.der.fcf[i]===null||!D.ventas[i]) ? null : R.der.fcf[i]/D.ventas[i]), "pct"],
     ["Beneficio neto normalizado", R.der.neto],
+    ["<i>conversión en caja</i> · %", A.map((_,i)=> (R.der.fcf[i]===null||R.der.neto[i]===null||R.der.neto[i]<=0) ? null : R.der.fcf[i]/R.der.neto[i]), "pct"],
     ["Deuda neta", R.der.deudaNeta],
     ["Capital invertido", R.der.capInv],
-    ["ROIC", R.der.roic],
+    ["ROIC", R.der.roic, "pct"],
   ].filter(([,a]) => a && a.some(v => v !== null));
 
   return paso("Los datos","Las cuentas, tal como las he leído",
@@ -5631,9 +5708,9 @@ function tablaCuentas(R){
     (der.length ? `<h3>Lo que construye el método</h3>
       <div class="tw"><table class="rs">
         <thead><tr><th>Millones</th>${A.map(a=>`<th style="text-align:right">${a}</th>`).join("")}</tr></thead>
-        <tbody>${der.map(([lab,arr])=>`<tr><td class="l">${esc(lab)}</td>
-          ${A.map((_,i)=>`<td class="n">${arr[i]===null ? "—"
-            : (lab==="ROIC" ? pc(arr[i]) : nf(arr[i],0))}</td>`).join("")}</tr>`).join("")}</tbody>
+        <tbody>${der.map(([lab,arr,tipo])=>`<tr${/margen|conversión/.test(lab)?' class="fpct"':''}><td class="l">${lab}</td>
+          ${A.map((_,i)=>`<td class="n">${(arr[i]===null||arr[i]===undefined||!isFinite(arr[i])) ? "—"
+            : (tipo==="pct" ? nf(arr[i]*100,1)+"%" : nf(arr[i],0))}</td>`).join("")}</tr>`).join("")}</tbody>
       </table></div>` : ""),
     "pdatos","Datos");
 }
@@ -7224,7 +7301,8 @@ function verTradingView(){
 const SEC_TAGS = {
   /* cuenta de resultados */
   ventas:    ["RevenueFromContractWithCustomerExcludingAssessedTax", "Revenues", "SalesRevenueNet",
-              "RevenueFromContractWithCustomerIncludingAssessedTax"],
+              "RevenueFromContractWithCustomerIncludingAssessedTax",
+              "SalesRevenueGoodsNet", "SalesRevenueServicesNet"],   /* declarantes antiguos: KO */
   ebit:      ["OperatingIncomeLoss", "OperatingIncomeLossIncludingNoncontrollingInterest"],
   impuestos: ["IncomeTaxExpenseBenefit"],
   /* balance */
@@ -7239,10 +7317,15 @@ const SEC_TAGS = {
   deudaLP:   ["LongTermDebtNoncurrent", "LongTermDebt",
               "LongTermDebtAndCapitalLeaseObligations", "LongTermNotesPayable",
               "SeniorLongTermNotes", "UnsecuredLongTermDebt",
-              "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities"],
+              "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities",
+              "ConvertibleDebtNoncurrent", "ConvertibleNotesPayable"],   /* DKNG: solo convertibles */
   leaseCP:   ["OperatingLeaseLiabilityCurrent", "FinanceLeaseLiabilityCurrent"],
   leaseLP:   ["OperatingLeaseLiabilityNoncurrent", "FinanceLeaseLiabilityNoncurrent"],
   cobrar:    ["AccountsReceivableNetCurrent"],
+  /* OJO: KO no separa proveedores de devengos («AccountsPayableAndAccrued
+     LiabilitiesCurrent»). Se probó usar esa etiqueta combinada y el circulante
+     salía inflado: el FCF de Coca-Cola caía de 10.939 M a 4.040 M, lejos del
+     publicado. Un dato equivocado es peor que un hueco: mejor que falte. */
   pagar:     ["AccountsPayableCurrent"],
   inventar:  ["InventoryNet"],
   unearned:  ["ContractWithCustomerLiabilityCurrent", "DeferredRevenueCurrent"],
@@ -7303,7 +7386,33 @@ let PUENTE_CAIDO = false;   /* para poder decirlo una sola vez y con calma */   
 /* espera: el fichero de tickers pesa 800 KB y por un reenviador gratuito no baja
    en 9 segundos ni de broma. Ése fue el motivo real de que la SEC «no funcionara»:
    no era el 403, era que se abortaba antes de tiempo. */
+/* ── La cola de la SEC ─────────────────────────────────────────────────────
+   data.sec.gov corta a unas 10 peticiones por segundo, y el botón dispara
+   sesenta de golpe (28 partidas × varias etiquetas cada una). El resultado
+   era caprichoso: Tesla entraba entera, Exxon salía con 0 de 28 y Coca-Cola
+   a medias, según el humor del limitador. Se encola con 5 vuelos a la vez y
+   una pausa corta entre salidas, y un 429 se reintenta con calma. */
+let SEC_EN_VUELO = 0;
+const SEC_COLA = [];
+const SEC_MAX = 5;
+function secTurno(){
+  return new Promise(res => { SEC_COLA.push(res); secDespacha(); });
+}
+function secDespacha(){
+  while(SEC_EN_VUELO < SEC_MAX && SEC_COLA.length){
+    SEC_EN_VUELO++;
+    const res = SEC_COLA.shift();
+    setTimeout(res, 120 * SEC_EN_VUELO);       /* escalonadas, no en ráfaga */
+  }
+}
+function secLibera(){ SEC_EN_VUELO = Math.max(0, SEC_EN_VUELO - 1); secDespacha(); }
+
 async function secJSON(url, espera){
+  await secTurno();
+  try{ return await secJSON_(url, espera); }
+  finally{ secLibera(); }
+}
+async function secJSON_(url, espera){
   const orden = SEC_PUENTE_OK !== null
     ? [SEC_PUENTES[SEC_PUENTE_OK], ...SEC_PUENTES.filter((_,i)=>i!==SEC_PUENTE_OK)]
     : SEC_PUENTES;
@@ -7316,6 +7425,14 @@ async function secJSON(url, espera){
          esta empresa. No sirve de nada preguntárselo a otro puente. */
       if(r.status === 404){ SEC_PUENTE_OK = SEC_PUENTES.indexOf(puente);
         const e = new Error("no existe"); e.noExiste = true; throw e; }
+      if(r.status === 429 || r.status === 403){
+        /* el limitador de la SEC: se espera y se repite UNA vez por puente */
+        await new Promise(x => setTimeout(x, 900));
+        const r2 = await fetch(puente(url), {signal:(new AbortController()).signal});
+        if(r2.ok){ const j2 = await r2.json();
+          SEC_PUENTE_OK = SEC_PUENTES.indexOf(puente); return j2; }
+        ultimo = "código " + r.status; continue;
+      }
       if(!r.ok){ ultimo = "código " + r.status; continue; }
       let j = await r.json();
       /* allorigins /get envuelve: {contents:"…", status:{http_code}} */
@@ -7441,6 +7558,32 @@ function secAnual(datos, instante, unidad){
   return r;
 }
 
+/* ── Un solo viaje: companyfacts ──────────────────────────────────────────
+   El botón hacía sesenta peticiones —una por etiqueta— y eso tenía dos
+   averías que la batería de pruebas destapó con Exxon y Coca-Cola:
+   · la SEC corta a ~10 peticiones/segundo, así que según el orden de llegada
+     una empresa entraba entera y la siguiente salía a medias;
+   · y el endpoint por-concepto está ROTO para declarantes antiguos — a
+     Coca-Cola le devuelve `units: {}` vacío en etiquetas que companyfacts
+     sí tiene, con sus 60 hechos anuales.
+   companyfacts trae TODAS las etiquetas de la empresa en una sola respuesta:
+   un viaje, sin limitador, y con la historia completa. Las peticiones por
+   concepto quedan solo como respaldo si este fichero no baja. */
+const SEC_FACTS_CACHE = {};
+async function secFacts(cik){
+  if(SEC_FACTS_CACHE[cik]) return SEC_FACTS_CACHE[cik];
+  const j = await secJSON(`https://data.sec.gov/api/xbrl/companyfacts/CIK${cik}.json`, 25000);
+  const g = (j && j.facts && j.facts["us-gaap"]) || null;
+  if(g) SEC_FACTS_CACHE[cik] = g;
+  return g;
+}
+
+/* Empresas que se reorganizaron y estrenaron registro: el fichero de tickers
+   apunta al sucesor y la historia entera queda bajo el CIK antiguo. Exxon lo
+   hizo en octubre de 2025 («ExxonMobil Holdings Corp») y su CIK nuevo solo
+   tiene dos trimestres. Se leen los dos y el antiguo tapa los huecos. */
+const SEC_CIK_ANTERIOR = { XOM: "0000034088" };
+
 async function traerSEC(desde){
   const T = ($("ticker").value||"").trim().toUpperCase();
   /* hay dos botones —uno arriba y otro en el cuadro de flujo de caja— y el
@@ -7479,15 +7622,33 @@ async function traerSEC(desde){
        de usar la suya habitual para las ventas en el último ejercicio, y
        quedarse con la primera dejaba 2025 en blanco. Manda el orden: la
        primera etiqueta rellena, y las siguientes solo tapan huecos. */
+    /* el fichero gordo, una vez; y el del registro anterior si lo hay */
+    let FACTS = null, FACTS2 = null;
+    try{ FACTS = await secFacts(cik); }catch(e){}
+    const cikViejo = SEC_CIK_ANTERIOR[T];
+    if(cikViejo){ try{ FACTS2 = await secFacts(cikViejo); }catch(e){} }
+
+    const deFacts = (g, tag, instante, unidad) => {
+      if(!g || !g[tag] || !g[tag].units) return {};
+      return secAnual({units: g[tag].units}, instante, unidad);
+    };
     const pedir = async (tags, instante, unidad) => {
       let acum = null;
+      const junta = s => {
+        if(!Object.keys(s).length) return;
+        if(!acum) acum = Object.assign({}, s);
+        else Object.entries(s).forEach(([y,v]) => { if(acum[y] === undefined) acum[y] = v; });
+      };
+      if(FACTS || FACTS2){
+        for(const tag of tags){ junta(deFacts(FACTS, tag, instante, unidad)); }
+        for(const tag of tags){ junta(deFacts(FACTS2, tag, instante, unidad)); }
+        return acum;
+      }
+      /* respaldo: el camino antiguo, etiqueta a etiqueta por la red */
       for(const tag of tags){
         try{
           const j = await secJSON(`https://data.sec.gov/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`);
-          const s = secAnual(j, instante, unidad);
-          if(!Object.keys(s).length) continue;
-          if(!acum) acum = s;
-          else Object.entries(s).forEach(([y,v]) => { if(acum[y] === undefined) acum[y] = v; });
+          junta(secAnual(j, instante, unidad));
         }catch(e){ /* esa etiqueta no la usa esta empresa: se prueba la siguiente */ }
       }
       return acum;
@@ -7530,6 +7691,24 @@ async function traerSEC(desde){
       A.forEach((a,i) => { if(D.capexMant[i]!==null){ D.da[i] = D.capexMant[i]; n++; } });
       if(n){ puestas.push({k:"da", lab:"Depreciación y amortización (solo publican la depreciación)", n});
         const j = vacias.indexOf("da"); if(j>=0) vacias.splice(j,1); }
+    }
+    /* Y los HUECOS año a año, que son otra avería distinta: Tesla publicó la
+       D&A conjunta hasta 2017 y luego cambió de etiqueta, así que la serie
+       llegaba coja —dos años sí, ocho no— y sin D&A completa no hay EBITDA ni
+       flujo de caja. Donde falte la conjunta y esté la depreciación pura, se
+       usa la pura: es el suelo del dato, no un invento, y queda dicho. */
+    else if(D.da.some(v=>v===null) && D.capexMant.some(v=>v!==null)){
+      let n = 0;
+      A.forEach((a,i) => { if(D.da[i]===null && D.capexMant[i]!==null){ D.da[i] = D.capexMant[i]; n++; } });
+      if(n) puestas.push({k:"da", lab:"D&A · " + n + " años tapados con la depreciación (cambiaron de etiqueta)", n});
+    }
+    /* con la D&A ya completa, el EBITDA derivado también tapa sus huecos */
+    if(D.ebitda.some(v=>v===null) && D.ebit.some(v=>v!==null) && D.da.some(v=>v!==null)){
+      let n = 0;
+      A.forEach((a,i) => { if(D.ebitda[i]===null && D.ebit[i]!==null && D.da[i]!==null){
+        D.ebitda[i] = Math.round(D.ebit[i] + Math.abs(D.da[i])); n++; } });
+      if(n && !puestas.some(p=>p.k==="ebitda"))
+        puestas.push({k:"ebitda", lab:"EBITDA (calculado: EBIT + D&A)", n});
     }
 
     /* Dos partidas que la contabilidad oficial no publica con ese nombre y que
@@ -8484,7 +8663,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-17.fe9b68d";
+const APP_VERSION = "2026-08-17.ec46cd5";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
