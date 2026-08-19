@@ -1543,6 +1543,10 @@ Confirma que has entendido y dime "listo para el primer ticker".</textarea>
         <a id="fvEnlace3" class="ab-b" href="#" target="_blank" rel="noopener"
           style="align-self:end"><span class="ab-n">↗</span> Abrir InvestingPro</a>
       </div>
+      <!-- P4A.1 · la via comoda: pegar el cuadro entero en vez de teclear seis
+           campos. Nada se incorpora hasta confirmar. -->
+      <div id="pegarExternoHost"></div>
+
       <p class="px-fv-p" style="margin:.6rem 0 0">Los dos están en el mismo cuadro
         <b>Fair Value</b> de la pestaña <b>Overview</b>: el de arriba es <b>«Average»</b> —lo que
         dicen sus modelos— y el otro es <b>«Analyst Targets»</b>, lo que dicen las personas que
@@ -1937,6 +1941,34 @@ const FIN_OK = new Set([
   "PYPL","GPN","FIS","FISV","CPAY","JKHY","BR",          /* procesadores de pago */
   "MRSH","AON","AJG","BRO","WTW"                         /* brokers de seguros (comisión, no riesgo) */
 ]);
+
+/* ── ¿APLICA EL MÉTODO? ────────────────────────────────────────────────────
+   Hasta V1 esto solo pintaba un aviso: la app calculaba el IDC de un banco y
+   luego estampaba un ⛔ diciendo que no valía. Un número tachado sigue siendo
+   un número, y el que lo lee se queda con la cifra, no con la advertencia.
+   Ahora es una decisión del MOTOR y tiene PRECEDENCIA sobre cualquier
+   supuesto: ningún override levanta este veto.
+   Devuelve null si aplica, o el motivo si no.                              */
+function metodoNoAplica(){
+  const t = ($("ticker").value || "").trim().toUpperCase();
+  const e = IDX_POR_TICKER[t];
+  if(!e) return null;                       /* sin clasificar: se deja pasar */
+  if(e.s === "F" && FIN_OK.has(t)) return null;   /* financiera de comisión */
+  if(e.s === "F") return {
+    tipo: "financiera", nombre: e.n,
+    porque: "El método IDC <b>no es adecuado para bancos ni entidades financieras</b> " +
+            "porque la <b>deuda forma parte estructural de su actividad</b>: no es una carga " +
+            "que reste valor, es su materia prima. El flujo de caja libre y la deuda neta no " +
+            "significan aquí lo que significan en cualquier otra empresa.",
+    comoSe: "Se valoran por <b>valor contable y ROE</b>."};
+  if(e.s === "R") return {
+    tipo: "inmobiliaria patrimonialista", nombre: e.n,
+    porque: "El método IDC <b>no es adecuado para REITs ni patrimonialistas</b>: su beneficio " +
+            "contable está distorsionado por la amortización de inmuebles que no pierden valor, " +
+            "y el <b>CapEx de mantenimiento no se puede aproximar con la depreciación</b>.",
+    comoSe: "Se valoran por <b>FFO y valor de los activos</b>."};
+  return null;
+}
 
 function avisarSector(e){
   const caja = $("idinfo");
@@ -2340,6 +2372,673 @@ document.addEventListener("pointermove", e => {
   tip.style.left = Math.min(innerWidth - tip.offsetWidth - 10, e.clientX + 14) + "px";
   tip.style.top = (e.clientY + 18) + "px";
 });
+
+
+/* ══════ js/08-externos.js ══════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   08-externos.js  ·  EL MODELO DE DATOS EXTERNOS COMERCIALES  (P4A.1)
+   ═══════════════════════════════════════════════════════════════════════════
+
+   Hasta aquí un Fair Value era esto:
+
+       VAL.fv = 576.65        // un número pelado
+
+   Sin moneda, sin fecha, sin origen y sin forma de distinguir «no lo tengo»
+   de «vale cero». La auditoría P4A demostró lo que eso permitía: un cero
+   tecleado producía un potencial del −100% con toda la pinta de ser real, y
+   un Fair Value en dólares se comparaba contra un precio en euros sin que
+   nadie dijera nada.
+
+   Ahora cada dato externo es un REGISTRO con identidad:
+
+       {v, k, tipo, fuente, moneda, fecha, entrada, estado, motivo, nota}
+
+   Y una regla que manda sobre todas: **un dato inválido no se convierte en
+   null en silencio**. Se guarda con `estado:"invalido"` y su `motivo`, para
+   que la interfaz pueda decir QUÉ pasa en vez de callarse.
+
+   ESTO NO ES EL IDC. El IDC vive en 04-calcular.js, está congelado y
+   certificado, y no comparte ni un campo con este fichero:
+       IDC  ≠  Fair Value  ≠  consenso de analistas.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1 · LOS CONCEPTOS · cada uno con identidad propia ────────────────────
+   Nunca se reutiliza un campo para dos conceptos distintos. Un objetivo
+   mínimo de analistas y un spread bajo de los modelos de Investing son cosas
+   diferentes aunque los dos sean «un precio bajo». */
+const EXT_CONCEPTOS = {
+  precioActual: {lab:"Precio actual", tipo:"mercado", unidad:"precio",
+    que:"Lo que pide el mercado ahora mismo. El único que no es una opinión."},
+
+  fairValue:    {lab:"Fair Value de InvestingPro", tipo:"estimacionExterna", unidad:"precio",
+    que:"La media de los modelos de Investing. Es una ESTIMACIÓN EXTERNA de valor, no el valor verdadero de la empresa."},
+  fvMin:        {lab:"Fair Value · spread bajo", tipo:"estimacionExterna", unidad:"precio",
+    que:"El extremo inferior del rango de sus modelos."},
+  fvMax:        {lab:"Fair Value · spread alto", tipo:"estimacionExterna", unidad:"precio",
+    que:"El extremo superior del rango de sus modelos."},
+
+  targetMedio:  {lab:"Objetivo medio de los analistas", tipo:"consensoExterno", unidad:"precio",
+    que:"Un CONJUNTO DE ESTIMACIONES PROFESIONALES a doce meses, no una predicción segura."},
+  targetMin:    {lab:"Objetivo mínimo", tipo:"consensoExterno", unidad:"precio",
+    que:"El analista más pesimista de los que cubren la empresa."},
+  targetMax:    {lab:"Objetivo máximo", tipo:"consensoExterno", unidad:"precio",
+    que:"El analista más optimista."},
+  nAnalistas:   {lab:"Número de analistas", tipo:"consensoExterno", unidad:"conteo",
+    que:"Cuántos forman el consenso. Es el dato más honesto del bloque: con tres, «consenso» es mucho decir."},
+  consenso:     {lab:"Consenso", tipo:"consensoExterno", unidad:"categoria",
+    que:"La recomendación agregada, tal como la publica la fuente."},
+  horizonte:    {lab:"Horizonte", tipo:"consensoExterno", unidad:"texto",
+    que:"A cuánto plazo se refiere el objetivo. Se guarda aparte: no es un precio."},
+  fechaConsenso:{lab:"Fecha del consenso", tipo:"meta", unidad:"fecha",
+    que:"Cuándo se publicó. Un consenso de hace seis meses no es contemporáneo del precio de hoy."},
+};
+
+/* los valores admitidos del consenso · si llega otro, se guarda como nota y
+   el campo queda inválido: no se normaliza a la fuerza */
+const EXT_CONSENSO_OK = ["Strong Buy","Buy","Outperform","Hold","Neutral",
+                         "Underperform","Sell","Strong Sell"];
+
+/* las monedas que sabemos nombrar. NO se convierte entre ellas: si no
+   coinciden, se bloquea la comparación (decisión de Francisco, P4A.1 · 4). */
+const EXT_MONEDAS = {"$":"USD","US$":"USD","USD":"USD","€":"EUR","EUR":"EUR",
+                     "£":"GBP","GBP":"GBP","CHF":"CHF","¥":"JPY","JPY":"JPY",
+                     "SEK":"SEK","DKK":"DKK","NOK":"NOK","CAD":"CAD","AUD":"AUD"};
+function extMoneda(x){
+  if(x === null || x === undefined) return null;
+  const t = String(x).trim().toUpperCase();
+  return EXT_MONEDAS[t] || EXT_MONEDAS[String(x).trim()] || null;
+}
+
+/* ── 2 · EL ALMACÉN ───────────────────────────────────────────────────────
+   Un registro por concepto. Vacío = no tenemos el dato, que NO es lo mismo
+   que tenerlo y que valga cero. */
+let EXT = {};
+
+/* ── 3 · VALIDACIÓN · un inválido guarda su motivo, no desaparece ─────────
+   `null ≠ 0` también aquí. Y para los precios, `0` y los negativos no son
+   valores posibles: una empresa no vale cero euros por acción. */
+function extValidar(r){
+  const c = EXT_CONCEPTOS[r.k];
+  if(!c){ r.estado = "invalido"; r.motivo = "concepto desconocido: " + r.k; return r; }
+
+  if(r.v === null || r.v === undefined || r.v === ""){
+    r.estado = "ausente"; r.motivo = null; r.v = null; return r;
+  }
+
+  if(c.unidad === "precio"){
+    const n = typeof r.v === "number" ? r.v : NaN;
+    if(!isFinite(n)){ r.estado="invalido"; r.motivo="no es un número"; return r; }
+    if(n === 0){ r.estado="invalido";
+      r.motivo="cero no es un precio válido — si el dato no está, déjalo vacío"; return r; }
+    if(n < 0){ r.estado="invalido"; r.motivo="un precio no puede ser negativo"; return r; }
+    if(!extMoneda(r.moneda)){ r.estado="invalido";
+      r.motivo="falta la moneda, y sin ella no se puede comparar con el precio"; return r; }
+    r.moneda = extMoneda(r.moneda);
+    r.estado = "valido"; r.motivo = null; return r;
+  }
+
+  if(c.unidad === "conteo"){
+    const n = typeof r.v === "number" ? r.v : NaN;
+    if(!isFinite(n)){ r.estado="invalido"; r.motivo="no es un número"; return r; }
+    if(n <= 0){ r.estado="invalido"; r.motivo="tiene que ser un entero positivo"; return r; }
+    if(Math.floor(n) !== n){ r.estado="invalido";
+      r.motivo="no puede haber una fracción de analista"; return r; }
+    r.estado = "valido"; r.motivo = null; return r;
+  }
+
+  if(c.unidad === "categoria"){
+    const t = String(r.v).trim();
+    const ok = EXT_CONSENSO_OK.find(x => x.toLowerCase() === t.toLowerCase());
+    if(!ok){ r.estado="invalido";
+      r.motivo="no reconozco «"+t+"» como consenso; los admitidos son "+EXT_CONSENSO_OK.join(", ");
+      return r; }
+    r.v = ok; r.estado="valido"; r.motivo=null; return r;
+  }
+
+  if(c.unidad === "fecha"){
+    const t = String(r.v).trim();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(t)){ r.estado="invalido";
+      r.motivo="la fecha debe ser AAAA-MM-DD, y NUNCA se inventa"; return r; }
+    r.v = t; r.estado="valido"; r.motivo=null; return r;
+  }
+
+  r.v = String(r.v).trim();
+  r.estado = r.v ? "valido" : "ausente";
+  return r;
+}
+
+/* ── 4 · ESCRIBIR · sin sobrescribir en silencio ──────────────────────────
+   Si ya había un valor distinto y el nuevo viene de otro sitio, NO se pisa:
+   se devuelve el conflicto para que decida una persona. Es la misma regla
+   que P1 impuso en el pegado de fundamentales. */
+function extPon(k, valor, opts){
+  opts = opts || {};
+  const r = extValidar({
+    k, v: valor,
+    tipo:    (EXT_CONCEPTOS[k] || {}).tipo || "desconocido",
+    fuente:  opts.fuente  || null,
+    moneda:  opts.moneda  !== undefined ? opts.moneda : null,
+    fecha:   opts.fecha   || null,
+    entrada: opts.entrada || "manual",
+    nota:    opts.nota    || null,
+  });
+  const antes = EXT[k];
+  const distinto = antes && antes.estado === "valido" && r.estado === "valido" &&
+                   (antes.v !== r.v || antes.fuente !== r.fuente);
+  if(distinto && !opts.forzar)
+    return {conflicto:{k, antes:Object.assign({}, antes), nuevo:r}, guardado:false};
+  EXT[k] = r;
+  return {guardado:true, r};
+}
+
+/* lectura cómoda: SOLO devuelve número si el registro es válido */
+function extVal(k){ const r = EXT[k]; return (r && r.estado === "valido") ? r.v : null; }
+function extEstado(k){ const r = EXT[k]; return r ? r.estado : "ausente"; }
+function extMotivo(k){ const r = EXT[k]; return r ? r.motivo : null; }
+function extBorra(k){ delete EXT[k]; }
+
+/* ── 5 · LA MONEDA DE REFERENCIA ──────────────────────────────────────────
+   Es la del precio actual. Sin precio no hay contra qué comparar, y eso no
+   es un fallo: es que falta un lado. */
+function extMonedaRef(){
+  const p = EXT.precioActual;
+  return (p && p.estado === "valido") ? p.moneda : null;
+}
+
+/* ── 6 · LOS PORCENTAJES DERIVADOS · una sola fórmula, centralizada ───────
+       potencial = referencia / precioActual − 1
+   Solo si LOS DOS existen, LOS DOS son > 0 y comparten moneda. Cualquier
+   otra cosa devuelve null CON su motivo. Nunca un número a medias. */
+function extPotencial(k){
+  const ref = EXT[k], pre = EXT.precioActual;
+  const fuera = m => ({v:null, bloqueo:m});
+  if(!pre || pre.estado === "ausente") return fuera("precioAusente");
+  if(pre.estado !== "valido")          return fuera("precioInvalido");
+  if(!ref || ref.estado === "ausente") return fuera("referenciaAusente");
+  if(ref.estado !== "valido")          return fuera("referenciaInvalida");
+  if(!(pre.v > 0))                     return fuera("precioInvalido");
+  if(!(ref.v > 0))                     return fuera("referenciaInvalida");
+  if(ref.moneda !== pre.moneda)        return fuera("monedaIncompatible");
+  /* Y el conjunto tiene que sostenerse. Lo destapó el golden comercial: un
+     consenso con el mínimo (180) por encima del máximo (90) seguía dando un
+     potencial del 20% tan campante. Si el conjunto es incoherente NO se saca
+     ninguna conclusión de él — ni el porcentaje, ni la dispersión, ni una
+     frase (regla 5 de P4A.1). */
+  if(k === "targetMedio" && !extConsensoCoherente().ok) return fuera("conjuntoIncoherente");
+  if(k === "fairValue"   && !extFvCoherente().ok)       return fuera("conjuntoIncoherente");
+  return {v: ref.v / pre.v - 1, bloqueo: null};
+}
+
+const EXT_BLOQUEO_TXT = {
+  precioAusente:      "falta el precio actual",
+  precioInvalido:     "el precio actual no es válido",
+  referenciaAusente:  "no tenemos esa referencia",
+  referenciaInvalida: "esa referencia no es válida",
+  monedaIncompatible: "están en monedas distintas y no se convierten",
+  conjuntoIncoherente:"el conjunto de cifras no se sostiene (mínimo, media y máximo)",
+};
+
+/* ── 7 · COHERENCIA DEL CONSENSO ──────────────────────────────────────────
+   Cuando existan los tres tiene que cumplirse  min ≤ medio ≤ max.
+   Si no, el CONJUNTO queda marcado incoherente y no se saca ninguna
+   conclusión de él — ni el potencial, ni la dispersión, ni una frase. */
+function extCoherencia(medio, min, max){
+  const m = extVal(medio), lo = extVal(min), hi = extVal(max);
+  const problemas = [];
+  if(lo !== null && hi !== null && lo > hi)
+    problemas.push("el mínimo ("+lo+") es mayor que el máximo ("+hi+")");
+  if(m !== null && lo !== null && m < lo)
+    problemas.push("la media ("+m+") queda por debajo del mínimo ("+lo+")");
+  if(m !== null && hi !== null && m > hi)
+    problemas.push("la media ("+m+") queda por encima del máximo ("+hi+")");
+  return {ok: problemas.length === 0, problemas,
+          completo: m !== null && lo !== null && hi !== null};
+}
+function extConsensoCoherente(){ return extCoherencia("targetMedio","targetMin","targetMax"); }
+function extFvCoherente(){       return extCoherencia("fairValue","fvMin","fvMax"); }
+
+/* ── 8 · LA TRAZA EXTERNA ─────────────────────────────────────────────────
+   Responde a «¿de dónde sale esto?». Comparte la idea con la TRAZA del IDC
+   pero NO se mezcla con ella: aquella habla de partidas contables, ésta de
+   opiniones de terceros. */
+function extTraza(k){
+  const r = EXT[k], c = EXT_CONCEPTOS[k];
+  if(!c) return null;
+  if(!r || r.estado === "ausente")
+    return {k, lab:c.lab, estado:"ausente", que:c.que};
+  return {
+    k, lab: c.lab, valor: r.v, estado: r.estado, motivo: r.motivo,
+    tipo: r.tipo, que: c.que,
+    fuente: r.fuente || "sin declarar",
+    moneda: r.moneda || null,
+    fecha:  r.fecha  || null,          /* null = no la sabemos. NO se inventa */
+    entrada: r.entrada,
+    nota: r.nota || null,
+  };
+}
+function extTrazaTodo(){
+  return Object.keys(EXT_CONCEPTOS).map(extTraza).filter(x => x && x.estado !== "ausente");
+}
+
+/* ── 9 · EL VIGÍA DE LA CAPA COMERCIAL ────────────────────────────────────
+   Solo alertas OBJETIVAS: cada una se puede comprobar mirando los datos, sin
+   umbrales inventados. La única cifra que aparece aquí es el 3 de «pocos
+   analistas», y va marcada como convención, no como criterio del método. */
+const EXT_POCOS_ANALISTAS = 3;      /* CONVENCIÓN de presentación, no umbral del método */
+
+function extVigia(){
+  const rojos = [], ambar = [];
+  Object.keys(EXT_CONCEPTOS).forEach(k => {
+    const r = EXT[k];
+    if(r && r.estado === "invalido")
+      rojos.push({k, lab:EXT_CONCEPTOS[k].lab, txt:r.motivo});
+  });
+  const pre = EXT.precioActual;
+  if((!pre || pre.estado !== "valido") &&
+     (extVal("fairValue") !== null || extVal("targetMedio") !== null))
+    rojos.push({k:"precioActual", lab:"Precio actual",
+      txt:"hay referencias externas pero no hay precio con el que compararlas"});
+
+  const ref = extMonedaRef();
+  ["fairValue","targetMedio"].forEach(k => {
+    const r = EXT[k];
+    if(r && r.estado === "valido" && ref && r.moneda !== ref)
+      rojos.push({k, lab:EXT_CONCEPTOS[k].lab,
+        txt:"está en "+r.moneda+" y el precio en "+ref+": no se comparan"});
+  });
+
+  const co = extConsensoCoherente();
+  if(!co.ok) rojos.push({k:"targetMedio", lab:"Objetivos de analistas",
+    txt:"el conjunto es incoherente — "+co.problemas.join("; ")});
+  const cf = extFvCoherente();
+  if(!cf.ok) rojos.push({k:"fairValue", lab:"Fair Value",
+    txt:"el conjunto es incoherente — "+cf.problemas.join("; ")});
+
+  const n = extVal("nAnalistas");
+  if(n !== null && n <= EXT_POCOS_ANALISTAS)
+    ambar.push({k:"nAnalistas", lab:"Número de analistas",
+      txt:"solo "+n+": con tan pocos, «consenso» es mucho decir"});
+  if(extVal("targetMedio") !== null && extVal("fechaConsenso") === null)
+    ambar.push({k:"fechaConsenso", lab:"Fecha del consenso",
+      txt:"no sabemos de cuándo es, así que no se puede juzgar si está fresco"});
+  if(extVal("fairValue") !== null && !EXT.fairValue.fecha)
+    ambar.push({k:"fairValue", lab:"Fair Value",
+      txt:"sin fecha: no sabemos si es contemporáneo del precio"});
+
+  /* dispersión: se DESCRIBE, no se juzga. El listón es que el rango sea más
+     ancho que la propia media, que es un hecho medible, no una opinión. */
+  const m = extVal("targetMedio"), lo = extVal("targetMin"), hi = extVal("targetMax");
+  if(co.ok && m && lo && hi && (hi - lo) > m)
+    ambar.push({k:"targetMax", lab:"Rango de analistas",
+      txt:"el rango ("+lo+"–"+hi+") es más ancho que la propia media: hay poco acuerdo"});
+
+  Object.keys(EXT_CONCEPTOS).forEach(k => {
+    const r = EXT[k];
+    if(r && r.estado === "valido" && r.entrada === "manual" && !r.fuente)
+      ambar.push({k, lab:EXT_CONCEPTOS[k].lab, txt:"tecleado a mano, sin fuente declarada"});
+  });
+  return {rojos, ambar, nr:rojos.length, na:ambar.length};
+}
+
+/* ── 10 · ¿HAY ALGO? · la ausencia total es un caso válido ────────────────
+   Caso D del criterio: sin ninguna referencia externa la app funciona igual
+   y lo DICE. No es un error, no es un cero y no se inventa una conclusión. */
+function extHayAlgo(){
+  return Object.keys(EXT_CONCEPTOS).some(k => k !== "precioActual" && extVal(k) !== null);
+}
+
+/* ── 11 · GUARDAR Y RECUPERAR ────────────────────────────────────────────── */
+function extEmpaquetar(){ return JSON.parse(JSON.stringify(EXT)); }
+function extRestaurar(o){
+  EXT = {};
+  if(!o || typeof o !== "object") return;
+  Object.keys(o).forEach(k => { if(EXT_CONCEPTOS[k]) EXT[k] = extValidar(Object.assign({k}, o[k])); });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   12 · EL PARSER · POR ETIQUETA, NUNCA POR POSICIÓN
+   ═══════════════════════════════════════════════════════════════════════════
+   Regla que manda: si no sé QUÉ es un número, no lo importo. Cuatro cifras
+   sueltas —576, 620, 490, 720— pueden ser Fair Value, media, mínimo y máximo
+   en cualquier orden, y acertar por posición es acertar por suerte.
+
+   El número lo lee `parseCelda()`, el parser SEGURO de P1: rechaza
+   porcentajes, múltiplos («23,4x») y escalas ambiguas («2.5B»), y entiende
+   los dos convenios decimales. `aNumero()` no se usa aquí ni en ningún sitio.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* lee un número Y su moneda de un trozo de texto. Devuelve null si el texto
+   no contiene exactamente un número utilizable: preferimos no leer nada. */
+function extNumero(txt, estilo){
+  if(txt === null || txt === undefined) return null;
+  const s = String(txt).trim();
+  if(!s) return null;
+  /* la moneda, por símbolo o por código, esté delante o detrás */
+  let mon = null;
+  const sim = s.match(/(US\$|\$|€|£|CHF|¥)/);
+  if(sim) mon = extMoneda(sim[1]);
+  if(!mon){ const cod = s.match(/\b(USD|EUR|GBP|CHF|JPY|SEK|DKK|NOK|CAD|AUD)\b/i);
+            if(cod) mon = extMoneda(cod[1].toUpperCase()); }
+  /* y el número, con el parser estricto */
+  const limpio = s.replace(/(US\$|\$|€|£|¥)/g, " ")
+                  .replace(/\b(USD|EUR|GBP|CHF|JPY|SEK|DKK|NOK|CAD|AUD)\b/gi, " ")
+                  .trim();
+  const trozos = limpio.split(/\s+/).filter(Boolean);
+  if(trozos.length !== 1) return null;         /* dos números o basura: no se adivina */
+  const v = parseCelda(trozos[0], estilo);
+  return v === null ? null : {v, moneda: mon};
+}
+
+/* las etiquetas que sabemos reconocer. Nada que no esté aquí se importa. */
+const EXT_ETIQUETAS = [
+  {k:"fairValue",   re:/^(fair\s*value|valor\s*razonable|average)\b/i},
+  {k:"targetMedio", re:/^(analyst\s*target|price\s*target|average\s*target|target\s*medio|precio\s*objetivo)\b/i},
+  {k:"targetMin",   re:/^(target\s*low|lowest\s*target|objetivo\s*m[ií]nimo|m[ií]nimo)\b/i},
+  {k:"targetMax",   re:/^(target\s*high|highest\s*target|objetivo\s*m[áa]ximo|m[áa]ximo)\b/i},
+  {k:"fvMin",       re:/^(spread\s*low|spread\s*bajo)\b/i},
+  {k:"fvMax",       re:/^(spread\s*high|spread\s*alto)\b/i},
+  {k:"nAnalistas",  re:/^(number\s*of\s*analysts|n[ºo]?\s*(de\s*)?analistas|analysts)\b/i},
+  {k:"consenso",    re:/^(consensus|consenso|recommendation|recomendaci[óo]n)\b/i},
+  {k:"horizonte",   re:/^(horizon|horizonte|time\s*frame|plazo)\b/i},
+  {k:"fechaConsenso", re:/^(as\s*of|updated|actualizado|fecha)\b/i},
+];
+
+/* rangos escritos como «454 - 663» detrás de su etiqueta */
+const EXT_RANGOS = [
+  {lo:"fvMin", hi:"fvMax", re:/^spread\b/i},
+  {lo:"targetMin", hi:"targetMax", re:/^(analyst\s*targets?|price\s*targets?|rango)\b/i},
+];
+
+function extParsear(txt){
+  const estilo = (typeof estiloTabla === "function") ? estiloTabla(txt) : null;
+  const L = String(txt).split(/\n/).map(x => x.replace(/\r/g,"").trim()).filter(Boolean);
+  const det = {};            /* k → {v, moneda, comoSeLeyo} */
+  const avisos = [];
+  const pon = (k, v, moneda, como) => {
+    if(det[k]) return;                              /* gana la primera aparición */
+    det[k] = {v, moneda: moneda || null, como};
+  };
+
+  for(let i = 0; i < L.length; i++){
+    const linea = L[i];
+
+    /* a · rango «etiqueta  454 - 663» */
+    const rg = EXT_RANGOS.find(r => r.re.test(linea));
+    if(rg){
+      const m = linea.match(/(-?[\d.,]+)\s*[-–—]\s*(-?[\d.,]+)/);
+      if(m){
+        const a = extNumero(m[1], estilo), b = extNumero(m[2], estilo);
+        if(a && b){ pon(rg.lo, a.v, a.moneda, "rango en «"+linea.slice(0,28)+"»");
+                    pon(rg.hi, b.v, b.moneda, "rango en «"+linea.slice(0,28)+"»"); }
+        else avisos.push("«"+linea.slice(0,40)+"» parece un rango pero no he podido leer sus dos cifras");
+      }
+    }
+
+    /* a-bis · «38 analysts»: aquí el número va DELANTE de la etiqueta, que es
+       como lo escribe Investing. Se reconoce aparte porque las demás
+       etiquetas van siempre primero. */
+    const na = linea.match(/^(\d+)\s+analysts?\b/i);
+    if(na){ pon("nAnalistas", parseInt(na[1], 10), null, "«"+linea.slice(0,20)+"»"); continue; }
+
+    /* b · etiqueta + valor, en la misma línea o en la siguiente */
+    const et = EXT_ETIQUETAS.find(e => e.re.test(linea));
+    if(!et) continue;
+    const resto = linea.replace(et.re, "").replace(/^[\s:·|\t]+/, "").trim();
+
+    if(et.k === "consenso"){
+      const t = (resto || L[i+1] || "").trim();
+      if(t) pon("consenso", t, null, resto ? "misma línea" : "línea siguiente");
+      continue;
+    }
+    if(et.k === "horizonte"){
+      const t = (resto || L[i+1] || "").trim();
+      if(t) pon("horizonte", t, null, resto ? "misma línea" : "línea siguiente");
+      continue;
+    }
+    if(et.k === "fechaConsenso"){
+      const t = (resto || L[i+1] || "").trim();
+      const m = t.match(/(\d{4})-(\d{2})-(\d{2})/) ||
+                t.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      if(m) pon("fechaConsenso", m[0].includes("-") ? m[0] : m[3]+"-"+m[2]+"-"+m[1], null, "fecha declarada");
+      else if(t) avisos.push("he visto «"+t.slice(0,30)+"» como fecha pero no la entiendo — no la invento");
+      continue;
+    }
+    /* «38 analysts» viene con el número DELANTE de la palabra */
+    if(et.k === "nAnalistas"){
+      const m = linea.match(/(\d+)\s*analyst/i) || linea.match(/analyst[^\d]*(\d+)/i);
+      const t = m ? m[1] : (resto || L[i+1] || "");
+      const n = extNumero(t, estilo);
+      if(n) pon("nAnalistas", n.v, null, "etiqueta de analistas");
+      continue;
+    }
+    const n = extNumero(resto, estilo) ||
+              (L[i+1] !== undefined ? extNumero(L[i+1], estilo) : null);
+    if(n) pon(et.k, n.v, n.moneda, resto ? "misma línea" : "línea siguiente");
+  }
+
+  /* ¿había cifras que NO hemos sabido identificar? Se dice, y no se importan. */
+  const sueltas = L.filter(l => {
+    if(EXT_ETIQUETAS.some(e => e.re.test(l)) || EXT_RANGOS.some(r => r.re.test(l))) return false;
+    return extNumero(l, estilo) !== null;
+  });
+  const nDet = Object.keys(det).length;
+  if(nDet === 0)
+    return {estado:"ambiguo", det:{}, avisos,
+      porque: sueltas.length
+        ? "No puedo identificar con suficiente seguridad qué representa cada cifra. He visto " +
+          sueltas.length + " número" + (sueltas.length===1?"":"s") +
+          " sin una etiqueta que diga qué son, y colocarlos por su posición sería adivinar."
+        : "No he reconocido ninguna etiqueta de Investing en lo que has pegado."};
+
+  if(sueltas.length)
+    avisos.push(sueltas.length + " cifra" + (sueltas.length===1?"":"s") +
+      " sin etiqueta que no importo: " + sueltas.slice(0,4).map(s=>"«"+s.slice(0,14)+"»").join(", "));
+
+  return {estado:"ok", det, avisos, sueltas: sueltas.length};
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   13 · EL PUENTE CON LA INTERFAZ
+   ═══════════════════════════════════════════════════════════════════════════
+   Las seis casillas del panel de Fair Value siguen llamándose como siempre
+   —`fv`, `fvLo`, `fvAn`…— porque el informe entero las usa por ese nombre.
+   Lo que cambia es que ya NO escriben en `VAL` directamente: pasan por el
+   modelo, se validan, y solo si el registro es VÁLIDO se copia a `VAL`.
+
+   Así, un cero o un negativo dejan de existir para todo lo que hay aguas
+   abajo —mapa de precios, frases, potenciales— sin tener que reescribir el
+   informe: simplemente no llegan.                                          */
+const EXT_DE_VAL = {fv:"fairValue", fvLo:"fvMin", fvHi:"fvMax",
+                    fvAn:"targetMedio", fvAnLo:"targetMin", fvAnHi:"targetMax"};
+const VAL_DE_EXT = Object.fromEntries(Object.entries(EXT_DE_VAL).map(([a,b]) => [b,a]));
+
+/* el precio de la página, con su moneda, dentro del modelo */
+function extSincronizarPrecio(){
+  const v = (typeof parseNum === "function") ? parseNum($("precio").value) : null;
+  const m = $("moneda") ? $("moneda").value : null;
+  EXT.precioActual = extValidar({k:"precioActual", v, tipo:"mercado",
+    fuente: (typeof PRECIOS_TRAIDOS !== "undefined" && PRECIOS_TRAIDOS) ? "Yahoo" : null,
+    moneda: m, fecha: null, entrada: "manual", nota: null});
+  return EXT.precioActual;
+}
+
+/* solo lo VÁLIDO baja a VAL; lo inválido y lo ausente dejan VAL en null */
+function extAVal(){
+  Object.entries(EXT_DE_VAL).forEach(([kv, ke]) => { VAL[kv] = extVal(ke); });
+}
+
+/* escribir una casilla comercial, con su motivo si no cuela */
+function ponComercial(kVal, valor, inp){
+  const ke = EXT_DE_VAL[kVal];
+  extSincronizarPrecio();
+  const mon = $("moneda") ? $("moneda").value : null;
+  const res = extPon(ke, valor, {moneda: mon, fuente: "InvestingPro", entrada: "manual"});
+
+  let aviso = "";
+  if(res.conflicto){
+    /* no se pisa nada sin permiso: se enseñan los dos y decide la persona */
+    const c = res.conflicto;
+    aviso = `<span class="ext-conf">Ya tenías <b>${c.antes.v}</b> aquí y ahora pones
+      <b>${c.nuevo.v}</b>. No lo cambio yo solo:
+      <button type="button" class="fx" data-extok="${kVal}" data-extv="${c.nuevo.v}">Usar el nuevo</button>
+      <button type="button" class="fx" data-extno="${kVal}">Dejar el anterior</button></span>`;
+  } else {
+    const r = EXT[ke];
+    if(r && r.estado === "invalido") aviso = `<span class="ext-mal">⚠ ${esc(r.motivo)}</span>`;
+  }
+  if(inp){
+    let caja = inp.parentElement.querySelector(".ext-msg");
+    if(!caja){ caja = document.createElement("div"); caja.className = "ext-msg";
+               inp.parentElement.appendChild(caja); }
+    caja.innerHTML = aviso;
+    caja.querySelectorAll("[data-extok]").forEach(b => b.onclick = () => {
+      extPon(EXT_DE_VAL[b.dataset.extok], +b.dataset.extv,
+             {moneda: mon, fuente:"InvestingPro", entrada:"manual", forzar:true});
+      extAVal(); informe(calcular()); guardarTrabajo();
+    });
+    caja.querySelectorAll("[data-extno]").forEach(b => b.onclick = () => {
+      const k2 = b.dataset.extno; inp.value = extVal(EXT_DE_VAL[k2]) ?? "";
+      b.parentElement.remove();
+    });
+  }
+  extAVal();
+  if(typeof informe === "function" && typeof calcular === "function") informe(calcular());
+  if(typeof guardarTrabajo === "function") guardarTrabajo();
+}
+
+/* ── 14 · LOS POTENCIALES, PARA LA INTERFAZ ──────────────────────────────
+   Devuelve el texto ya resuelto: o el porcentaje, o POR QUÉ no se puede.
+   Y el lenguaje es de REFERENCIA, nunca de predicción:
+   «la estimación externa está un X% por encima», jamás «está barata».     */
+function extPotencialTxt(k){
+  const x = extPotencial(k);
+  if(x.v === null) return {txt: EXT_BLOQUEO_TXT[x.bloqueo] || "no se puede calcular",
+                           pct: null, bloqueo: x.bloqueo};
+  const c = EXT_CONCEPTOS[k];
+  const arriba = x.v >= 0;
+  const cual = c.tipo === "consensoExterno" ? "El objetivo medio de los analistas"
+             : "La estimación externa";
+  return {pct: x.v, bloqueo: null,
+    txt: cual + " está un <b>" + (typeof pc === "function" ? pc(Math.abs(x.v)) :
+         (Math.abs(x.v)*100).toFixed(1)+"%") + "</b> " +
+         (arriba ? "por encima" : "por debajo") + " del precio actual."};
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   15 · PEGAR DE INVESTING · con preview obligatoria
+   ═══════════════════════════════════════════════════════════════════════════
+       PEGAR → PARSEAR → PREVISUALIZAR → VALIDAR → CONFIRMAR → INCORPORAR
+
+   Nada entra antes de confirmar. Es la misma regla que P1 impuso en las
+   cuentas, y por el mismo motivo: un dato pegado NO es un dato validado.   */
+function cajaPegarExterno(){
+  return `<div class="pegabox" style="margin-top:1rem">
+    <div class="pt"><span class="pn">📋 Pegar de InvestingPro</span>
+      <span style="font-size:.78rem;color:var(--muted-txt)">o rellena las casillas a mano</span></div>
+    <div style="font-size:.8rem;color:var(--soft);margin-bottom:.5rem">
+      Copia el cuadro <b>Fair Value</b> de la pestaña Overview y pégalo aquí entero.
+      <b>No se incorpora nada hasta que lo confirmes.</b></div>
+    <textarea id="pegaExterno" placeholder="Fair Value&#10;576.65&#10;Spread  454 - 663&#10;Analyst Targets&#10;38 analysts&#10;Price Target&#10;664.39&#10;Consensus&#10;Buy" style="min-height:96px"></textarea>
+    <div class="pb"><button type="button" class="pri" id="verExterno">Ver qué he detectado</button></div>
+    <div id="previewExterno"></div>
+  </div>`;
+}
+
+function enlazarPegarExterno(){
+  const btn = $("verExterno");
+  if(!btn) return;
+  btn.onclick = () => {
+    const caja = $("previewExterno");
+    extSincronizarPrecio();
+    const r = extParsear($("pegaExterno").value || "");
+
+    if(r.estado === "ambiguo"){
+      caja.innerHTML = `<div class="warn" style="margin-top:.7rem">
+        <b>🔴 No importo nada.</b> ${esc(r.porque)}
+        <div class="note" style="margin-top:.5rem">Pega el cuadro entero, con sus títulos
+        («Fair Value», «Price Target», «Consensus»…), o escribe los números a mano en las
+        casillas de abajo.</div></div>`;
+      return;
+    }
+
+    /* se VALIDA antes de enseñar: la preview dice ya qué entraría y qué no */
+    const mon = $("moneda") ? $("moneda").value : null;
+    const fila = k => {
+      const d = r.det[k]; if(!d) return "";
+      const c = EXT_CONCEPTOS[k];
+      const prueba = extValidar({k, v:d.v, tipo:c.tipo, moneda: d.moneda || mon,
+                                 fuente:"InvestingPro", entrada:"pegado"});
+      const malo = prueba.estado === "invalido";
+      return `<tr><td class="l">${esc(c.lab)}</td>
+        <td class="n"${malo?' style="color:var(--red)"':''}>${esc(String(d.v))}${
+          c.unidad === "precio" && prueba.moneda ? " " + esc(prueba.moneda) : ""}</td>
+        <td style="font-size:.78rem;color:var(--muted-txt)">${malo
+          ? "⚠ " + esc(prueba.motivo) : esc(d.como)}</td></tr>`;
+    };
+    const orden = ["fairValue","fvMin","fvMax","targetMedio","targetMin","targetMax",
+                   "nAnalistas","consenso","horizonte","fechaConsenso"];
+    const filas = orden.map(fila).join("");
+
+    /* coherencia del conjunto, ANTES de dejar confirmar */
+    const simul = {};
+    orden.forEach(k => { const d = r.det[k]; if(d) simul[k] = d.v; });
+    const inc = [];
+    const tri = (m, lo, hi, nom) => {
+      const a = simul[lo], b = simul[m], c = simul[hi];
+      if(a !== undefined && c !== undefined && a > c) inc.push(nom + ": el mínimo es mayor que el máximo");
+      if(b !== undefined && a !== undefined && b < a) inc.push(nom + ": la media queda por debajo del mínimo");
+      if(b !== undefined && c !== undefined && b > c) inc.push(nom + ": la media queda por encima del máximo");
+    };
+    tri("targetMedio","targetMin","targetMax","analistas");
+    tri("fairValue","fvMin","fvMax","Fair Value");
+
+    caja.innerHTML = `<div class="ok" style="margin-top:.7rem"><b>DATOS DETECTADOS</b></div>
+      <div class="tw" style="margin-top:.4rem"><table class="rs"><tbody>${filas}</tbody></table></div>
+      <div class="note" style="margin-top:.5rem">Moneda de referencia: <b>${esc(extMoneda(mon)||"sin declarar")}</b>
+        · las que no traigan la suya se guardarán con esta.</div>
+      ${r.avisos.map(a => `<div class="note">· ${esc(a)}</div>`).join("")}
+      ${inc.length ? `<div class="warn" style="margin-top:.5rem"><b>🟥 Conjunto incoherente.</b>
+        ${inc.map(esc).join(" · ")}. No se puede confirmar así: corrígelo en el origen
+        o mete los valores a mano.</div>` : ""}
+      <div class="pb" style="margin-top:.6rem">
+        ${inc.length ? "" : `<button type="button" class="pri" id="confExterno">Confirmar</button>`}
+        <button type="button" id="corrExterno">Corregir</button>
+        <button type="button" id="cancExterno">Cancelar</button></div>`;
+
+    if($("confExterno")) $("confExterno").onclick = () => {
+      /* el precio de la pagina entra en el modelo ANTES que nada: es la
+         moneda de referencia y el denominador de los dos potenciales */
+      extSincronizarPrecio();
+      const puestos = [], rechazados = [], conflictos = [];
+      /* el «As of» fecha el CUADRO ENTERO, no solo el consenso: si viene, se
+         le pone a todos los registros de este pegado. Si no viene, ninguno
+         lleva fecha — antes de inventarla, se queda sin ella. */
+      const fechaCuadro = r.det.fechaConsenso ? r.det.fechaConsenso.v : null;
+      orden.forEach(k => {
+        const d = r.det[k]; if(!d) return;
+        const res = extPon(k, d.v, {moneda: d.moneda || mon, fuente:"InvestingPro",
+                                    entrada:"pegado", nota: d.como, fecha: fechaCuadro});
+        if(res.conflicto) conflictos.push(EXT_CONCEPTOS[k].lab + " (tenías " +
+          res.conflicto.antes.v + ", llega " + res.conflicto.nuevo.v + ")");
+        else if(EXT[k] && EXT[k].estado === "invalido") rechazados.push(EXT_CONCEPTOS[k].lab + " — " + EXT[k].motivo);
+        else puestos.push(EXT_CONCEPTOS[k].lab);
+      });
+      extAVal();
+      caja.innerHTML = `<div class="ok" style="margin-top:.7rem">✓ Incorporados
+        <b>${puestos.length}</b>: ${esc(puestos.join(", ")) || "ninguno"}.</div>
+        ${rechazados.length ? `<div class="warn">No he metido: ${esc(rechazados.join(" · "))}</div>` : ""}
+        ${conflictos.length ? `<div class="warn"><b>Estos ya los tenías y NO los he pisado:</b>
+          ${esc(conflictos.join(" · "))}. Cámbialos a mano si quieres el nuevo.</div>` : ""}`;
+      informe(calcular()); guardarTrabajo();
+    };
+    if($("corrExterno")) $("corrExterno").onclick = () => {
+      caja.innerHTML = `<div class="note">Corrige el texto de arriba y vuelve a pulsar
+        «Ver qué he detectado». O escribe los valores a mano en las casillas.</div>`;
+      $("pegaExterno").focus();
+    };
+    if($("cancExterno")) $("cancExterno").onclick = () => { caja.innerHTML = ""; $("pegaExterno").value = ""; };
+  };
+}
 
 
 /* ══════ js/03-leer.js ══════ */
@@ -3290,7 +3989,6 @@ function progreso(){
         tabla principal de balance con Total Assets, Total Equity…)
      B) una tabla de nombres seguida de otra de cifras, fila a fila
         (los grupos plegables de balance y flujo de caja)                        */
-let HTML_PEGADO = null;
 
 function esCifra(s){ return /^[+\-(]?[\d.,]+[)%]?$/.test(String(s).trim()) && /\d/.test(s); }
 
@@ -3302,66 +4000,27 @@ function esCifra(s){ return /^[+\-(]?[\d.,]+[)%]?$/.test(String(s).trim()) && /\
      · si solo aparece uno y está repetido, es separador de miles
      · si solo aparece uno y le siguen exactamente 3 dígitos, es de miles
      · en cualquier otro caso, es el decimal                                    */
-function aNumero(s){
-  let t = String(s).replace(/[()\s%+]/g,"").trim();
-  const neg = /^-/.test(t) || String(s).includes("(");
-  t = t.replace(/^-/,"");
-  if(!t || t==="-" || t==="—" || t==="–") return null;
+/* ── RETIRADO EN P4A.1 · aNumero() y la via HTML de Investing ─────────────
+   Aqui vivian `aNumero()`, `leerHTMLInvesting()` y `procesarHTML()`.
 
-  const iP = t.lastIndexOf("."), iC = t.lastIndexOf(",");
-  let dec = null;                                  /* posición del separador decimal */
-  if(iP>=0 && iC>=0)            dec = Math.max(iP,iC);
-  else if(iP>=0 || iC>=0){
-    const i = Math.max(iP,iC), ch = t[i];
-    const repetido = t.split(ch).length > 2;
-    const tras = t.length - i - 1;
-    dec = (repetido || tras===3) ? null : i;       /* null = todos son de miles */
-  }
-  const ent = (dec===null ? t : t.slice(0,dec)).replace(/[.,]/g,"");
-  const frac = dec===null ? "" : t.slice(dec+1).replace(/[.,]/g,"");
-  const v = parseFloat(ent + (frac ? "."+frac : ""));
-  return isFinite(v) ? (neg ? -v : v) : null;
-}
-function leerHTMLInvesting(html){
-  const doc = new DOMParser().parseFromString(html, "text/html");
-  const tablas = [...doc.querySelectorAll("table")].filter(t=>t.rows.length>0);
-  const tipo = t => {
-    const f = [...t.rows].map(r=>[...r.cells].map(c=>c.textContent.trim()));
-    return f.filter(x=>x.filter(Boolean).some(esCifra)).length > f.length/2 ? "NUM" : "ETI";
-  };
-  const tp = tablas.map(tipo), out = [], usadas = new Set();
+   La auditoria P4A midio lo que hacia `aNumero`:
 
-  /* B) pares nombre-tabla / cifras-tabla */
-  for(let i=0;i<tablas.length-1;i++){
-    if(tp[i]!=="ETI" || tp[i+1]!=="NUM") continue;
-    const A=tablas[i], B=tablas[i+1];
-    if(A.rows.length !== B.rows.length) continue;
-    usadas.add(i); usadas.add(i+1);
-    for(let r=0;r<A.rows.length;r++){
-      const et = [...A.rows[r].cells].map(c=>c.textContent.trim()).filter(Boolean).pop() || "";
-      const cs = [...B.rows[r].cells].map(c=>c.textContent.trim());
-      if(!et || cs.some(c=>c.includes("%"))) continue;
-      const val = cs.map(aNumero);
-      /* basta con un año: el emparejamiento es estructural, no adivinado.
-         Las filas que el método no usa se descartan después, al buscar el nombre. */
-      if(val.some(v=>v!==null)) out.push({et, val});
-    }
-  }
-  /* A) filas mixtas: nombre + cifras en la misma fila */
-  tablas.forEach((t,i)=>{
-    if(usadas.has(i)) return;
-    [...t.rows].forEach(r=>{
-      const cs = [...r.cells].map(c=>c.textContent.trim());
-      const et = cs.find(c=>c && !esCifra(c) && !/^\d{4}$/.test(c));
-      if(!et) return;
-      const cifras = cs.filter(c=>esCifra(c) && !c.includes("%"));
-      if(cifras.length < 3) return;
-      const val = cifras.map(aNumero);
-      if(val.filter(v=>v!==null).length >= 3) out.push({et, val});
-    });
-  });
-  return out;
-}
+       "120,40 EUR"  ->  12040     error de dos ordenes de magnitud
+       "12.34x"      ->  1234      un multiplo se volvia importe
+       "$120.40"     ->  null      fallaba en silencio
+
+   El mecanismo: no quitaba el simbolo de moneda, quedaban tres caracteres
+   tras la coma y la regla «tras===3» decidia que era separador de MILES. Es
+   exactamente la causa nº 1 de datos mal leidos que señala la plantilla de
+   Fernando.
+
+   Su unica via —`procesarHTML`— ya estaba muerta: ni `#bloque` ni
+   `#bloqueRes` existen en la pagina y nadie la invocaba. Pero ademas escribia
+   directo en `D[]`, colocaba POR POSICION y no llamaba a `trazaPon`: todo lo
+   que P1 prohibio. Dejarla ahi era una bomba latente a un cable de estar viva.
+
+   Quien lee numeros hoy: `parseCelda()` para las cuentas y `extNumero()` para
+   los datos externos. Los dos rechazan en vez de adivinar.                 */
 
 /* ── un cuadro de pegado por cuenta ── */
 const HTML_CAJA = {};                       /* HTML pegado en cada cuadro */
@@ -3387,6 +4046,7 @@ const PRO_BOLSA = {
   "nyseamerican":"NYSEAMERICAN", "nyse american":"NYSEAMERICAN",
   "nyse mkt":"NYSEAMERICAN", "otc markets":"OTCPK"
 };
+
 function fijarBolsaPro(nombreYahoo){
   const k = String(nombreYahoo||"").trim().toLowerCase();
   BOLSA_PRO = PRO_BOLSA[k] || null;
@@ -3979,7 +4639,19 @@ function cabeceraPegado(txt){
   let corte = L.length;
   for(let i=0;i<L.length;i++){
     const bajo = L[i].normalize("NFC").toLowerCase().replace(/\s+/g," ").trim();
-    if(Object.values(SIN).some(alts => alts.some(a => bajo === a || bajo.startsWith(a+" ") || bajo.startsWith(a+"\t")))){ corte = i; break; }
+    if(!Object.values(SIN).some(alts => alts.some(a => bajo === a || bajo.startsWith(a+" ") || bajo.startsWith(a+"\t")))) continue;
+    /* ── un TÍTULO no es una fila de datos (P4A.2) ──────────────────────────
+       La tabla del InvestingPro nuevo se titula «EBITDA Reconciliation», y eso
+       empieza por «ebitda», así que se tomaba por la fila del EBITDA: el corte
+       caía en la línea 0, la zona de cabecera quedaba vacía y NO se detectaba
+       ningún año. La tabla se colocaba entonces «posicional», que acierta solo
+       si los diez años del pegado coinciden con los del análisis.
+       Una fila de datos tiene datos: o números en su propia línea, o la línea
+       siguiente es una celda numérica. Un título no tiene ni lo uno ni lo otro. */
+    const propios = celdasLinea(L[i], null).filter(c => c.v !== null).length;
+    const siguienteEsCifra = L[i+1] !== undefined && esCeldaNumerica(L[i+1].trim());
+    if(propios < 2 && !siguienteEsCifra) continue;      /* es un título: se sigue buscando */
+    corte = i; break;
   }
   const zona = L.slice(0, corte).join(" ");
   const cols = [];
@@ -4021,6 +4693,50 @@ function parsearPegado(txt){
     const linea = L[i]; if(!linea.trim()) continue;
     const bajo = linea.normalize("NFC").toLowerCase().replace(/\s+/g," ").trim();
     if(ES_PREVISION.test(bajo)) continue;
+
+    /* ── VÍA A · LA ETIQUETA ES UNA CELDA (P4A.2) ──────────────────────────
+       Las tablas de investing.com/equities salen del portapapeles así:
+
+           \tTotal Revenues\taa.aa\t…\t6,218\t5,468\t5,916\t7,088\t7,718
+
+       Cada fila EMPIEZA por tabulador —la primera columna va vacía— y donde
+       no hay suscripción las celdas traen «aa.aa», el emborronado del muro de
+       pago. Con la vía de abajo eso no se leía NUNCA: buscaba el nombre al
+       principio de la línea y exigía que detrás solo hubiera cifras, y
+       «aa.aa» son letras.
+
+       Aquí la etiqueta se busca COMO CELDA, en cualquier columna de la
+       izquierda. Eso arregla tres cosas de una vez: las columnas vacías
+       iniciales dejan de estorbar, «aa.aa» pasa a ser un HUECO EN SU SITIO
+       —así 2021-2025 caen en sus años y no corridos— y «Total Revenues» ya
+       no puede confundirse con «Total Revenues Growth», porque la
+       comparación es exacta y no por prefijo. */
+    const celdasFila = linea.includes("\t") ? celdasLinea(linea, estilo) : null;
+    if(celdasFila){
+      const norm = t => String(t).normalize("NFC").toLowerCase().replace(/\s+/g," ").trim();
+      let iEt = -1, kEt = null, altEt = null;
+      for(let x = 0; x < celdasFila.length && x < 4; x++){
+        const t = norm(celdasFila[x].t);
+        if(!t || celdasFila[x].v !== null) continue;       /* vacía o numérica: no es etiqueta */
+        for(const [k, alts] of Object.entries(SIN)){
+          const a = alts.find(a => a === t);
+          if(a){ iEt = x; kEt = k; altEt = a; break; }
+        }
+        if(iEt >= 0) break;
+      }
+      if(iEt >= 0){
+        /* lo que va DETRÁS de la etiqueta, en su posición. Lo que no sea un
+           número ni un hueco declarado —«aa.aa» y compañía— se convierte en
+           hueco: ocupa su columna, pero no inventa un valor. */
+        const celdas = celdasFila.slice(iEt + 1)
+          .map(c => (c.v !== null || esHueco(c.t)) ? c : {t: c.t, v: null});
+        if(celdas.filter(c => c.v !== null).length >= 2){
+          filas.push({et: altEt, k: kEt, celdas});
+          continue;
+        }
+      }
+    }
+
     for(const [k,alts] of Object.entries(SIN)){
       const alt = alts.find(a => bajo === a || ((bajo.startsWith(a+" ")||bajo.startsWith(a+"\t")) && SOLO_CIFRAS.test(bajo.slice(a.length).replace(/n\/?a|(^|\s)nd(\s|$)/gi, " "))));   /* N-A y ND son huecos, no texto */
       if(!alt) continue;
@@ -4426,62 +5142,10 @@ function normEt(s){
   /* NFC por lo mismo que arriba: la tilde puede venir en dos codificaciones */
   return String(s).normalize("NFC").toLowerCase().replace(/\s+/g," ").replace(/\*+$/,"").trim();
 }
-function procesarHTML(){
-  let filas;
-  try{ filas = leerHTMLInvesting(HTML_PEGADO); }catch(e){ return false; }
-  if(!filas.length) return false;
-
-  const halladas = [], ignoradas = [];
-  const usadas = new Set();
-  for(const f of filas){
-    const et = normEt(f.et);
-    let key = null;
-    for(const [k,alts] of Object.entries(SIN)){ if(alts.includes(et)){ key = k; break; } }
-    if(!key){ ignoradas.push(f.et); continue; }
-    if(usadas.has(key)) continue;                       // gana la primera aparición
-    const con = CONCEPTOS.find(c=>c.k===key);
-    let arr = f.val.slice();
-    /* Investing da capex, adquisiciones, recompras, dividendos e impuestos en
-       negativo; la matriz los pide en positivo, así que se normaliza el signo. */
-    if(con.pos) arr = arr.map(v => v===null ? null : Math.abs(v));
-    if($("invertir").checked) arr.reverse();
-    if(arr.length > N) arr = arr.slice(-N);
-    D[key] = new Array(N).fill(null);
-    arr.forEach((v,x)=>{ const pos = N - arr.length + x; if(pos>=0) D[key][pos] = v; });
-    usadas.add(key);
-    const c = CONCEPTOS.find(c=>c.k===key);
-    const llenos = arr.filter(v=>v!==null);
-    halladas.push({lab:c.lab, ult:llenos.length?llenos[llenos.length-1]:null, n:llenos.length});
-  }
-  pintarMatriz();
-
-  const faltan = CONCEPTOS.filter(c=>c.req && !usadas.has(c.k) && D[c.k].every(v=>v===null))
-                          .map(c=>c.lab);
-  $("bloqueRes").innerHTML =
-    (halladas.length
-      ? `<div class="ok"><b>✓ Leídas ${halladas.length} filas de la tabla.</b> Revisa que cuadren:</div>
-         <div class="tw" style="margin-top:.5rem"><table class="rs"><thead><tr>
-           <th>Partida</th><th style="text-align:right">Años</th><th style="text-align:right">Último año</th>
-         </tr></thead><tbody>${halladas.map(h=>
-           `<tr><td class="l">${esc(h.lab)}</td><td class="n">${h.n}</td>
-            <td class="n" style="color:var(--amber-strong)">${h.ult===null?"—":nf(h.ult,0)}</td></tr>`).join("")}
-         </tbody></table></div>`
-      : `<div class="warn"><b>He leído la tabla pero no he reconocido ninguna partida.</b>
-         ¿Seguro que es Investing en inglés?</div>`) +
-    (faltan.length ? `<div class="note">Siguen faltando: <b>${esc(faltan.join(", "))}</b>.
-       Están en otra pestaña — cópiala y pégala también.</div>`
-                   : `<div class="ok">Obligatorios completos.</div>`) +
-    (ignoradas.length ? `<div class="note" style="color:var(--muted-txt)">Se han ignorado
-       ${ignoradas.length} filas que el método no usa (subtotales, crecimientos, partidas ajenas).</div>` : "");
-  HTML_PEGADO = null;
-  return true;
-}
-
 /* ══════════════════ RECONOCEDOR DE BLOQUES ══════════════════ */
 function procesarBloque(){
-  /* si el portapapeles traía la tabla en HTML, se lee de ahí: es lo único
-     que conserva qué cifras pertenecen a qué nombre en balance y flujo de caja */
-  if(HTML_PEGADO){ const r = procesarHTML(); if(r) return; }
+  /* la via HTML se retiro en P4A.1 (ver la nota de arriba): su parser
+     numerico convertia «120,40 €» en 12.040 y saltaba la preview de P1. */
 
   const lineas = $("bloque").value.split(/\n/).map(l=>l.trim());
   const halladas=[], perdidas=[];
@@ -4696,10 +5360,119 @@ function calcular(){
   const der = {};
   const mk = f => A.map((_,i)=>{ const v=f(i); return (v===null||!isFinite(v))?null:v; });
 
-  der.wc = mk(i => (D.cobrar[i]===null && D.pagar[i]===null && D.inventar[i]===null) ? null
-                 : z(D.inventar,i)+z(D.cobrar,i)-z(D.pagar,i)-Math.abs(z(D.unearned,i)));
-  der.cwc = mk(i => (i===0||der.wc[i]===null||der.wc[i-1]===null) ? 0 : der.wc[i]-der.wc[i-1]);
-  if(!has("cobrar")) R.aviso.push("Sin cuentas a cobrar/pagar no se descuenta la variación de circulante: el FCF sale algo <b>optimista</b>.");
+  /* ── EL CIRCULANTE, POR COMPLETITUD (P3.2) ───────────────────────────────
+     Antes bastaba UNA componente para calcular el circulante: si faltaban las
+     demás se contaban como cero y salía un WC parcial presentado como
+     completo. Lo destapó el golden de META, que dejó de publicar
+     «AccountsPayableCurrent» en 2021: desde ese año el circulante era solo las
+     cuentas a cobrar, la variación salía +3.496 en vez de −1.568, el FCF caía
+     1.927 M y el semáforo decía VERDE.
+
+     Ahora cada componente declara su ROL, y el rol no es universal: depende
+     del modelo de negocio. Una empresa de software sin inventario es normal;
+     una que TENÍA inventario material y lo pierde de los datos, no. */
+  const WC_ROL = {cobrar:"required", pagar:"required",
+                  inventar:"conditional", unearned:"conditional"};
+  /* ── MATERIALIDAD · PROVISIONAL · EXPERIMENTAL · NO APROBADA POR GOBERNANZA ─
+     Una componente condicional que superó este umbral sobre las ventas en
+     cualquiera de los diez años deja de ser opcional: si desaparece, bloquea.
+
+     El 5% NO está justificado por la plantilla ni por ninguna medición: es un
+     número puesto a ojo para que META funcionara. Queda marcado como
+     provisional a propósito, y no se sustituye por otro número igual de
+     arbitrario. La decisión —% de ventas, impacto sobre el FCF, persistencia
+     o una regla combinada— se toma DESPUÉS de medir las ocho empresas, con
+     los datos que recoge R.wcMedida más abajo.
+     Mientras tanto es un criterio de bloqueo, no de cálculo: puede sobrar o
+     faltar un bloqueo, pero ninguna cifra sale de aquí.                      */
+  const MATERIAL = 0.05;   /* CRITERIO V1 · el único que decide */
+  /* ── ALERTA DE SENSIBILIDAD · NO es criterio de inclusión ─────────────────
+     |Δcomponente| / FCF_PRE_WC. KO y AMZN demostraron que aporta información
+     que el saldo no ve —el inventario de AMZN mueve el 85,9% del flujo en
+     2017— pero NO que deba cambiar el cálculo: los ingresos diferidos de AMZN
+     llegan al 10,7% y su efecto final sobre el IDC es del 0,3%. No se aumenta
+     la complejidad del modelo por un pico histórico de efecto económico
+     pequeño (decisión de Francisco, 18-ago-2026).
+     Se mide y se enseña en auditoría. Se recogerá evidencia con las golden que
+     faltan antes de volver a tocar la metodología.                          */
+  const SENSIBLE = 0.10;
+  const wcMaterial = k => A.some((_,i) =>
+    D[k][i] !== null && ventas[i] && Math.abs(D[k][i]) / ventas[i] > MATERIAL);
+  const wcExige = {};
+  Object.entries(WC_ROL).forEach(([k, rol]) => {
+    wcExige[k] = rol === "required" ? true
+      : has(k) && wcMaterial(k) ? true      /* condicional pero material */
+      : false;                              /* not_applicable de facto */
+  });
+  R.wcRoles = wcExige;
+  /* ── AUSENTE no es lo mismo que PARCIAL, y la diferencia lo es todo ───────
+     · AUSENTE: no hay NINGÚN dato de circulante. No se está silenciando nada:
+       simplemente el análisis no incluye ese ajuste. Se calcula el flujo sin
+       él, se DICE, y el flujo queda en ámbar. Es el caso de quien solo ha
+       pegado la cuenta de resultados.
+     · PARCIAL: hay cobros pero faltan pagos (META desde 2021). Ahí sí se
+       estaría inventando: contar el que falta como cero da un circulante a
+       medias con cara de completo. Eso bloquea. */
+  const wcHayAlgo = Object.keys(WC_ROL).some(k => has(k));
+  const wcFaltan = [];
+  der.wc = mk(i => {
+    if(!wcHayAlgo) return null;
+    const falta = Object.keys(WC_ROL).filter(k => wcExige[k] && D[k][i] === null);
+    if(falta.length){ falta.forEach(k => { if(!wcFaltan.includes(k)) wcFaltan.push(k); }); return null; }
+    return z(D.inventar,i)+z(D.cobrar,i)-z(D.pagar,i)-Math.abs(z(D.unearned,i));
+  });
+  /* ── LA VARIACIÓN SE MIDE POR PARES COMPLETOS (P3.4B) ────────────────────
+     El año 0 no tiene variación porque no hay año anterior: es un límite del
+     rango, no una ausencia — ahí el cero sí es legítimo. Y sin ningún dato de
+     circulante tampoco hay variación que silenciar.
+
+     Lo demás lo destapó la reconciliación de META contra el Excel de clase.
+     Restar dos saldos totales parece inocente y no lo es: si una componente
+     está en un año y no en el otro, la resta mide que el DATO desapareció, no
+     que la empresa cambiara. META publicó su pasivo por contratos hasta 2024
+     (721 M) y dejó de etiquetar la parte corriente en 2025; el saldo caía 721
+     M de golpe, la variación se inflaba igual y el FCF perdía 721 M que nadie
+     había gastado. Ésos eran los 720 M que separaban 57.087 de los 57.807 del
+     Excel.
+
+     Ahora cada componente aporta su variación SOLO si tiene dato en los DOS
+     años del par. Es la misma regla que ya manda en todo lo demás —una
+     ausencia no es un cero— aplicada al par en vez de al año suelto. Cuando
+     todas las componentes están en ambos años, da exactamente lo de antes. */
+  const WC_SIGNO = {inventar:+1, cobrar:+1, pagar:-1, unearned:-1};
+  const wcParesRotos = [];
+  der.cwc = mk(i => {
+    if(i===0 || !wcHayAlgo) return 0;
+    if(der.wc[i]===null || der.wc[i-1]===null) return NaN;
+    let d = 0;
+    Object.entries(WC_SIGNO).forEach(([k, sg]) => {
+      const ant = D[k][i-1], act = D[k][i];
+      if(ant === null && act === null) return;              /* no aplica a esta empresa */
+      if(ant === null || act === null){                     /* par roto: no se resta */
+        wcParesRotos.push({k, de: A[i-1], a: A[i], falta: act === null ? A[i] : A[i-1]});
+        return;
+      }
+      /* los ingresos diferidos entran en valor absoluto, como en der.wc */
+      d += sg * (k === "unearned" ? Math.abs(act) - Math.abs(ant) : act - ant);
+    });
+    return d;
+  });
+  R.wcParesRotos = wcParesRotos;
+  R.wcIncompleto = wcFaltan;
+  R.wcAusente = !wcHayAlgo;
+  if(!wcHayAlgo){
+    R.aviso.push("No hay <b>ningún dato de circulante</b> (cuentas a cobrar y a pagar), así que el " +
+      "flujo de caja se calcula <b>sin ese ajuste</b> y sale algo <b>optimista</b>. No es un dato " +
+      "silenciado: es un ajuste que este análisis no incluye, y conviene saberlo.");
+  }
+  if(wcFaltan.length){
+    const nom = k => (CONCEPTOS.find(c=>c.k===k)||{}).lab || k;
+    const anios0 = k => A.filter((a,i) => D[k][i]===null && ventas[i]!==null);
+    R.aviso.push("<b>No he podido calcular la variación de circulante</b>, así que el flujo de caja " +
+      "queda <b>no concluyente</b>: falta " + wcFaltan.map(k => nom(k).toLowerCase() +
+      (anios0(k).length && anios0(k).length < N ? " (desde " + anios0(k)[0] + ")" : "")).join(" y ") +
+      ". No lo cuento como cero: un circulante a medias da un flujo que parece completo y no lo es.");
+  }
 
   /* CapEx de mantenimiento — regla de la plantilla, hoja de cálculos, celda C7:
        SI( |CapEx neto| < Depreciación ; CapEx neto ; Depreciación )
@@ -4721,12 +5494,66 @@ function calcular(){
   if(topeAplicado.length) R.aviso.push(`En ${topeAplicado.length===1?"el año":"los años"} <b>${topeAplicado.join(", ")}</b> la empresa
     invirtió menos de lo que se le desgastó, así que el CapEx de mantenimiento se ha limitado al
     <b>CapEx realmente gastado</b>. Es la regla de la plantilla: la depreciación es el techo, no el importe.`);
-  /* El FCF exige EBITDA, CapEx de mantenimiento e impuestos: sin cualquiera de
-     los tres no hay flujo, hay una estimación optimista disfrazada. Intereses,
-     circulante y «otros» sí admiten cero — son ajustes, no la columna vertebral. */
+  /* El FCF exige EBITDA, CapEx de mantenimiento, impuestos y la variación de
+     circulante. Los intereses y «otros» sí admiten cero: son ajustes, no la
+     columna vertebral.
+
+     FCF_PRE_WC se expone aparte porque es útil para ver de dónde viene el
+     número — pero NO es el flujo de caja libre y no se llama así en ninguna
+     parte. Nada aguas abajo lo usa: ni el múltiplo, ni el crecimiento, ni la
+     valoración. Es un intermedio para auditar, y punto. */
+  der.fcfPreWC = mk(i => at(ebitda,i)===null ? null
+     : ebitda[i] - zReq(der.capexMant,i) - zReq(impuestos,i) + z(interes,i) + z(g("otros"),i));
   der.fcf = mk(i => at(ebitda,i)===null ? null
-     : ebitda[i] - zReq(der.capexMant,i) - zReq(impuestos,i) + z(interes,i) - z(der.cwc,i)
+     : ebitda[i] - zReq(der.capexMant,i) - zReq(impuestos,i) + z(interes,i) - zReq(der.cwc,i)
        + z(g("otros"),i));      /* fila 13 de la plantilla, con su signo */
+  /* ── P3.2-B · INSTRUMENTACIÓN DE LA MATERIALIDAD ──────────────────────────
+     No decide nada: MIDE, para que el umbral se elija con datos de las ocho
+     empresas y no a ojo. Por cada componente condicional del circulante:
+       saldoV     · saldo / ventas, año a año  → el criterio de HOY
+       deltaFcf   · |Δcomponente| / FCF_PRE_WC → cuánto mueve el flujo de verdad
+       aparece    · ejercicios en que hay dato
+       superan    · ejercicios por encima del umbral provisional
+       impactoFcf · % que se movería el FCF del último año si se omitiera      */
+  R.wcMedida = {};
+  Object.entries(WC_ROL).filter(([,rol]) => rol === "conditional").forEach(([k]) => {
+    const m = {saldoV:[], deltaFcf:[], aparece:[], superan:[], impactoFcf:null,
+               sensible:[], noMedible:[], umbralHoy:MATERIAL,
+               exigido:wcExige[k], provisional:true};
+    A.forEach((a,i) => {
+      if(D[k][i] === null) return;
+      m.aparece.push(a);
+      /* CRITERIO V1 · el único que decide: saldo sobre ventas */
+      if(ventas[i]){
+        const r = Math.abs(D[k][i]) / ventas[i];
+        m.saldoV.push({a, v:r});
+        if(r > MATERIAL) m.superan.push(a);
+      }
+      /* ALERTA DE SENSIBILIDAD · mira, NO decide (decisión de gobernanza,
+         18-ago-2026). Un ratio con denominador diminuto no informa de nada:
+         dividir entre un FCF_PRE_WC casi cero da porcentajes enormes que solo
+         miden lo pequeño que es el denominador. Se exige que el flujo previo
+         al circulante valga al menos el 1% de las ventas del año; si no, el
+         ejercicio se anota como NO MEDIBLE en vez de producir un número falso. */
+      if(i > 0 && D[k][i-1] !== null){
+        const den = at(der.fcfPreWC,i);
+        const suelo = ventas[i] ? Math.abs(ventas[i]) * 0.01 : 0;
+        if(den === null || !isFinite(den) || Math.abs(den) <= suelo) m.noMedible.push(a);
+        else {
+          const v = Math.abs(D[k][i] - D[k][i-1]) / Math.abs(den);
+          m.deltaFcf.push({a, v});
+          if(v > SENSIBLE) m.sensible.push(a);
+        }
+      }
+    });
+    /* impacto de omitirla: si esta componente sale del circulante, la ΔWC del
+       año se mueve exactamente su propia variación, y el FCF con ella. */
+    const L2 = A.length - 1, f = at(der.fcf, L2);
+    if(f && L2 > 0 && D[k][L2] !== null && D[k][L2-1] !== null)
+      m.impactoFcf = Math.abs(D[k][L2] - D[k][L2-1]) / Math.abs(f);
+    R.wcMedida[k] = m;
+  });
+
   der.neto = mk(i => at(ebit,i)===null ? null : ebit[i] + z(interes,i) - zReq(impuestos,i));
   der.bpa  = mk(i => (der.neto[i]===null||!acciones[i]) ? null : der.neto[i]/acciones[i]);
   der.fcfps= mk(i => (der.fcf[i]===null||!acciones[i]) ? null : der.fcf[i]/acciones[i]);
@@ -5002,17 +5829,28 @@ function calcular(){
   const fcfCojo = [];
   if(D.impuestos[L] === null) fcfCojo.push("los impuestos");
   if(D.capex[L] === null && D.capexMant[L] === null) fcfCojo.push("el CapEx");
+  /* el circulante incompleto ya deja el FCF en null; aquí solo se nombra */
+  const wcRoto = (R.wcIncompleto||[]).length > 0;
   sem("fcf", "El flujo de caja del último año",
     fcfUlt !== null && fcfUlt > 0 && !fcfCojo.length,
     fcfUlt === null
-      ? "No se puede construir: falta el EBITDA o casi todo lo demás del último año."
+      ? (wcRoto
+          ? "<b>No concluyente:</b> no se puede calcular la variación de circulante — falta " +
+            R.wcIncompleto.map(k => ((CONCEPTOS.find(c=>c.k===k)||{}).lab||k).toLowerCase()).join(" y ") +
+            ". Sin ella el flujo saldría a medias con cara de completo."
+          : "No se puede construir: falta el EBITDA o casi todo lo demás del último año.")
       : fcfCojo.length
       ? "Sale " + nf(fcfUlt,0) + " M pero SIN " + fcfCojo.join(" ni ") +
         " — la fórmula los cuenta como cero y el flujo queda inflado. No vale para valorar."
       : fcfUlt <= 0
       ? "Salió NEGATIVO (" + nf(fcfUlt,0) + " M): la empresa consumió caja. No es un hueco de datos — es la conclusión."
+      : R.wcAusente
+      ? nf(fcfUlt,0) + " M — pero <b>sin el ajuste de circulante</b>, que no hay datos para calcular. " +
+        "Sale algo optimista."
       : nf(fcfUlt,0) + " M, construido con la fórmula del método",
-    (fcfUlt === null || fcfCojo.length) ? "sec" : null);
+    (fcfUlt === null || fcfCojo.length) ? "sec" : null,
+    /* ámbar: hay flujo, pero SIN el ajuste de circulante */
+    fcfUlt !== null && !fcfCojo.length && R.wcAusente === true);
 
   /* 5a pieza: sin deuda neta el precio saldria como si no debiera nada */
   const dnListo = (VAL.dn5 !== null) || (der.deudaNeta[L] !== null);
@@ -5071,11 +5909,48 @@ function calcular(){
     R.vigia.det.rojos = R.semaforo.filter(x => !x.ok).map(x => ({k:x.k, lab:x.lab, detalle:x.detalle}));
     R.vigia.nr = R.vigia.det.rojos.length;
   }
+  /* ══ EL VETO DE APLICABILIDAD · PRECEDENCIA ABSOLUTA (P3.4A) ═════════════
+     Va DELANTE de todo lo demás a propósito. Si la estructura financiera de la
+     empresa no es compatible con el método, no hay supuesto —ni del usuario,
+     ni de analistas, ni puesto a mano— que levante este veto: no es que falte
+     una pieza, es que la pregunta no aplica.
+
+     Hasta V1 la app calculaba el IDC de un banco y luego lo tachaba con un ⛔.
+     Un número tachado sigue siendo un número: quien lo lee se queda con la
+     cifra y no con la advertencia. Ahora NO SE PRODUCE el número.
+
+     Lo que NO se toca: los datos, las series, los ratios, las gráficas y el
+     Vigía siguen enteros. Un banco tiene un negocio que mirar; lo que no tiene
+     es un IDC. Solo se apaga el módulo de valoración. */
+  const noAplica = typeof metodoNoAplica === "function" ? metodoNoAplica() : null;
+  if(noAplica){
+    R.sinVal = true;
+    R.bloqueo = "metodoNoAplicable";
+    R.noAplica = noAplica;
+    R.semaforo.push({k:"noAplica", lab:"El método", ok:false,
+      detalle: noAplica.porque + " " + noAplica.comoSe +
+        " <b>Este valorador no lo hace</b>, así que no produce ningún IDC para esta empresa. " +
+        "El resto del análisis —crecimiento, márgenes, caja, deuda— sí lo puedes mirar.",
+      accion: null, aviso:false});
+    if(R.vigia){
+      R.vigia.det.rojos = R.semaforo.filter(x => !x.ok).map(x => ({k:x.k, lab:x.lab, detalle:x.detalle}));
+      R.vigia.nr = R.vigia.det.rojos.length;
+    }
+    puntuar(R); R.raros = vigilarDatos(R); return R;
+  }
+
   /* Los atajos también puntúan y también vigilan: una empresa sin precio o que
      quema caja no deja de tener un negocio que juzgar, y es de las que más
      falta hace revisar los datos. */
   if(precio===null){ R.sinPrecio = true; puntuar(R); R.raros = vigilarDatos(R); return R; }
-  if(!(der.fcf[L] > 0) || !acciones[L]){ R.sinVal = true; puntuar(R); R.raros = vigilarDatos(R); return R; }
+  if(!(der.fcf[L] > 0) || !acciones[L]){
+    R.sinVal = true;
+    if((R.wcIncompleto||[]).length && der.fcf[L] === null) R.bloqueo = "circulante";
+    else if(!acciones[L]) R.bloqueo = "acciones";
+    else if(der.fcf[L] === null) R.bloqueo = "fcf";
+    else R.bloqueo = "fcfNegativo";
+    puntuar(R); R.raros = vigilarDatos(R); return R;
+  }
 
   const accHoy = acciones[L];
   /* dn5 se resuelve ANTES del corte porque es una de las piezas que lo deciden */
@@ -5111,6 +5986,12 @@ function calcular(){
   const gLoco    = !gPuesto && gF > 35;
   if(multLoco || gLoco){
     R.sinVal = true;
+    /* P0 exige que TODO bloqueo tenga causa explícita. Esta guardia la tenía en
+       pantalla —su fila roja del semáforo— pero no en el estado: `R.bloqueo`
+       se quedaba sin rellenar y el motor decía «no hay precio» sin decir por
+       qué. Lo destapó AMZN en P3.2 (CAGR del FCF 42,6%). No cambia la fórmula
+       del IDC ni el criterio del bloqueo: solo lo nombra. */
+    R.bloqueo = "supuestos";
     R.semaforo.push({k:"locos", lab:"Los supuestos", ok:false,
       detalle:(gLoco ? "El crecimiento extrapolado ("+nf(gF,1)+"%) " : "") +
               (multLoco ? (gLoco?"y el múltiplo":"El múltiplo")+" histórico ("+mu(multObj)+") " : "") +
@@ -6140,6 +7021,18 @@ function informe(R){
   /* ── LA PUERTA · aquí termina el análisis a ciegas ── */
   H += vigiaPanel(R);               /* P2: la procedencia, antes que nada */
   H += multiplosHistoricos(R);      /* su vara de medir, antes de cerrar con llave */
+  /* P3.4A · el método no aplica: se dice AQUÍ, delante de la puerta.
+     La puerta existe para que no te ancles en el precio antes de juzgar el
+     negocio. En una financiera no hay precio que esconder —el módulo IDC está
+     apagado— así que esconder la explicación detrás de ella sería dejar al
+     lector esperando un número que no va a llegar. */
+  if(R.noAplica) H += `<div class="warn" style="margin-top:1.4rem">
+    <b>⛔ ${esc(R.noAplica.nombre)} es ${esc(R.noAplica.tipo === "financiera"
+      ? "un banco, una aseguradora o similar" : "una inmobiliaria patrimonialista (REIT o SOCIMI)")}.
+    Este valorador NO calcula su IDC.</b><br>${R.noAplica.porque} ${R.noAplica.comoSe}
+    <br><br><b>Lo que sí puedes mirar</b>, y está todo arriba: cómo crecen sus ingresos, sus
+    márgenes, su rentabilidad y su historial de años malos. El negocio se puede juzgar;
+    lo que no se puede es ponerle este precio.</div>`;
   H += puerta(R);
 
   /* ── TRAMO 2 y 3 · el precio y el contraste, detrás de la puerta ── */
@@ -7607,10 +8500,18 @@ function veredicto(R){
 
 function enlazarValoracion(){
   if(typeof sincronizarFV === "function") sincronizarFV();
+  if(typeof enlazarPegarExterno === "function") enlazarPegarExterno();
   enlazarSemaforo();
   document.querySelectorAll(".vin").forEach(inp=>{
     if(inp.classList.contains("pin")) return;          /* los de la tabla van aparte */
-    inp.onchange = () => { VAL[inp.dataset.v] = parseNum(inp.value); informe(calcular()); guardarTrabajo(); };
+    inp.onchange = () => {
+      const k = inp.dataset.v, x = parseNum(inp.value);
+      /* P4A.1 · los seis campos comerciales pasan por el MODELO, no por VAL.
+         Un cero o un negativo ya no entran en silencio: se rechazan y se dice
+         por qué, ahí mismo, debajo de la casilla. */
+      if(EXT_DE_VAL[k]){ ponComercial(k, x, inp); return; }
+      VAL[k] = x; informe(calcular()); guardarTrabajo();
+    };
   });
   /* los supuestos año a año de la proyección por partidas */
   document.querySelectorAll(".pin").forEach(inp=>{
@@ -7937,11 +8838,22 @@ const SEC_TAGS = {
   leaseCP:   ["OperatingLeaseLiabilityCurrent", "FinanceLeaseLiabilityCurrent"],
   leaseLP:   ["OperatingLeaseLiabilityNoncurrent", "FinanceLeaseLiabilityNoncurrent"],
   cobrar:    ["AccountsReceivableNetCurrent"],
-  /* OJO: KO no separa proveedores de devengos («AccountsPayableAndAccrued
-     LiabilitiesCurrent»). Se probó usar esa etiqueta combinada y el circulante
-     salía inflado: el FCF de Coca-Cola caía de 10.939 M a 4.040 M, lejos del
-     publicado. Un dato equivocado es peor que un hueco: mejor que falte. */
-  pagar:     ["AccountsPayableCurrent"],
+  /* ── concepto canónico «accounts_payable» · SUCESIÓN de etiquetas ────────
+     META no dejó de publicar sus cuentas a pagar: en el 10-K de 2021 cambió
+     de etiqueta. La prueba está en el solape de 2020, donde las dos declaran
+     el MISMO valor (1.331 M) — es la misma magnitud renombrada:
+        AccountsPayableCurrent       2011-2020
+        AccountsPayableTradeCurrent  2018-2025
+     El orden importa: la primera rellena y las siguientes solo tapan huecos,
+     así que 2016-2020 vienen de la original y 2021-2025 de la sucesora. La
+     TRAZA guarda cuál se usó cada año, y el Vigía marca 🟡 la serie por usar
+     dos etiquetas — que es exactamente lo que hay que saber.
+
+     NO se suma «AccountsPayableOtherCurrent»: en 2020 convive con las otras
+     dos (1.093 M) mientras ambas valen 1.331 — sumarlo duplicaría.
+     NI «AccountsPayableAndAccruedLiabilitiesCurrent»: mezcla devengos, y ya
+     se probó con KO — hundía su FCF de 10.939 a 4.040 M. Se revirtió. */
+  pagar:     ["AccountsPayableCurrent", "AccountsPayableTradeCurrent"],
   inventar:  ["InventoryNet"],
   unearned:  ["ContractWithCustomerLiabilityCurrent", "DeferredRevenueCurrent"],
   /* flujo de caja */
@@ -9099,6 +10011,8 @@ function empaquetar(){
     precio: $("precio").value, moneda: $("moneda").value,
     negocio: $("negocio").value, invertir: $("invertir").checked,
     val: VAL, datos,
+    /* P4A.1: los datos externos viajan con su identidad entera */
+    ext: (typeof extEmpaquetar === "function") ? extEmpaquetar() : {},
     /* P2: la procedencia viaja con los datos — antes moría al recargar */
     traza: (() => { const t = {};
       Object.entries(TRAZA).forEach(([k, arr]) => { if(!arr) return;
@@ -9128,6 +10042,7 @@ function aplicarPaquete(g){
   Object.keys(VAL).forEach(k => { VAL[k] = (g.val && g.val[k] !== undefined) ? g.val[k] : null; });
   if(g.val && g.val.obj !== undefined) VAL.obj = g.val.obj; else VAL.obj = 15;
   VAL.puertaAbierta = !!(g.val && g.val.puertaAbierta);
+  if(typeof extRestaurar === "function"){ extRestaurar(g.ext); extAVal(); }
 }
 
 /* lo guardado con el formato 1 se entiende igual: solo cambia el envoltorio */
@@ -9361,7 +10276,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-18.37ab391";
+const APP_VERSION = "2026-08-19.22682e3";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
@@ -9457,6 +10372,17 @@ if($("ayudaBtn")) $("ayudaBtn").onclick = () => {
   else p.classList.add("hide");
 };
 
+/* P4A.1 · la caja de pegar datos externos vive en el paso 3, que es donde
+   aterriza quien viene a poner el precio. Se monta al arrancar. */
+if($("pegarExternoHost") && typeof cajaPegarExterno === "function"){
+  $("pegarExternoHost").innerHTML = cajaPegarExterno();
+  enlazarPegarExterno();
+}
+
 </script>
+<!-- 08-externos define el modelo de los datos externos (Fair Value, consenso).
+     Va aquí, y no al final, porque 07-arranque ejecuta código nada más cargar
+     y necesita restaurar EXT del trabajo guardado. El número dice cuándo se
+     escribió, no en qué orden se carga. -->
 </body>
 </html>
