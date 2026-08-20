@@ -4956,9 +4956,20 @@ function leerCaja(g){
   const ta = $("pegagrid").querySelector(`textarea[data-pega="${g}"]`);
   const caja = $("pegagrid").querySelector(`[data-res="${g}"]`);
   if(g==="MK"){ leerPrecios(ta, caja); return; }
-  const soloDe = g === "ER"
-    ? CONCEPTOS.filter(c => !c.auto && D[c.k].every(v => v === null)).map(c => c.k)
-    : CONCEPTOS.filter(c=>c.g===g).map(c=>c.k);
+  /* ── NINGÚN CUADRO RECHAZA UNA PARTIDA QUE SABE LEER ─────────────────────
+     Antes cada cuadro solo aceptaba «lo suyo», y el de la reconciliación solo
+     aceptaba partidas COMPLETAMENTE vacías. Efecto: si ya habías traído los
+     datos de la SEC, pegar la tabla del Pro encima decía «Incorporar 0 de 0
+     filas · ya las tenías» y no cogía NADA — ni siquiera los años que le
+     faltaban.
+
+     Ahora se acepta todo lo que se reconozca, venga en el cuadro que venga.
+     El que decide qué entra es el paso de abajo, y lo hace AÑO A AÑO: rellena
+     los huecos, respeta lo que ya había, y donde los dos tienen dato y no
+     coinciden, pregunta. Un cuadro es una guía para saber dónde mirar, no una
+     aduana. */
+  const propias = CONCEPTOS.filter(c => c.g === g).map(c => c.k);
+  const soloDe  = CONCEPTOS.filter(c => !c.auto).map(c => c.k);
   /* ¿es una tabla de PREVISIONES? Se va por su lector, que sí sabe lo que es */
   if(ta.value.trim() && ES_PREVISION.test(ta.value) && aplicarForecast(ta.value, caja)) return;
 
@@ -4992,13 +5003,14 @@ function leerCaja(g){
   const descartadas = [];
   const filasUtiles = [];
   for(const f of R.filas){
-    if(!soloDe.includes(f.k)){
+    if(!soloDe.includes(f.k)) continue;                 /* ni la app la usa */
+    if(filasUtiles.some(x=>x.k===f.k)) continue;
+    /* venía de otro cuadro: se coge igual, pero se dice */
+    if(!propias.includes(f.k)){
       const c2 = CONCEPTOS.find(c => c.k === f.k);
       if(c2 && !descartadas.some(x => x.k === f.k))
-        descartadas.push({k:f.k, lab:c2.lab, g:c2.g, yaEsta: D[f.k] && D[f.k].some(v=>v!==null)});
-      continue;
+        descartadas.push({k:f.k, lab:c2.lab, g:c2.g});
     }
-    if(filasUtiles.some(x=>x.k===f.k)) continue;
     filasUtiles.push(f);
   }
 
@@ -5052,11 +5064,19 @@ function pintarPreview(g, caja){
             fuera:col.fuera, conflictos, escalaRara};
   });
 
-  const cabTxt = P.cab
+  /* De izquierda a derecha: qué año es la PRIMERA columna y cuál la ÚLTIMA.
+     Es la pregunta que se hace todo el mundo al pegar, y hasta ahora había
+     que deducirla. Si la tabla trae cabecera se lee de ella; si no, son los
+     diez años del análisis por orden. */
+  const aniosCab = P.cab ? P.cab.cols.filter(c => !c.ttm).map(c => c.anio) : null;
+  const primero = aniosCab && aniosCab.length ? aniosCab[0] : (P.primerAnio || A[0]);
+  const ultimo  = aniosCab && aniosCab.length ? aniosCab[aniosCab.length-1] : A[A.length-1];
+  const cabTxt = (P.cab
     ? `los años vienen <b>de la cabecera</b>${P.cab.ttm ? " · columna <b>TTM excluida</b>" : ""}`
     : P.primerAnio
     ? `primer año fijado a <b>${P.primerAnio}</b>`
-    : `sin cabecera: colocación <b>posicional</b> (${N} celdas = ${N} años)`;
+    : `sin cabecera: colocación <b>posicional</b> (${N} celdas = ${N} años)`)
+    + ` · <b>${primero}</b> a la izquierda → <b>${ultimo}</b> a la derecha`;
   const uTxt = [P.unidad.escala, P.unidad.divisa].filter(Boolean).join(" · ") || "no declarada en el texto";
 
   const tabla = f => `<div class="tw"><table class="rs prev"><thead><tr>
@@ -5102,8 +5122,9 @@ function pintarPreview(g, caja){
       <b>intereses</b>: esta pantalla es una reconciliación y los trae al revés que la cuenta de
       resultados.</div>` : ""}
     ${P.descartadas.length ? `<div class="note" style="margin-top:.5rem;border-left:2px solid var(--amber)">
-      Filas que aquí no van (no se importan): ${P.descartadas.map(x=>`<b>${esc(x.lab)}</b>${
-        x.yaEsta?" (ya la tenías)":" → "+esc(G_NOM[x.g]||x.g)}`).join(" · ")}</div>` : ""}
+      Estas venían de <b>otro cuadro</b> y <b>las cojo igual</b>, no se pierden:
+      ${P.descartadas.map(x=>`<b>${esc(x.lab)}</b> <span style="color:var(--muted-txt)">(${
+        esc(G_NOM[x.g]||x.g)})</span>`).join(" · ")}</div>` : ""}
     <div class="bar-actions" style="margin-top:.7rem">
       <button type="button" class="pri" data-confirmar="${g}"
         ${P.colocadas.every(f=>f.estado==="incierto"||f.escalaRara) ? "disabled" : ""}>
@@ -10391,7 +10412,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-20.95f6582";
+const APP_VERSION = "2026-08-20.be393ad";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
