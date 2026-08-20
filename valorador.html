@@ -1645,9 +1645,9 @@ const G = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja",
 const CONCEPTOS = [
  {k:"ventas",   g:"IS", lab:"Ventas",                     src:"Total Revenues", req:1},
  {k:"ebitda",   g:"IS", lab:"EBITDA",                     src:"EBITDA", req:1,
-   calc:{op:"+", a:"Operating Income", b:"Depreciation & Amortization, Total"}},
+   calc:{op:"+", a:"Operating Income", b:"Depreciation & Amortization, Total", ka:"ebit", kb:"da"}},
  {k:"ebit",     g:"IS", lab:"EBIT",                       src:"Operating Income", req:1,
-   calc:{op:"−", a:"EBITDA", b:"Depreciation & Amortization, Total"}},
+   calc:{op:"−", a:"EBITDA", b:"Depreciation & Amortization, Total", ka:"ebitda", kb:"da"}},
  {k:"interes",  g:"IS", lab:"Intereses netos",            src:"Net Interest Expenses",
    calc:{op:"−", a:"Interest And Investment Income", b:"Interest Expense, Total (en positivo)"}},
  /* Los dos lados del interés, por separado. La plantilla los proyecta cada uno
@@ -1683,10 +1683,10 @@ const CONCEPTOS = [
     —en Nestlé es un 2,4% del FCF proyectado— y por eso existe. */
  {k:"otros",    g:"CF", lab:"Otros ajustes del FCF (con signo)", src:"— manual · fila 13 de la plantilla"},
  {k:"da",       g:"CF", lab:"Depreciación y amortización",src:"Depreciation & Amortization, Total", req:1,
-   calc:{op:"−", a:"EBITDA", b:"Operating Income"}},
+   calc:{op:"−", a:"EBITDA", b:"Operating Income", ka:"ebitda", kb:"ebit"}},
  {k:"capexMant",g:"CF", lab:"CapEx de mantenimiento",     src:"Depreciation (la sola, no la D&A)",
    nota:"Investing la trae en la pestaña <i>EBITDA Reconciliation</i>. Si la dejas vacía se usa la D&A total y el resultado sale más prudente.", pos:1,
-   calc:{op:"−", a:"Depreciation & Amortization, Total", b:"Amortization (si solo aparece la amortización)"}},
+   calc:{op:"−", a:"Depreciation & Amortization, Total", b:"Amortization (si solo aparece la amortización)", ka:"da"}},
  {k:"capex",    g:"CF", lab:"CapEx total",                src:"Capital Expenditure", pos:1},
  {k:"adquisi",  g:"CF", lab:"Adquisiciones",              src:"Cash Acquisitions", pos:1},
  {k:"recompra", g:"CF", lab:"Recompras de acciones",      src:"Repurchase of Common Stock", pos:1},
@@ -3187,9 +3187,22 @@ function pedirSlug(){
 
 /* ── calculadoras ƒ ── */
 const HELP = {};   // HELP[k] = {a:[…], b:[…]}
+/* ── ƒ · SE RELLENA SOLA CON LO QUE YA TIENES ────────────────────────────
+   Tres de las cinco fórmulas usan partidas que la app YA tiene: el EBITDA sale
+   de EBIT + D&A, el EBIT de EBITDA − D&A, y la D&A de EBITDA − EBIT. Hasta
+   ahora había que volver a Investing y pegar otra vez lo mismo que ya estaba
+   dentro. Ahora se traen solas, y solo queda pulsar «Calcular y rellenar».
+   Lo que NO está en la app —la amortización sola, los dos lados del interés—
+   se queda vacío y se dice: no se inventa. */
 function abrirCalc(k){
-  if(HELP[k]) delete HELP[k];
-  else HELP[k] = {a:new Array(N).fill(null), b:new Array(N).fill(null)};
+  if(HELP[k]){ delete HELP[k]; pintarMatriz(); return; }
+  const c = CONCEPTOS.find(x => x.k === k) || {};
+  const cc = c.calc || {};
+  const dame = kk => (kk && Array.isArray(D[kk])) ? D[kk].slice() : new Array(N).fill(null);
+  HELP[k] = {a: dame(cc.ka), b: dame(cc.kb),
+             traidos: [cc.ka, cc.kb].filter(Boolean)
+               .filter(kk => D[kk] && D[kk].some(v => v !== null))
+               .map(kk => (CONCEPTOS.find(x => x.k === kk) || {}).lab || kk)};
   pintarMatriz();
 }
 function aplicarCalc(k){
@@ -3242,7 +3255,13 @@ function pintarMatriz(){
       });
       h += `<tr class="helpbar"><td class="c0" colspan="${N+1}">
         <div style="display:flex;gap:.7rem;align-items:center;flex-wrap:wrap">
-          <span class="msg"><b>${esc(c.lab)} = ${esc(cc.a)} ${cc.op} ${esc(cc.b)}</b></span>
+          <span class="msg"><b>${esc(c.lab)} = ${esc(cc.a)} ${cc.op} ${esc(cc.b)}</b>${
+            (HELP[c.k].traidos && HELP[c.k].traidos.length)
+              ? `<br><span style="color:var(--d2-hi)">✓ He traído
+                 <b>${esc(HELP[c.k].traidos.join(" y "))}</b> de lo que ya tenías —
+                 solo tienes que pulsar «Calcular y rellenar».</span>`
+              : `<br><span style="color:var(--muted-txt)">Estas dos no las tengo:
+                 pégalas de Investing y las calculo.</span>`}</span>
           <span class="sep" style="flex:1"></span>
           <button type="button" class="b1" data-aplicar="${c.k}" style="padding:.4rem .9rem;font-size:.78rem">Calcular y rellenar</button>
           <button type="button" class="b2" data-calc="${c.k}" style="padding:.4rem .9rem;font-size:.78rem">Cancelar</button>
@@ -4129,6 +4148,28 @@ function urlPro(tabla){
   if(!T || !B) return null;
   return `https://www.investing.com/pro/${B}:${T}/financials/${tabla}`;
 }
+/* ── ABRIR INVESTINGPRO SIN QUE TE MANDE AL BUSCADOR ─────────────────────
+   La dirección del Pro necesita la BOLSA: `/pro/NYSE:MCO/…`. Sin ella no vale
+   —comprobado: `/pro/MCO` devuelve una página en blanco, no redirige—. Antes,
+   si aún no se había pulsado «Buscar», el enlace se rendía y te dejaba en el
+   buscador de Investing.
+
+   Ahora, si no sabemos la bolsa, se PREGUNTA a Yahoo en ese momento y luego se
+   abre la dirección buena. La pestaña se abre antes de esperar —si no, el
+   navegador la bloquea por no venir de una pulsación— y se le cambia el
+   destino cuando ya se sabe. Si Yahoo tampoco lo sabe, entonces sí, buscador. */
+async function abrirPro(tabla){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  if(!T) return;
+  const directa = () => tabla ? urlPro(tabla) : (bolsaDe(T) ? "https://www.investing.com/pro/" + bolsaDe(T) + ":" + T : null);
+  let u = directa();
+  if(u){ window.open(u, "_blank", "noopener"); return; }
+  const w = window.open("", "_blank", "noopener");     /* se abre YA, si no la bloquean */
+  try{ if(typeof buscar === "function") await buscar(); }catch(e){}
+  u = directa() || ("https://www.investing.com/search/?q=" + encodeURIComponent(T));
+  if(w) w.location.replace(u); else window.open(u, "_blank", "noopener");
+}
+
 /* la ficha de InvestingPro, sin tabla: es donde vive el cuadro de Fair Value */
 function urlProFicha(){
   const T = ($("ticker").value||"").trim().toUpperCase();
@@ -10338,9 +10379,14 @@ function sincronizarFV(){
   if(VAL.fv !== null && VAL.fv !== undefined && isFinite(VAL.fv)) c.value = VAL.fv;
   const cA = $("fvAn3");
   if(cA && VAL.fvAn !== null && VAL.fvAn !== undefined && isFinite(VAL.fvAn)) cA.value = VAL.fvAn;
+  /* el enlace del Pro ya no se rinde al buscador: si no sabemos la bolsa, la
+     pregunta a Yahoo al pulsarlo y entonces abre la dirección buena */
   const a = $("fvEnlace3");
-  if(a){ const u = (typeof urlProFicha === "function") ? urlProFicha() : null;
-    if(u){ a.href = u; a.classList.remove("hide"); } else { a.classList.add("hide"); } }
+  if(a){
+    a.classList.remove("hide");
+    a.href = (typeof urlProFicha === "function" && urlProFicha()) || "#";
+    a.onclick = ev => { ev.preventDefault(); if(typeof abrirPro === "function") abrirPro(null); };
+  }
 }
 
 if($("btnIrPuerta")) $("btnIrPuerta").onclick = () => {
@@ -10412,7 +10458,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-20.be393ad";
+const APP_VERSION = "2026-08-20.117df80";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
