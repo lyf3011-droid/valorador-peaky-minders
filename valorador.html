@@ -4022,6 +4022,47 @@ function esCifra(s){ return /^[+\-(]?[\d.,]+[)%]?$/.test(String(s).trim()) && /\
    Quien lee numeros hoy: `parseCelda()` para las cuentas y `extNumero()` para
    los datos externos. Los dos rechazan en vez de adivinar.                 */
 
+/* ── EL HTML DEL PORTAPAPELES, CONVERTIDO A TABLA DE TEXTO (P4A.3) ────────
+   Al pegar, el navegador deja DOS cosas: el texto plano y el HTML. El HTML es
+   mejor material —conserva qué cifra pertenece a qué fila y a qué columna,
+   que es justo lo que el texto plano pierde cuando una fila se parte en
+   varias líneas— pero hay que traducirlo, no leerlo tal cual.
+
+   Aquí estuvo el fallo que dejó a Francisco sin poder pegar NADA: al retirar
+   `leerHTMLInvesting()` en P4A.2 se quedó viva la línea que prefería el HTML,
+   y ese HTML crudo acababa en el reconocedor de texto plano, que veía
+   «<html>» y «<body>» y los tomaba por nombres de partidas.
+
+   Esto lo traduce a lo que el parser ya sabe leer: una fila por línea, celdas
+   separadas por tabulador. Los números los sigue leyendo `parseCelda()`.   */
+function htmlATabla(html){
+  if(!html || !/<table/i.test(html)) return "";
+  /* Los saltos de línea DENTRO de una celda hay que convertirlos en espacio
+     ANTES de parsear. En un documento que no se pinta, `innerText` no los
+     respeta y devuelve el texto pegado: la cabecera «2016<br>31/12» salía
+     como «201631/12», y ahí ya no hay ningún año que reconocer — la tabla
+     se colocaba por posición en vez de por año. */
+  const limpio = String(html)
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/(p|div|li|h[1-6])>/gi, m => " " + m + " ");
+  let doc;
+  try { doc = new DOMParser().parseFromString(limpio, "text/html"); }
+  catch(e){ return ""; }
+  const TAB = String.fromCharCode(9), NL = String.fromCharCode(10);
+  const filas = [];
+  doc.querySelectorAll("table").forEach(t => {
+    [...t.rows].forEach(r => {
+      const celdas = [...r.cells].map(c =>
+        String(c.innerText !== undefined && c.innerText !== null ? c.innerText : (c.textContent || ""))
+          .replace(/\s+/g, " ").trim());
+      /* una fila entera vacía no aporta; una celda vacía SÍ, porque marca
+         su columna y quitarla desplazaría todo lo de su derecha */
+      if(celdas.some(x => x !== "")) filas.push(celdas.join(TAB));
+    });
+  });
+  return filas.join(NL);
+}
+
 /* ── un cuadro de pegado por cuenta ── */
 const HTML_CAJA = {};                       /* HTML pegado en cada cuadro */
 /* ══════════════════ METER LOS DATOS · UN PASO CADA VEZ ══════════════════
@@ -4745,13 +4786,22 @@ function parsearPegado(txt){
          interior es un HUECO y borrarla desplaza todo — la causa raíz R1. */
       let celdas = celdasLinea(linea.slice(alt.length), estilo);
       while(celdas.length && celdas[0].t === "" ) celdas.shift();
-      /* formato vertical: el nombre en una línea y cada celda en la suya */
+      /* ── el nombre en una línea y las cifras DEBAJO (P4A.3) ───────────────
+         Dos formas, y las dos salen de Investing:
+           · una cifra por línea            (la tabla del Pro)
+           · el nombre, una línea en blanco, y las diez cifras EN UNA LÍNEA
+             separadas por tabuladores      (la de /equities al pegar como texto)
+         La segunda no se leía: se miraba la línea entera como si fuera una
+         celda sola, «3,604.2⇥4,204⇥…» no es un número, y se cortaba ahí.
+         Ahora cada línea se trocea en celdas y se aceptan si TODAS son cifras
+         o huecos declarados. Así da igual cuántas traiga cada línea. */
       if(celdas.filter(c=>c.v!==null||esHueco(c.t)).length < 3){
         const acc = [];
         for(let j=i+1;j<L.length && acc.length<24;j++){
-          const lj = L[j].trim(); if(!lj) continue;
-          if(!esCeldaNumerica(lj)) break;
-          acc.push({t:lj, v:parseCelda(lj, estilo)});
+          const lj = L[j].trim(); if(!lj) continue;          /* la línea en blanco no corta */
+          const cs = celdasLinea(lj, estilo);
+          if(!cs.length || !cs.every(c => c.v !== null || esHueco(c.t))) break;
+          acc.push(...cs);
         }
         if(acc.length >= 3) celdas = acc;
       }
@@ -4848,7 +4898,8 @@ function leerCaja(g){
   /* ¿es una tabla de PREVISIONES? Se va por su lector, que sí sabe lo que es */
   if(ta.value.trim() && ES_PREVISION.test(ta.value) && aplicarForecast(ta.value, caja)) return;
 
-  const crudo = (HTML_CAJA[g] || ta.value || "");
+  /* el HTML se TRADUCE; si no hay tabla utilizable, manda el texto de la caja */
+  const crudo = (htmlATabla(HTML_CAJA[g]) || ta.value || "");
   if(!crudo.trim()){ caja.innerHTML = ""; return; }
 
   /* ══ PARSEAR — nada se escribe todavía ══ */
@@ -10276,7 +10327,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-19.22682e3";
+const APP_VERSION = "2026-08-20.706a032";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
