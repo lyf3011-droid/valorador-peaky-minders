@@ -4730,7 +4730,71 @@ function parsearPegado(txt){
   const unidad = unidadPegado(txt);
   const L = String(txt).split(/\n/).map(x=>x.replace(/\r/g,""));
   const filas = [];
+
+  /* ═══ VÍA C · UN BLOQUE DE NOMBRES Y DESPUÉS SU BLOQUE DE CIFRAS ═══════
+     Así pega el BALANCE y el FLUJO DE CAJA de investing.com/equities: primero
+     TODOS los nombres seguidos, y luego TODAS sus filas de cifras, en el
+     mismo orden. Entre medias hay líneas en blanco.
+
+         Cash And Equivalents
+         Cash And Equivalents Growth
+         Short Term Investments
+         Total Receivables
+         …
+         4,905.61  4,126.86  …     ← es la de «Cash And Equivalents»
+         +12.49%   -15.87%   …     ← la de «… Growth»
+         2.88      3.01      …     ← la de «Short Term Investments»
+
+     Sin esto, del balance de ACN solo se leía el patrimonio: la caja, los
+     cobros, los pagos y la deuda estaban todos dentro de un bloque así.
+
+     La regla es estricta a propósito: solo se emparejan si hay DOS O MÁS
+     nombres y **el número de nombres coincide exactamente con el de filas de
+     cifras**. Si no cuadra, no se empareja nada — antes que adivinar, no leer.
+     Una línea es «nombre» si tiene letras y «cifras» si no las tiene. */
+  const consumidas = new Set();
+  {
+    const tieneLetras = s => /[A-Za-zÁ-Úá-úÑñ]/.test(s);
+    const esNombre = s => s.trim() !== "" && tieneLetras(s);
+    const esCifras = s => {
+      if(s.trim() === "" || tieneLetras(s)) return false;
+      const cs = celdasLinea(s, estilo);
+      return cs.length >= 2 && cs.every(c => c.v !== null || esHueco(c.t) || /^[+\-]?[\d.,\s]+%$/.test(c.t));
+    };
+    let i = 0;
+    while(i < L.length){
+      if(!esNombre(L[i])){ i++; continue; }
+      const nombres = [], iN = [];
+      let j = i;
+      while(j < L.length && (L[j].trim() === "" || esNombre(L[j]))){
+        if(L[j].trim() !== ""){ nombres.push(L[j]); iN.push(j); }
+        j++;
+      }
+      const cifras = [], iC = [];
+      while(j < L.length && (L[j].trim() === "" || esCifras(L[j]))){
+        if(L[j].trim() !== ""){ cifras.push(L[j]); iC.push(j); }
+        j++;
+      }
+      if(nombres.length >= 2 && nombres.length === cifras.length){
+        nombres.forEach((n, x) => {
+          const bajo = n.normalize("NFC").toLowerCase().replace(/\s+/g," ").trim();
+          if(ES_PREVISION.test(bajo)) return;
+          for(const [k, alts] of Object.entries(SIN)){
+            if(!alts.includes(bajo)) continue;
+            const celdas = celdasLinea(cifras[x], estilo)
+              .map(c => (c.v !== null || esHueco(c.t)) ? c : {t:c.t, v:null});
+            if(celdas.filter(c => c.v !== null).length >= 2) filas.push({et: bajo, k, celdas});
+            break;
+          }
+        });
+        iN.concat(iC).forEach(z => consumidas.add(z));
+      }
+      i = j > i ? j : i + 1;
+    }
+  }
+
   for(let i=0;i<L.length;i++){
+    if(consumidas.has(i)) continue;        /* ya emparejada por la vía C */
     const linea = L[i]; if(!linea.trim()) continue;
     const bajo = linea.normalize("NFC").toLowerCase().replace(/\s+/g," ").trim();
     if(ES_PREVISION.test(bajo)) continue;
@@ -10327,7 +10391,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-20.706a032";
+const APP_VERSION = "2026-08-20.95f6582";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
