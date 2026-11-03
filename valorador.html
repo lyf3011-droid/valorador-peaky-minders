@@ -4753,15 +4753,42 @@ function cabeceraPegado(txt){
   return {cols, ttm: cols.some(c=>c.ttm)};
 }
 
-/* ── unidad y divisa, del propio texto ── */
+/* ── unidad y divisa, del propio texto ──────────────────────────────────────
+   Hasta el 21-sep-2026 esto era decorativo: la app LEÍA «Thousands» en el pie,
+   lo escribía en la previsualización y luego metía los números sin tocar. Mil
+   veces mal, y sin una sola alarma. Ahora la escala se aplica (`FACTOR_ESCALA`)
+   y la divisa se recuerda para poder compararla entre cuadros.
+
+   Se miran primero MILES y MIL MILLONES: «miles de millones» contiene la
+   palabra «millones» y antes se clasificaba como millones.                   */
 function unidadPegado(txt){
   const t = String(txt);
-  const escala = /millions|millones/i.test(t) ? "millones"
-    : /thousands|miles\b|millares/i.test(t) ? "miles"
-    : /billions|billones/i.test(t) ? "miles de millones" : null;
+  const escala =
+      /\bmiles de millones\b|\bbillions\b|\(billions\)/i.test(t) ? "miles de millones"
+    : /\bthousands\b|\(thousands\)|\bmillares\b|\bmiles de (euros|d[oó]lares|libras|francos|USD|EUR|GBP|CHF)\b/i.test(t) ? "miles"
+    : /\bmillions\b|\bmillones\b|\(millions\)/i.test(t) ? "millones" : null;
   const divisa = /\bUSD\b|\$/.test(t) ? "USD" : /\bEUR\b|€/.test(t) ? "EUR"
     : /\bGBP\b|£/.test(t) ? "GBP" : /\bCHF\b/.test(t) ? "CHF" : null;
   return {escala, divisa};
+}
+
+/* La app trabaja SIEMPRE en millones, como la plantilla. Esto es lo que hay
+   que multiplicar para llegar ahí desde lo que declare la tabla. */
+const FACTOR_ESCALA = {"millones": 1, "miles": 0.001, "miles de millones": 1000};
+
+/* ── la moneda de lo que ya está cargado ────────────────────────────────────
+   Se apunta al confirmar cada pegado. Sirve para una sola cosa, pero es la que
+   más daño hacía: darse cuenta de que las cuentas están en dólares y el EBITDA
+   del Pro viene en euros porque el selector de InvestingPro estaba en €. */
+const DIVISA_CUADRO = {};
+function divisaCargada(){
+  const v = Object.values(DIVISA_CUADRO).filter(Boolean);
+  return v.length ? v[0] : null;
+}
+function cuadrosConDivisa(d){
+  const G_N = {IS:"cuenta de resultados", BS:"balance", CF:"flujo de caja",
+               ER:"lo que falte", MK:"mercado", SEC:"lo traído de la SEC"};
+  return Object.keys(DIVISA_CUADRO).filter(g => DIVISA_CUADRO[g] === d).map(g => G_N[g] || g);
 }
 
 /* ── el parser entero: filas con celdas EN SU SITIO ── */
@@ -5076,12 +5103,17 @@ function pintarPreview(g, caja){
   const A = anios();
   const G_NOM = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja", ER:"Lo que falte", MK:"Mercado"};
 
+  /* ¿hay que cambiar de escala? La app trabaja en millones; si la tabla
+     declara otra cosa, se convierte AQUÍ y se dice en pantalla. */
+  const factor = FACTOR_ESCALA[P.unidad.escala] || 1;
+
   /* colocar cada fila y detectar conflictos y escalas raras */
   let hayIncierto = false, hayConflicto = false, hayEscala = false;
   P.colocadas = P.filas.map(f => {
     const col = colocarFila(f.celdas, P.cab, P.primerAnio);
     let vals = col.vals.slice();
     const con = CONCEPTOS.find(c=>c.k===f.k);
+    if(factor !== 1) vals = vals.map(v => v===null?null:+(v*factor).toPrecision(12));
     if(P.esReconciliacion && (f.k==="interes"||f.k==="intIng"||f.k==="intGas"))
       vals = vals.map(v => v===null?null:-v);
     if(con && con.pos) vals = vals.map(v => v===null?null:Math.abs(v));
@@ -5120,6 +5152,31 @@ function pintarPreview(g, caja){
     + ` · <b>${primero}</b> a la izquierda → <b>${ultimo}</b> a la derecha`;
   const uTxt = [P.unidad.escala, P.unidad.divisa].filter(Boolean).join(" · ") || "no declarada en el texto";
 
+  /* el cambio de escala, dicho con todas las letras */
+  const escalaTxt = factor === 1 ? "" :
+    `<div class="note" style="margin:.2rem 0 .6rem;border-left:2px solid var(--amber)">
+       🔁 Esta tabla viene <b>en ${esc(P.unidad.escala)}</b> y el método trabaja en
+       <b>millones</b>: ${factor < 1
+         ? `divido entre <b>${nf(1/factor,0)}</b>`
+         : `multiplico por <b>${nf(factor,0)}</b>`} antes de guardar.
+       Las cifras de abajo ya están convertidas.</div>`;
+
+  /* ── la moneda: lo único que no se puede mezclar ──────────────────────────
+     Detectada estaba desde siempre; comparada, no. Cuentas en dólares y EBITDA
+     del Pro en euros daban un EBITDA por debajo del EBIT y nadie decía nada. */
+  const dv = P.unidad.divisa, dvPrev = divisaCargada();
+  const choca = !!(dv && dvPrev && dv !== dvPrev);
+  P.choca = choca;
+  const monedaTxt = !choca ? "" :
+    `<div class="warn" style="margin:.2rem 0 .6rem">
+       🔴 <b>Esto viene en ${esc(dv)} y lo que ya tienes está en ${esc(dvPrev)}</b>
+       (${esc(cuadrosConDivisa(dvPrev).join(", "))}).
+       Mezclar dos monedas no rompe nada a la vista: rompe el flujo de caja y el
+       IDC <b>sin que se note</b>. En InvestingPro el selector de moneda cambia la
+       tabla entera sin avisar — ponlo en <b>${esc(dvPrev)}</b> y vuelve a copiar.
+       <label style="display:block;margin-top:.4rem"><input type="checkbox" id="mezclar-${g}">
+         Lo sé y aun así quiero incorporarlo</label></div>`;
+
   const tabla = f => `<div class="tw"><table class="rs prev"><thead><tr>
       ${A.map(a=>`<th style="text-align:right">${a}</th>`).join("")}</tr></thead>
     <tbody><tr>${f.vals.map((v,i)=>{
@@ -5133,6 +5190,7 @@ function pintarPreview(g, caja){
     <div style="font-size:.8rem;color:var(--soft);margin-bottom:.6rem">
       ${cabTxt} · unidad: <b>${esc(uTxt)}</b> · origen: <b>pegado</b>
       ${P.estilo ? ` · decimales estilo <b>${P.estilo==="eu"?"europeo (1.234,56)":"inglés (1,234.56)"}</b>` : ""}</div>
+    ${escalaTxt}${monedaTxt}
     ${P.colocadas.map(f => `
       <div class="prevfila${f.estado==="incierto"||f.escalaRara?" mal2":""}">
         <div class="prevlab"><b>${esc(f.lab)}</b>
@@ -5168,7 +5226,7 @@ function pintarPreview(g, caja){
         esc(G_NOM[x.g]||x.g)})</span>`).join(" · ")}</div>` : ""}
     <div class="bar-actions" style="margin-top:.7rem">
       <button type="button" class="pri" data-confirmar="${g}"
-        ${P.colocadas.every(f=>f.estado==="incierto"||f.escalaRara) ? "disabled" : ""}>
+        ${P.colocadas.every(f=>f.estado==="incierto"||f.escalaRara) || choca ? "disabled" : ""}>
         ✓ Incorporar ${P.colocadas.filter(f=>f.estado!=="incierto"&&!f.escalaRara).length} de
         ${P.colocadas.length} filas</button>
       <button type="button" class="b2" data-cancelar="${g}">Cancelar</button>
@@ -5177,6 +5235,9 @@ function pintarPreview(g, caja){
 
   const bi = $(`prevAnio-${g}`);
   if(bi) bi.onchange = () => { PEND_IMP[g].primerAnio = parseInt(bi.value,10)||null; pintarPreview(g, caja); };
+  /* mezclar monedas exige un clic aparte: nunca por descuido */
+  const mz = $(`mezclar-${g}`), bc = caja.querySelector(`[data-confirmar]`);
+  if(mz && bc) mz.onchange = () => { bc.disabled = !mz.checked; };
   caja.querySelector(`[data-confirmar]`).onclick = () => confirmarImportacion(g, caja);
   caja.querySelector(`[data-cancelar]`).onclick = () => { delete PEND_IMP[g]; caja.innerHTML =
     `<div class="note">Cancelado: no se ha incorporado nada.</div>`; };
@@ -5199,6 +5260,8 @@ function confirmarImportacion(g, caja){
     });
     if(n) puestas.push({lab:f.lab, n});
   }
+  /* la moneda de este cuadro queda apuntada para poder comparar la próxima */
+  if(puestas.length && P.unidad && P.unidad.divisa) DIVISA_CUADRO[g] = P.unidad.divisa;
   delete PEND_IMP[g];
   pintarMatriz(); guardarTrabajo();
   const faltan = CONCEPTOS.filter(c=>c.g===g && c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
@@ -5492,6 +5555,36 @@ function vigilarDatos(R){
   if(R.ventas[L] === null && R.ventas[L-1] !== null)
     av.push({a: anio(L), q: "el último año no tiene ventas",
              p: "la empresa aún no ha publicado ese ejercicio, o los años están desplazados un puesto"});
+
+  /* 11 · el EBITDA por debajo del EBIT ───────────────────────────────────────
+        Aritméticamente imposible: el EBITDA es el EBIT MÁS la depreciación, y
+        la depreciación no es negativa. Cuando pasa, el EBITDA viene de otro
+        sitio que el EBIT: otra moneda (el selector del Pro en €), otra escala,
+        u otra fila. Hasta el 21-sep-2026 esto entraba sin que nadie lo mirara:
+        con MCO/ACN en euros el margen caía tres puntos y el informe salía
+        entero. Es el hueco que destapó la auditoría de datos reales. */
+  const eb = R.ebitda || [], eo = R.ebit || [], dep = R.da || [];
+  const malos = [];
+  A.forEach((_, i) => {
+    if(i > L) return;
+    if(eb[i] === null || eb[i] === undefined || eo[i] === null || eo[i] === undefined) return;
+    if(eb[i] < eo[i]) malos.push(i);
+  });
+  if(malos.length)
+    av.push({a: anio(malos[malos.length-1]),
+             q: `el <b>EBITDA por debajo del EBIT</b> en ${malos.length===1 ? "un año" : malos.length+" años"}`,
+             p: "no puede ser: el EBITDA es el EBIT más la depreciación. Casi siempre significa que <b>las dos filas no vienen de la misma tabla</b> — distinta moneda (mira el selector de InvestingPro), distinta escala o una fila que no es la que parece"});
+
+  /* 12 · EBITDA − D&A debería dar el EBIT. Si se desvía más de un 5%, alguna
+        de las tres no es de la misma tabla. Solo el último año, para no llenar
+        la pantalla: si pasa, pasa en todos. */
+  if(eb[L] !== null && eb[L] !== undefined && eo[L] !== null && eo[L] !== undefined
+     && dep[L] !== null && dep[L] !== undefined && eb[L]){
+    const hueco = Math.abs((eb[L] - dep[L]) - eo[L]) / Math.abs(eb[L]);
+    if(hueco > 0.05 && !malos.length)
+      av.push({a: anio(L), q: `un desajuste del <b>${pc(hueco)}</b> entre EBITDA − D&amp;A y el EBIT`,
+               p: "las tres filas deberían cuadrar entre sí. Si no cuadran, una viene de otra tabla, de otro año o de otra moneda. Puede ser legítimo (ajustes del propio Investing), pero conviene mirarlo antes de fiarse del flujo de caja"});
+  }
 
   return av;
 }
@@ -9401,6 +9494,10 @@ async function traerSEC(desde){
         n++; } });
       if(n) puestas.push({k, lab: con ? con.lab : k, n}); else vacias.push(k);
     }
+    /* la SEC declara siempre en dólares (se le piden así). Queda apuntado para
+       que, si después se pega una tabla del Pro con el selector en euros, el
+       cuadro lo cante en vez de mezclarlas en silencio. */
+    if(puestas.length && typeof DIVISA_CUADRO !== "undefined") DIVISA_CUADRO.SEC = "USD";
 
     /* Último recurso para el EBIT: hay empresas que no lo publican con ninguna
        etiqueta estándar (GE, Masco, Exxon). Sí publican el beneficio ANTES de
@@ -10458,7 +10555,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-08-20.117df80";
+const APP_VERSION = "2026-11-03.75077d7";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
