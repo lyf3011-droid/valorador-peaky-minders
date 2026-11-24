@@ -61,6 +61,12 @@ input,select,textarea{background:var(--surface);border:1px solid var(--line-stro
 input:hover,select:hover{border-color:rgba(255,255,255,.24)}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-muted)}
 input::placeholder{color:var(--muted)}
+/* Las casillas y los redondeles heredaban el width:100% de arriba: ocupaban la
+   línea entera y se marcaban pulsando en cualquier sitio. En la casilla de
+   «mezclar monedas» eso es grave — existe justo para que haya que pararse a
+   pulsarla a conciencia. */
+input[type="checkbox"],input[type="radio"]{width:auto;margin:0 .45rem 0 0;padding:0;
+  vertical-align:-1px;accent-color:var(--amber)}
 textarea{font-size:.8rem;min-height:130px;resize:vertical}
 button{font-family:var(--font-d);font-weight:700;font-size:.86rem;border-radius:7px;padding:.65rem 1.15rem;
   cursor:pointer;border:1px solid transparent;transition:all .15s}
@@ -4093,6 +4099,17 @@ const HTML_CAJA = {};                       /* HTML pegado en cada cuadro */
 let PASO_PEGA = 0;
 const ORDEN_PEGA = ["IS","BS","CF","ER","MK"];
 
+/* ── UN CUADRO O CINCO PASOS ────────────────────────────────────────────────
+   Los cinco pasos enseñan dónde está cada tabla, y para quien no ha abierto
+   Investing en su vida eso vale. Pero obligan a ir y volver cinco veces, y la
+   pregunta de Francisco fue literal: «¿por qué no pego todo junto?».
+   Ahora se puede, porque el lector trocea el pegado en tablas y trata cada
+   una con sus años, su escala y su moneda (ver `trocearPegado`). El cuadro
+   único es lo que se ve al entrar; los pasos siguen ahí a un clic, para quien
+   los quiera o para repasar una tabla sola. */
+let MODO_PEGA = "todo";          /* "todo" | "pasos" */
+const G_TODO = "Las cuentas, todas juntas";
+
 /* ── Los enlaces del InvestingPro nuevo ────────────────────────────────────
    Su dirección es  investing.com/pro/BOLSA:TICKER/financials/tabla  y el
    prefijo de la bolsa no se puede sacar del ticker… pero sí de Yahoo, que ya
@@ -4182,7 +4199,7 @@ function urlProFicha(){
 function estadoPega(g){
   const suyas = CONCEPTOS.filter(c => c.g===g).map(c=>c.k);
   const todas = CONCEPTOS.filter(c => !c.auto).map(c=>c.k);
-  const lista = g === "ER" ? todas : suyas;
+  const lista = (g === "ER" || g === "TODO") ? todas : suyas;
   const total = lista.length;
   const hechos = lista.filter(k => D[k].some(v=>v!==null)).length;
   return {total, hechos, lleno: hechos===total};
@@ -4316,7 +4333,99 @@ function esquemaPaso(g){
   </ol>`;
 }
 
+/* ══════════════════ EL CUADRO ÚNICO ══════════════════
+   Un solo sitio donde pegar. Las tres cuentas van una detrás de otra, en
+   cualquier orden, y la del Pro detrás si la hay: `trocearPegado` las separa
+   y cada una entra con sus años, su escala y su moneda. Los precios se quedan
+   aparte a propósito — no son una tabla de cuentas, son una columna de
+   cotizaciones, y los trae el botón de Yahoo sin pegar nada. */
+function pintarPegaTodo(){
+  const T = ($("ticker").value||"").trim().toUpperCase();
+  const slug = slugDe(T);
+  const e = estadoPega("TODO");
+  const busca = "https://www.investing.com/search/?q=" + encodeURIComponent(T);
+  const liga = g => !T ? null : (slug
+    ? "https://www.investing.com/equities/" + slug + "-" + FUENTE[g].inv : busca);
+  const ligaPro = !T ? null : (urlPro("ebitda") || busca);
+  const falta = CONCEPTOS.filter(c => c.req && D[c.k].every(v => v===null));
+
+  const enlace = (url, n, txt, extra) => `
+    <a class="ab-b" href="${url}" target="_blank" rel="noopener">
+      <span class="ab-n">${n}</span>${txt} ↗</a>${extra||""}`;
+
+  $("pegagrid").innerHTML = `
+    <div class="pegabox solo${e.lleno?" ok":""}" data-g="TODO">
+      <div class="pt"><span class="pn">${esc(G_TODO)}</span>
+        <span class="pe">${e.hechos}/${e.total} partidas</span></div>
+
+      <div style="font-size:.82rem;color:var(--soft);margin:.25rem 0 .7rem;line-height:1.6">
+        Copia las tres cuentas de Investing <b>una detrás de otra</b> —en el orden que quieras— y
+        pégalas aquí de una vez. <b>Las separo yo</b>: cada tabla entra con sus años, su escala y
+        su moneda, y si dos vienen en monedas distintas <b>te paro</b> antes de guardar nada.
+        <details class="mas esq-d"><summary>Cómo se copia una tabla, en un vistazo</summary>
+          ${esquemaPaso("IS")}</details>
+        <details class="mas esq-d"><summary>La cuarta tabla · la del InvestingPro nuevo</summary>
+          <div class="note" style="margin:.5rem 0"><b>Es otra dirección.</b> Ahí está la
+            <code>Depreciation</code> sola, que la ficha clásica no trae, y es la que da el
+            <b>CapEx de mantenimiento</b>. Sin ella el resultado sale más prudente, no mal.
+            <br><code>investing.com/pro/NASDAQGS:TSLA/financials/ebitda</code></div>
+          ${esquemaER()}
+          <div class="bar-actions" style="margin-top:.5rem">
+            <button type="button" class="b2" id="probarER">Añadir el ejemplo de Tesla y ver qué lee</button>
+          </div></details>
+      </div>
+
+      ${T ? `<div class="abrir">
+        ${enlace(liga("IS"), 1, `Abre las <b>cuentas</b> de <b>${esc(T)}</b>`)}
+        ${enlace(liga("BS"), 2, `el <b>balance</b>`)}
+        ${enlace(liga("CF"), 3, `el <b>flujo de caja</b>`)}
+        ${enlace(ligaPro,  4, BOLSA_PRO ? `la del <b>Pro</b>` : `busca en el <b>Pro</b>`)}
+        <span class="ab-x">se abren en otra pestaña</span>
+      </div>` : `<div class="note">Escribe el <b>ticker</b> arriba y aquí aparecerán los enlaces
+        directos a las tablas que hay que copiar.</div>`}
+
+      <textarea data-pega="TODO" rows="8"
+        placeholder="Pega aquí las cuentas. Una tabla, dos o las cuatro seguidas: da igual el orden."></textarea>
+      <div class="pb">
+        <button type="button" class="pri" data-leer="TODO">Reconocer</button>
+        <button type="button" data-limpiar="TODO">Limpiar</button>
+        <button type="button" id="btnSEC" style="border-color:var(--amber-line);
+          color:var(--amber-strong)">🏛 Traer de la SEC lo que falte</button>
+      </div>
+      <div class="pr" data-res="TODO"></div>
+      <div class="pr" id="resSEC"></div>
+
+      <div class="pnav">
+        <span class="pnav-x">${falta.length
+          ? `Te ${falta.length===1?"falta <b>1 partida</b> obligatoria":`faltan <b>${falta.length} partidas</b> obligatorias`}:
+             ${falta.slice(0,4).map(c=>esc(c.lab)).join(" · ")}${falta.length>4?" …":""}`
+          : `<b style="color:var(--green)">Están las ${REQ.length} partidas obligatorias.</b>`}</span>
+        <button type="button" data-modo="pasos">prefiero ir tabla por tabla →</button>
+      </div>
+    </div>
+
+    <div class="pegabox solo" data-g="MK" style="margin-top:.8rem">
+      <div class="pt"><span class="pn">Los precios de cierre de cada año</span>
+        <span class="pe">${D.precioAno.filter(v=>v!==null).length}/${N} años</span></div>
+      <div style="font-size:.82rem;color:var(--soft);margin:.25rem 0 .7rem;line-height:1.6">
+        Esto no está en las cuentas y no hace falta pegarlo: el botón <b>Buscar</b> de arriba los
+        trae de Yahoo. Si prefieres pegarlos, aquí${slug?`, y la tabla está
+        <a href="https://www.investing.com/equities/${esc(slug)}-historical-data" target="_blank"
+           rel="noopener" style="color:var(--amber)">en datos históricos ↗</a>`:""}.
+      </div>
+      <textarea data-pega="MK" rows="3" placeholder="85.19 101.95 156.79 220.97 …"></textarea>
+      <div class="pb">
+        <button type="button" class="pri" data-leer="MK">Reconocer</button>
+        <button type="button" data-limpiar="MK">Limpiar</button>
+      </div>
+      <div class="pr" data-res="MK"></div>
+    </div>`;
+
+  enlazarPegaGrid();
+}
+
 function pintarPegaGrid(){
+  if(MODO_PEGA === "todo"){ pintarPegaTodo(); return; }
   const T = ($("ticker").value||"").trim().toUpperCase();
   const slug = slugDe(T);
   if(PASO_PEGA < 0) PASO_PEGA = 0;
@@ -4391,6 +4500,11 @@ function pintarPegaGrid(){
   </div>`;
 
   $("pegagrid").innerHTML = sub + `
+    <div class="pnav" style="margin:.2rem 0 .5rem">
+      <button type="button" data-modo="todo">← volver al cuadro único</button>
+      <span class="pnav-x">Aquí vas tabla por tabla, con el dibujo de cada pantalla.
+        En el cuadro único se pega todo de una vez.</span>
+    </div>
     <div class="ptira">${tira}</div>
     <div class="pegabox solo${e.lleno?" ok":""}" data-g="${g}">
       <div class="pt"><span class="pn">Paso ${PASO_PEGA+1} de 5 · ${esc(G[g])}</span>
@@ -4432,6 +4546,12 @@ function pintarPegaGrid(){
       </div>
     </div>`;
 
+  enlazarPegaGrid();
+}
+
+/* Los mismos botones sirven para el cuadro único y para los cinco pasos, así
+   que se enganchan una sola vez y en un sitio. */
+function enlazarPegaGrid(){
   $("pegagrid").querySelectorAll("textarea").forEach(ta=>{
     ta.addEventListener("paste", ev => {
       const dt = ev.clipboardData || window.clipboardData;
@@ -4444,25 +4564,37 @@ function pintarPegaGrid(){
   /* El ejemplo se pega de verdad y se lee de verdad: así se ve el resultado
      antes de ir a buscar la tabla propia, y se comprueba que la app la entiende. */
   if($("probarER")) $("probarER").onclick = () => {
-    const ta = $("pegagrid").querySelector('textarea[data-pega="ER"]');
+    const ta = $("pegagrid").querySelector('textarea[data-pega="ER"]')
+            || $("pegagrid").querySelector('textarea[data-pega="TODO"]');
     if(!ta) return;
-    ta.value = EJEMPLO_ER;
-    leerCaja("ER");
+    const g = ta.dataset.pega;
+    ta.value = (g === "TODO" && ta.value.trim())
+      ? ta.value.replace(/\s*$/, "") + "\n\n" + EJEMPLO_ER   /* se añade, no se pisa */
+      : EJEMPLO_ER;
+    HTML_CAJA[g] = null;
+    leerCaja(g);
     ta.scrollIntoView({behavior:modoScroll(), block:"center"});
   };
   $("pegagrid").querySelectorAll("[data-paso]").forEach(b=>b.onclick=()=>{
-    PASO_PEGA = +b.dataset.paso; pintarPegaGrid();
+    PASO_PEGA = +b.dataset.paso; MODO_PEGA = "pasos"; pintarPegaGrid();
     $("pegagrid").scrollIntoView({behavior:modoScroll(),block:"nearest"});
   });
   $("pegagrid").querySelectorAll("[data-mover]").forEach(b=>b.onclick=()=>{
     PASO_PEGA += +b.dataset.mover; pintarPegaGrid();
     $("pegagrid").scrollIntoView({behavior:modoScroll(),block:"nearest"});
   });
+  $("pegagrid").querySelectorAll("[data-modo]").forEach(b=>b.onclick=()=>{
+    MODO_PEGA = b.dataset.modo; pintarPegaGrid();
+    $("pegagrid").scrollIntoView({behavior:modoScroll(),block:"nearest"});
+  });
   enlazarAjusteAnios();
   if($("btnSEC")) $("btnSEC").onclick = () => traerSEC("cf");
   $("pegagrid").querySelectorAll("[data-limpiar]").forEach(b=>b.onclick=()=>{
     const k=b.dataset.limpiar;
-    CONCEPTOS.filter(c=>c.g===k).forEach(c=>D[c.k]=new Array(N).fill(null));
+    /* el cuadro único no tiene partidas propias: limpia todas las de pegado */
+    const suyas = CONCEPTOS.filter(c=>c.g===k);
+    (suyas.length ? suyas : CONCEPTOS.filter(c=>!c.auto))
+      .forEach(c=>D[c.k]=new Array(N).fill(null));
     HTML_CAJA[k]=null; pintarMatriz(); pintarPegaGrid(); guardarTrabajo();
   });
 }
@@ -4792,6 +4924,65 @@ function cuadrosConDivisa(d){
 }
 
 /* ── el parser entero: filas con celdas EN SU SITIO ── */
+/* ── TROCEAR UN PEGADO EN TABLAS ────────────────────────────────────────────
+   `parsearPegado` lee UNA tabla: una cabecera de años, un pie con la escala y
+   la moneda, y un sentido. Mientras cada tabla iba en su cuadro eso bastaba.
+   Para poder pegarlo TODO JUNTO hay que cortar primero, porque lo que vale
+   para una tabla no vale para la de al lado. Medido con las cuatro tablas
+   reales de ACN pegadas de golpe (21-sep·3-nov-2026):
+
+     · las cuatro cabeceras se leían como UNA de 30 columnas, así que
+       `colocarFila` no podía casar los años y las catorce partidas caían
+       **posicionales** — aciertan solo si la tabla trae exactamente los diez
+       años del análisis y en el mismo orden;
+     · del pie ganaba uno solo: la tabla del Pro venía **en euros** y entró
+       sin un aviso, mezclada con tres en dólares. El bloqueo de moneda que
+       se hizo en septiembre quedaba anulado por pegarlo todo de una vez;
+     · la reconciliación del EBITDA trae los intereses con el signo al revés.
+       El giro se decidía para el pegado entero, de modo que una cuenta de
+       resultados pegada al lado se giraba también.
+
+   Se corta por las dos marcas que Investing escribe siempre y que no
+   aparecen dentro de una tabla: **el pie** (una línea con escala Y moneda, o
+   el aviso legal) y **la cabecera** (la línea de «Period Ending»). El título
+   de sección —«Income Statement»— NO sirve: va DENTRO de la tabla, justo
+   debajo de la cabecera, y cortar ahí separaría los años de sus cifras.
+
+   Si no hay marcas, sale un solo trozo y todo se comporta como antes. */
+function esPieDeTabla(s){
+  const t = String(s);
+  if(!/[A-Za-z]/.test(t)) return false;
+  if(/all rights reserved|terms of use/i.test(t)) return true;
+  const u = unidadPegado(t);
+  return !!(u.escala && u.divisa);
+}
+function esCabeceraDeTabla(s){
+  return /period ending/i.test(String(s));
+}
+function trocearPegado(txt){
+  const L = String(txt).split(/\n/);
+  const cortes = [0];
+  for(let i = 0; i < L.length; i++){
+    if(!L[i].trim()) continue;
+    if(esPieDeTabla(L[i])){ if(i + 1 < L.length) cortes.push(i + 1); continue; }
+    if(i > 0 && esCabeceraDeTabla(L[i])) cortes.push(i);
+  }
+  const ptos = [...new Set(cortes)].sort((a,b) => a-b);
+  const trozos = [];
+  for(let x = 0; x < ptos.length; x++){
+    const t = L.slice(ptos[x], x+1 < ptos.length ? ptos[x+1] : L.length).join("\n");
+    if(t.trim()) trozos.push(t);
+  }
+  return trozos.length ? trozos : [String(txt)];
+}
+
+/* ¿este trozo es la reconciliación del EBITDA? Trae los intereses al revés
+   que la cuenta de resultados, y hay que girarlos SOLO en su trozo. */
+function esReconciliacionTxt(txt){
+  const L = String(txt).split(String.fromCharCode(10)).map(x => x.trim().toLowerCase());
+  return L.some(x => x.indexOf("ebt, incl") === 0) && L.indexOf("ebitda") >= 0;
+}
+
 function parsearPegado(txt){
   const estilo = estiloTabla(txt);
   const cab = cabeceraPegado(txt);
@@ -5045,9 +5236,17 @@ function leerCaja(g){
   const crudo = (htmlATabla(HTML_CAJA[g]) || ta.value || "");
   if(!crudo.trim()){ caja.innerHTML = ""; return; }
 
-  /* ══ PARSEAR — nada se escribe todavía ══ */
-  const R = parsearPegado(crudo);
-  if(!R.filas.length){
+  /* ══ PARSEAR — nada se escribe todavía ══
+     Se trocea primero: cada tabla con su cabecera, su escala, su moneda y su
+     sentido. Un pegado de una sola tabla da un trozo y se comporta igual que
+     antes de existir esto. */
+  const BLO = trocearPegado(crudo).map(t => {
+    const r = parsearPegado(t);
+    r.esRec = esReconciliacionTxt(t);
+    return r;
+  });
+  const R = BLO.find(b => b.filas.length) || BLO[0];
+  if(!BLO.some(b => b.filas.length)){
     const lineas = crudo.trim().split(/\r?\n/).filter(x=>x.trim());
     const esNum = x => /^[\s(]*[-\u2212+]?[\d.,]+[\s)%x]*$/.test(x.trim()) || /^[-\u2013\u2014]$/.test(x.trim());
     const nombres = lineas.filter(x => !esNum(x)).map(x=>x.trim())
@@ -5064,27 +5263,30 @@ function leerCaja(g){
     return;
   }
 
-  /* el giro de signo de la reconciliación, y las filas de otra pestaña */
-  const lineasCrudo = String(crudo).split(String.fromCharCode(10)).map(x => x.trim().toLowerCase());
-  const esReconciliacion = lineasCrudo.some(x => x.indexOf("ebt, incl") === 0)
-                        && lineasCrudo.indexOf("ebitda") >= 0;
+  /* Las filas de todos los trozos, en orden, cada una apuntando al trozo del
+     que salió (`blo`): de ahí saldrán su cabecera, su escala y su giro.
+     La primera aparición de una partida gana, como siempre. */
   const descartadas = [];
   const filasUtiles = [];
-  for(const f of R.filas){
-    if(!soloDe.includes(f.k)) continue;                 /* ni la app la usa */
-    if(filasUtiles.some(x=>x.k===f.k)) continue;
-    /* venía de otro cuadro: se coge igual, pero se dice */
-    if(!propias.includes(f.k)){
-      const c2 = CONCEPTOS.find(c => c.k === f.k);
-      if(c2 && !descartadas.some(x => x.k === f.k))
-        descartadas.push({k:f.k, lab:c2.lab, g:c2.g});
+  BLO.forEach((b, bi) => {
+    for(const f of b.filas){
+      if(!soloDe.includes(f.k)) continue;                 /* ni la app la usa */
+      if(filasUtiles.some(x=>x.k===f.k)) continue;
+      /* venía de otro cuadro: se coge igual, pero se dice. En el cuadro único
+         no hay «otro cuadro», así que no se dice nada. */
+      if(propias.length && !propias.includes(f.k)){
+        const c2 = CONCEPTOS.find(c => c.k === f.k);
+        if(c2 && !descartadas.some(x => x.k === f.k))
+          descartadas.push({k:f.k, lab:c2.lab, g:c2.g});
+      }
+      filasUtiles.push(Object.assign({}, f, {blo: bi}));
     }
-    filasUtiles.push(f);
-  }
+  });
 
   /* ══ PREVISUALIZAR ══ */
-  PEND_IMP[g] = {g, filas: filasUtiles, cab: R.cab, estilo: R.estilo,
-                 unidad: R.unidad, esReconciliacion, descartadas, primerAnio: null};
+  PEND_IMP[g] = {g, filas: filasUtiles, bloques: BLO, cab: R.cab, estilo: R.estilo,
+                 unidad: R.unidad, esReconciliacion: BLO.some(b => b.esRec),
+                 descartadas, primerAnio: null};
   pintarPreview(g, caja);
 }
 
@@ -5103,18 +5305,26 @@ function pintarPreview(g, caja){
   const A = anios();
   const G_NOM = {IS:"Cuenta de resultados", BS:"Balance", CF:"Flujo de caja", ER:"Lo que falte", MK:"Mercado"};
 
-  /* ¿hay que cambiar de escala? La app trabaja en millones; si la tabla
-     declara otra cosa, se convierte AQUÍ y se dice en pantalla. */
-  const factor = FACTOR_ESCALA[P.unidad.escala] || 1;
+  /* Cada fila se trata con las reglas de SU tabla, no con las del pegado
+     entero: su cabecera de años, su escala y su giro de signo. Pegar las
+     cuatro tablas juntas y aplicarles un solo criterio era lo que las volvía
+     posicionales y lo que colaba una tabla en euros entre tres en dólares. */
+  const BL = P.bloques && P.bloques.length
+    ? P.bloques
+    : [{cab: P.cab, unidad: P.unidad || {}, esRec: P.esReconciliacion}];
+  const bloDe = f => BL[f.blo || 0] || BL[0];
+  const factorDe = b => FACTOR_ESCALA[(b.unidad || {}).escala] || 1;
 
   /* colocar cada fila y detectar conflictos y escalas raras */
   let hayIncierto = false, hayConflicto = false, hayEscala = false;
   P.colocadas = P.filas.map(f => {
-    const col = colocarFila(f.celdas, P.cab, P.primerAnio);
+    const bl = bloDe(f);
+    const factor = factorDe(bl);
+    const col = colocarFila(f.celdas, bl.cab, P.primerAnio);
     let vals = col.vals.slice();
     const con = CONCEPTOS.find(c=>c.k===f.k);
     if(factor !== 1) vals = vals.map(v => v===null?null:+(v*factor).toPrecision(12));
-    if(P.esReconciliacion && (f.k==="interes"||f.k==="intIng"||f.k==="intGas"))
+    if(bl.esRec && (f.k==="interes"||f.k==="intIng"||f.k==="intGas"))
       vals = vals.map(v => v===null?null:-v);
     if(con && con.pos) vals = vals.map(v => v===null?null:Math.abs(v));
     if(col.estado === "incierto") hayIncierto = true;
@@ -5134,46 +5344,80 @@ function pintarPreview(g, caja){
     }
     if(escalaRara) hayEscala = true;
     return {k:f.k, lab:(con?con.lab:f.k), et:f.et, vals, estado:col.estado,
-            fuera:col.fuera, conflictos, escalaRara};
+            fuera:col.fuera, conflictos, escalaRara, blo:f.blo || 0};
   });
+
+  /* qué tablas han aportado algo de verdad: las demás no se mencionan */
+  const usados = [...new Set(P.colocadas.map(f => f.blo))].sort((a,b)=>a-b);
 
   /* De izquierda a derecha: qué año es la PRIMERA columna y cuál la ÚLTIMA.
      Es la pregunta que se hace todo el mundo al pegar, y hasta ahora había
      que deducirla. Si la tabla trae cabecera se lee de ella; si no, son los
      diez años del análisis por orden. */
-  const aniosCab = P.cab ? P.cab.cols.filter(c => !c.ttm).map(c => c.anio) : null;
-  const primero = aniosCab && aniosCab.length ? aniosCab[0] : (P.primerAnio || A[0]);
-  const ultimo  = aniosCab && aniosCab.length ? aniosCab[aniosCab.length-1] : A[A.length-1];
-  const cabTxt = (P.cab
-    ? `los años vienen <b>de la cabecera</b>${P.cab.ttm ? " · columna <b>TTM excluida</b>" : ""}`
-    : P.primerAnio
-    ? `primer año fijado a <b>${P.primerAnio}</b>`
-    : `sin cabecera: colocación <b>posicional</b> (${N} celdas = ${N} años)`)
-    + ` · <b>${primero}</b> a la izquierda → <b>${ultimo}</b> a la derecha`;
-  const uTxt = [P.unidad.escala, P.unidad.divisa].filter(Boolean).join(" · ") || "no declarada en el texto";
+  const cabDe = b => {
+    const ac = b.cab ? b.cab.cols.filter(c => !c.ttm).map(c => c.anio) : null;
+    const pri = ac && ac.length ? ac[0] : (P.primerAnio || A[0]);
+    const ult = ac && ac.length ? ac[ac.length-1] : A[A.length-1];
+    return (b.cab
+      ? `los años vienen <b>de la cabecera</b>${b.cab.ttm ? " · columna <b>TTM excluida</b>" : ""}`
+      : P.primerAnio
+      ? `primer año fijado a <b>${P.primerAnio}</b>`
+      : `sin cabecera: colocación <b>posicional</b> (${N} celdas = ${N} años)`)
+      + ` · <b>${pri}</b> a la izquierda → <b>${ult}</b> a la derecha`;
+  };
+  const uDe = b => [(b.unidad||{}).escala, (b.unidad||{}).divisa]
+    .filter(Boolean).join(" · ") || "no declarada en el texto";
+  const B0 = BL[usados[0]] || BL[0];
+  const variasTablas = usados.length > 1;
+  const cabTxt = variasTablas
+    ? `<b>${usados.length} tablas</b> en lo que has pegado · <b>cada una con sus propios años,
+       su escala y su moneda</b>`
+    : cabDe(B0);
+  const uTxt = variasTablas
+    ? usados.map(i => uDe(BL[i])).join("  |  ")
+    : uDe(B0);
 
-  /* el cambio de escala, dicho con todas las letras */
-  const escalaTxt = factor === 1 ? "" :
-    `<div class="note" style="margin:.2rem 0 .6rem;border-left:2px solid var(--amber)">
-       🔁 Esta tabla viene <b>en ${esc(P.unidad.escala)}</b> y el método trabaja en
-       <b>millones</b>: ${factor < 1
-         ? `divido entre <b>${nf(1/factor,0)}</b>`
-         : `multiplico por <b>${nf(factor,0)}</b>`} antes de guardar.
+  /* el cambio de escala, dicho con todas las letras · una línea por tabla */
+  const escalaTxt = usados.filter(i => factorDe(BL[i]) !== 1).map(i => {
+    const fa = factorDe(BL[i]), es = (BL[i].unidad||{}).escala;
+    const quienes = P.colocadas.filter(f => f.blo === i).map(f => f.lab);
+    return `<div class="note" style="margin:.2rem 0 .6rem;border-left:2px solid var(--amber)">
+       🔁 ${variasTablas ? `La tabla de <b>${esc(quienes.slice(0,3).join(", "))}</b>${
+            quienes.length>3?" y "+(quienes.length-3)+" más":""} viene` : `Esta tabla viene`}
+       <b>en ${esc(es)}</b> y el método trabaja en <b>millones</b>: ${fa < 1
+         ? `divido entre <b>${nf(1/fa,0)}</b>`
+         : `multiplico por <b>${nf(fa,0)}</b>`} antes de guardar.
        Las cifras de abajo ya están convertidas.</div>`;
+  }).join("");
 
   /* ── la moneda: lo único que no se puede mezclar ──────────────────────────
      Detectada estaba desde siempre; comparada, no. Cuentas en dólares y EBITDA
-     del Pro en euros daban un EBITDA por debajo del EBIT y nadie decía nada. */
-  const dv = P.unidad.divisa, dvPrev = divisaCargada();
-  const choca = !!(dv && dvPrev && dv !== dvPrev);
-  P.choca = choca;
+     del Pro en euros daban un EBITDA por debajo del EBIT y nadie decía nada.
+     Y desde que se puede pegar todo junto hay un segundo choque posible: DOS
+     MONEDAS DENTRO DEL MISMO PEGADO. Medido con ACN: tres tablas en dólares y
+     la del Pro en euros entraban juntas sin un aviso, porque del pie ganaba
+     uno solo. Ahora se mira tabla por tabla. */
+  const dvs = [...new Set(usados.map(i => (BL[i].unidad||{}).divisa).filter(Boolean))];
+  const dvPrev = divisaCargada();
+  const dentro = dvs.length > 1;                        /* dos monedas en el mismo pegado */
+  const contra = !!(dvs.length === 1 && dvPrev && dvs[0] !== dvPrev);
+  const choca = dentro || contra;
+  P.choca = choca; P.divisas = dvs;
+  const quienesDe = d => P.colocadas
+    .filter(f => ((BL[f.blo]||{}).unidad||{}).divisa === d).map(f => f.lab).slice(0,4).join(", ");
   const monedaTxt = !choca ? "" :
     `<div class="warn" style="margin:.2rem 0 .6rem">
-       🔴 <b>Esto viene en ${esc(dv)} y lo que ya tienes está en ${esc(dvPrev)}</b>
-       (${esc(cuadrosConDivisa(dvPrev).join(", "))}).
+       ${dentro
+         ? `🔴 <b>Lo que has pegado trae ${dvs.length} monedas distintas</b>:
+            ${dvs.map(d => `<b>${esc(d)}</b> (${esc(quienesDe(d))}…)`).join(" y ")}.
+            Han venido en el mismo pegado, así que son tablas copiadas con el selector
+            de moneda en sitios distintos.`
+         : `🔴 <b>Esto viene en ${esc(dvs[0])} y lo que ya tienes está en ${esc(dvPrev)}</b>
+            (${esc(cuadrosConDivisa(dvPrev).join(", "))}).`}
        Mezclar dos monedas no rompe nada a la vista: rompe el flujo de caja y el
        IDC <b>sin que se note</b>. En InvestingPro el selector de moneda cambia la
-       tabla entera sin avisar — ponlo en <b>${esc(dvPrev)}</b> y vuelve a copiar.
+       tabla entera sin avisar — ponlo ${dentro ? `<b>en la misma</b> para todas`
+         : `en <b>${esc(dvPrev)}</b>`} y vuelve a copiar.
        <label style="display:block;margin-top:.4rem"><input type="checkbox" id="mezclar-${g}">
          Lo sé y aun así quiero incorporarlo</label></div>`;
 
@@ -5260,11 +5504,19 @@ function confirmarImportacion(g, caja){
     });
     if(n) puestas.push({lab:f.lab, n});
   }
-  /* la moneda de este cuadro queda apuntada para poder comparar la próxima */
-  if(puestas.length && P.unidad && P.unidad.divisa) DIVISA_CUADRO[g] = P.unidad.divisa;
+  /* La moneda queda apuntada para poder comparar la próxima. Si el pegado
+     traía varias —solo posible si se marcó la casilla a conciencia— se apunta
+     la primera: es la de las cuentas, y perder la referencia dejaría ciego al
+     aviso en el siguiente pegado. */
+  const dvOk = (P.divisas && P.divisas[0]) || (P.unidad && P.unidad.divisa);
+  if(puestas.length && dvOk) DIVISA_CUADRO[g] = dvOk;
   delete PEND_IMP[g];
   pintarMatriz(); guardarTrabajo();
-  const faltan = CONCEPTOS.filter(c=>c.g===g && c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
+  /* qué falta: las obligatorias de este cuadro, o TODAS si el cuadro no tiene
+     partidas propias (el cuadro único) */
+  const suyas = CONCEPTOS.filter(c=>c.g===g);
+  const faltan = (suyas.length ? suyas : CONCEPTOS.filter(c=>!c.auto))
+    .filter(c=>c.req && D[c.k].every(v=>v===null)).map(c=>c.lab);
   caja.innerHTML = (puestas.length
     ? `<span class="bien">✓ ${puestas.length} partidas incorporadas.</span>
        <ul>${puestas.map(p=>`<li>${esc(p.lab)} · ${p.n} años</li>`).join("")}</ul>`
@@ -10555,7 +10807,7 @@ document.addEventListener("click", e => {
    —saltándose la caché, que para un archivo de 20 bytes no cuesta nada— y si
    no coincide, enseña un aviso con un botón que recarga con la versión nueva
    en la dirección, lo que obliga al navegador a pedirla de verdad. */
-const APP_VERSION = "2026-11-03.75077d7";
+const APP_VERSION = "2026-11-24.85709dd";
 (function(){
   if(location.protocol === "file:" || APP_VERSION === "dev") return;
   let avisado = false;
